@@ -17,12 +17,6 @@ if (getApps().length === 0) {
 
 const auth = getAuth();
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
 const server = serve({
   routes: {
     "/*": index,
@@ -31,25 +25,22 @@ const server = serve({
         try {
           const authHeader = req.headers.get("Authorization");
           if (!authHeader?.startsWith("Bearer ")) {
-            return Response.json({ error: "Missing or invalid authorization header" }, { status: 401, headers: corsHeaders });
+            return Response.json({ error: "Missing or invalid authorization header" }, { status: 401 });
           }
 
           const idToken = authHeader.split("Bearer ")[1];
           if (!idToken) {
-            return Response.json({ error: "Invalid token format" }, { status: 401, headers: corsHeaders });
+            return Response.json({ error: "Invalid token format" }, { status: 401 });
           }
           const decodedToken = await auth.verifyIdToken(idToken);
           
           return Response.json({
             uid: decodedToken.uid,
             email: decodedToken.email,
-          }, { headers: corsHeaders });
+          });
         } catch (error) {
-          return Response.json({ error: "Invalid token" }, { status: 401, headers: corsHeaders });
+          return Response.json({ error: "Invalid token" }, { status: 401 });
         }
-      },
-      async OPTIONS(req) {
-        return new Response(null, { status: 204, headers: corsHeaders });
       },
     },
 
@@ -58,12 +49,12 @@ const server = serve({
         try {
           const authHeader = req.headers.get("Authorization");
           if (!authHeader?.startsWith("Bearer ")) {
-            return Response.json({ error: "Missing or invalid authorization header" }, { status: 401, headers: corsHeaders });
+            return Response.json({ error: "Missing or invalid authorization header" }, { status: 401 });
           }
 
           const idToken = authHeader.split("Bearer ")[1];
           if (!idToken) {
-            return Response.json({ error: "Invalid token format" }, { status: 401, headers: corsHeaders });
+            return Response.json({ error: "Invalid token format" }, { status: 401 });
           }
 
           const decodedToken = await auth.verifyIdToken(idToken);
@@ -72,13 +63,10 @@ const server = serve({
             message: `Hello ${decodedToken.email}! This is protected data.`,
             uid: decodedToken.uid,
             timestamp: new Date().toISOString(),
-          }, { headers: corsHeaders });
+          });
         } catch (error) {
-          return Response.json({ error: "Invalid token" }, { status: 401, headers: corsHeaders });
+          return Response.json({ error: "Invalid token" }, { status: 401 });
         }
-      },
-      async OPTIONS(req) {
-        return new Response(null, { status: 204, headers: corsHeaders });
       },
     },
   },
