@@ -40,7 +40,6 @@ dependencies:
   firebase_auth: ^6.1.0
   google_sign_in: ^7.2.0
   flutter_dotenv: ^6.0.0
-  flutter_native_splash: ^2.4.6
 
 dev_dependencies:
   flutter_test:
@@ -52,6 +51,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: "^0.14.4"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -96,10 +96,8 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-flutter_native_splash:
-  color: "#1A2433"
-  image: images/Logo.png
-  android_12:
-    color: "#1A2433"
-    image: images/Logo.png
-
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "images/Logo.png"
+  min_sdk_android: 21

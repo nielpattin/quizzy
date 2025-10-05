@@ -24,6 +24,7 @@ class QuizzyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: "Quizzy",
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
@@ -146,10 +147,12 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
     try {
       final idToken = await widget.user.getIdToken();
-      final response = await http.get(
-        Uri.parse('${dotenv.env['SERVER_URL']}/api/data'),
-        headers: {'Authorization': 'Bearer $idToken'},
-      );
+      final response = await http
+          .get(
+            Uri.parse('${dotenv.env['SERVER_URL']}/api/data'),
+            headers: {'Authorization': 'Bearer $idToken'},
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
