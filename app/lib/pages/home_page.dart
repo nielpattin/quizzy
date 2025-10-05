@@ -15,7 +15,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1F2E),
       body: SafeArea(
         child: Column(
           children: [
@@ -27,28 +26,28 @@ class _HomePageState extends State<HomePage> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1),
+                      color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.quiz, color: Colors.white, size: 24),
+                    child: Icon(Icons.quiz, color: Theme.of(context).colorScheme.onSurface, size: 24),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: 12),
+                  Text(
                     "Quizzy",
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.search, color: Colors.white),
+                    icon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.push("/search"),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                    onPressed: () {},
+                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurface),
+                    onPressed: () => context.push("/notification"),
                   ),
                 ],
               ),
@@ -62,7 +61,7 @@ class _HomePageState extends State<HomePage> {
                     isSelected: _selectedTab == 0,
                     onTap: () => setState(() => _selectedTab = 0),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   _TabButton(
                     label: "Feedy",
                     isSelected: _selectedTab == 1,
@@ -71,7 +70,7 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Expanded(
               child: _selectedTab == 0
                   ? SingleChildScrollView(
@@ -79,72 +78,72 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       "Featured Today",
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _FeaturedCard(),
-                    const SizedBox(height: 32),
-                    const Text(
+                    SizedBox(height: 32),
+                    Text(
                       "Browse Topics",
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Row(
                       children: [
                         _TopicCard(
                           label: "Education",
                           icon: Icons.school,
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         _TopicCard(
                           label: "Game",
                           icon: Icons.games,
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         _TopicCard(
                           label: "Business",
                           icon: Icons.business,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           "Trending Now",
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         TextButton(
                           onPressed: () {},
-                          child: const Row(
+                          child: Row(
                             children: [
                               Text(
                                 "View all",
-                                style: TextStyle(color: Color(0xFF6366F1)),
+                                style: TextStyle(color: Theme.of(context).colorScheme.primary),
                               ),
                               SizedBox(width: 4),
-                              Icon(Icons.arrow_forward, color: Color(0xFF6366F1), size: 16),
+                              Icon(Icons.arrow_forward, color: Theme.of(context).colorScheme.primary, size: 16),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     SizedBox(
                       height: 200,
                       child: ListView(
@@ -156,7 +155,7 @@ class _HomePageState extends State<HomePage> {
                             category: "Art",
                             count: 16,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           _TrendingCard(
                             title: "Guess the Song\nfrom 3 Words",
                             author: "Ly Nguyên",
@@ -164,66 +163,66 @@ class _HomePageState extends State<HomePage> {
                             count: 16,
                             isSessions: true,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           "Continue Playing",
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         TextButton(
                           onPressed: () {},
-                          child: const Row(
+                          child: Row(
                             children: [
                               Text(
                                 "View all",
-                                style: TextStyle(color: Color(0xFF6366F1)),
+                                style: TextStyle(color: Theme.of(context).colorScheme.primary),
                               ),
                               SizedBox(width: 4),
-                              Icon(Icons.arrow_forward, color: Color(0xFF6366F1), size: 16),
+                              Icon(Icons.arrow_forward, color: Theme.of(context).colorScheme.primary, size: 16),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _ContinuePlayingItem(
                       title: "Herbs vs. Weeds: Can You Tell?",
                       author: "Ly Nguyên",
                       category: "Plants",
                       count: 16,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     _ContinuePlayingItem(
                       title: "Modern Art or Just Scribbles?",
                       author: "Ly Nguyên",
                       category: "Art",
                       count: 16,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     _ContinuePlayingItem(
                       title: "Guess the Song from 3 Words",
                       author: "Ly Nguyên",
                       category: "Entertainment",
                       count: 16,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     _ContinuePlayingItem(
                       title: "Famous Entrepreneurs and Their Companies",
                       author: "Ly Nguyên",
                       category: "Business",
                       count: 16,
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                   ],
                 ),
               )
@@ -234,9 +233,9 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1F2E),
+          color: Theme.of(context).scaffoldBackgroundColor,
           border: Border(
-            top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+            top: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)),
           ),
         ),
         child: SafeArea(
@@ -278,13 +277,16 @@ class _TabButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF2A3142),
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
+          border: isSelected ? null : Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white70,
+            color: isSelected 
+                ? Colors.white 
+                : Theme.of(context).colorScheme.primary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -300,7 +302,7 @@ class _FeaturedCard extends StatelessWidget {
     return Container(
       height: 200,
       decoration: BoxDecoration(
-        color: const Color(0xFF2A3142),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Stack(
@@ -331,7 +333,7 @@ class _FeaturedCard extends StatelessWidget {
                         color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
+                      child: Text(
                         "Plants",
                         style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
@@ -340,10 +342,10 @@ class _FeaturedCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1),
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
+                      child: Text(
                         "Sessions",
                         style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
@@ -351,7 +353,7 @@ class _FeaturedCard extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                const Text(
+                Text(
                   "Herbs vs. Weeds: Can You Tell?",
                   style: TextStyle(
                     color: Colors.white,
@@ -359,27 +361,27 @@ class _FeaturedCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 12,
-                      backgroundColor: Color(0xFF6366F1),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       child: Icon(Icons.person, size: 14, color: Colors.white),
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       "Ly Nguyên",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14),
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1),
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.copy, size: 12, color: Colors.white),
                           SizedBox(width: 4),
@@ -416,18 +418,18 @@ class _TopicCard extends StatelessWidget {
       child: Container(
         height: 100,
         decoration: BoxDecoration(
-          color: const Color(0xFF2A3142),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 32),
-            const SizedBox(height: 8),
+            Icon(icon, color: Theme.of(context).colorScheme.onSurface, size: 32),
+            SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -459,7 +461,7 @@ class _TrendingCard extends StatelessWidget {
     return Container(
       width: 160,
       decoration: BoxDecoration(
-        color: const Color(0xFF2A3142),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -487,21 +489,21 @@ class _TrendingCard extends StatelessWidget {
                     ),
                     child: Text(
                       category,
-                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                      style: TextStyle(color: Colors.white, fontSize: 11),
                     ),
                   ),
                 ),
                 if (isSessions)
                   Positioned(
-                    top: 8,
+                    bottom: 8,
                     right: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1),
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Text(
+                      child: Text(
                         "Sessions",
                         style: TextStyle(color: Colors.white, fontSize: 11),
                       ),
@@ -517,46 +519,46 @@ class _TrendingCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 8,
-                      backgroundColor: Color(0xFF6366F1),
-                      child: Icon(Icons.person, size: 10, color: Colors.white),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        author,
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
-                        overflow: TextOverflow.ellipsis,
+                SizedBox(height: 8),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 8,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        child: Icon(Icons.person, size: 10, color: Colors.white),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1),
-                        borderRadius: BorderRadius.circular(6),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          author,
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.copy, size: 10, color: Colors.white),
-                          const SizedBox(width: 4),
-                          Text(
-                            "$count",
-                            style: const TextStyle(color: Colors.white, fontSize: 11),
-                          ),
-                        ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.copy, size: 10, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              "$count",
+                              style: TextStyle(color: Colors.white, fontSize: 11),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -586,7 +588,7 @@ class _ContinuePlayingItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A3142),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -599,7 +601,7 @@ class _ContinuePlayingItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,52 +614,52 @@ class _ContinuePlayingItem extends StatelessWidget {
                   ),
                   child: Text(
                     category,
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 11),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 8,
-                      backgroundColor: Color(0xFF6366F1),
-                      child: Icon(Icons.person, size: 10, color: Colors.white),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      child: Icon(Icons.person, size: 10, color: Theme.of(context).colorScheme.onSurface),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Text(
                       author,
-                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF6366F1),
+              color: Theme.of(context).colorScheme.primary,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                const Icon(Icons.copy, size: 12, color: Colors.white),
-                const SizedBox(width: 4),
+                Icon(Icons.copy, size: 12, color: Theme.of(context).colorScheme.onSurface),
+                SizedBox(width: 4),
                 Text(
                   "$count",
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
                 ),
               ],
             ),
@@ -686,14 +688,14 @@ class _NavItem extends StatelessWidget {
       children: [
         Icon(
           icon,
-          color: isSelected ? const Color(0xFF6366F1) : Colors.white60,
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           size: 26,
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
-            color: isSelected ? const Color(0xFF6366F1) : Colors.white60,
+            color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),

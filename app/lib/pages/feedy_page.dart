@@ -46,7 +46,7 @@ class _FeedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF2A3142),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -56,17 +56,17 @@ class _FeedCard extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 20,
-                  backgroundColor: Color(0xFF6366F1),
-                  child: Icon(Icons.person, color: Colors.white, size: 24),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  child: Icon(Icons.person, color: Theme.of(context).colorScheme.onSurface, size: 24),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     author,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -75,13 +75,13 @@ class _FeedCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white54),
+                    border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     category,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -94,19 +94,19 @@ class _FeedCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
               question,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 height: 1.4,
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Container(
             height: 200,
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Stack(
@@ -124,7 +124,7 @@ class _FeedCard extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.close,
                         size: 100,
@@ -141,27 +141,27 @@ class _FeedCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.favorite_border, color: Colors.white70, size: 24),
-                    const SizedBox(width: 8),
+                    Icon(Icons.favorite_border, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), size: 24),
+                    SizedBox(width: 8),
                     Text(
                       "$likes",
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(width: 24),
+                SizedBox(width: 24),
                 Row(
                   children: [
-                    const Icon(Icons.chat_bubble_outline, color: Colors.white70, size: 24),
-                    const SizedBox(width: 8),
+                    Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), size: 24),
+                    SizedBox(width: 8),
                     Text(
                       "$comments",
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
@@ -169,7 +169,7 @@ class _FeedCard extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                const Icon(Icons.share, color: Colors.white70, size: 24),
+                Icon(Icons.share, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), size: 24),
               ],
             ),
           ),

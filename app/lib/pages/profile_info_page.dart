@@ -25,7 +25,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
-        backgroundColor: const Color(0xFF2A3142),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -38,39 +38,39 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1),
+                  color: Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person,
                   size: 60,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 32),
-              const Text(
+              SizedBox(height: 32),
+              Text(
                 "Successful!",
                 style: TextStyle(
-                  color: Color(0xFF6366F1),
+                  color: Theme.of(context).colorScheme.primary,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 "We are preparing for you..",
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 32),
-              const SizedBox(
+              SizedBox(height: 32),
+              SizedBox(
                 width: 48,
                 height: 48,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
                 ),
               ),
             ],
@@ -89,7 +89,6 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1F2E),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -99,18 +98,18 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.go("/username"),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: 1.0,
                         backgroundColor: Colors.grey[800],
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF6366F1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
                         ),
                         minHeight: 6,
                       ),
@@ -118,107 +117,107 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
-              const Text(
+              SizedBox(height: 40),
+              Text(
                 "Create an Account",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
+              SizedBox(height: 8),
+              Text(
                 "Don't worry, your data will remain private and\nonly you can see it. Except Name",
                 style: TextStyle(
-                  color: Colors.white60,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   fontSize: 14,
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 40),
-              const Text(
+              SizedBox(height: 40),
+              Text(
                 "Full Name",
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               TextField(
                 controller: _fullNameController,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 16,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: "Le Nguyen",
-                  hintStyle: TextStyle(color: Colors.white38),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6366F1), width: 2),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                   ),
                   focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6366F1), width: 2),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              const Text(
+              SizedBox(height: 32),
+              Text(
                 "Date of Birth",
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               TextField(
                 controller: _dobController,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 16,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: "27/12/2000",
-                  hintStyle: TextStyle(color: Colors.white38),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6366F1), width: 2),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                   ),
                   focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6366F1), width: 2),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                   ),
                 ),
                 keyboardType: TextInputType.datetime,
               ),
-              const SizedBox(height: 32),
-              const Text(
+              SizedBox(height: 32),
+              Text(
                 "Country",
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Color(0xFF6366F1), width: 2),
+                    bottom: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                   ),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _selectedCountry,
                     isExpanded: true,
-                    dropdownColor: const Color(0xFF2A3142),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    dropdownColor: Theme.of(context).colorScheme.surface,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 16,
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.keyboard_arrow_down,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     items: const [
                       DropdownMenuItem(
@@ -259,14 +258,14 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                 child: ElevatedButton(
                   onPressed: _showSuccessModal,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF9CA3FF),
-                    foregroundColor: const Color(0xFF1A1F2E),
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                    foregroundColor: Theme.of(context).scaffoldBackgroundColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(28),
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: Text(
                     "Continue",
                     style: TextStyle(
                       fontSize: 18,
@@ -275,7 +274,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
             ],
           ),
         ),

@@ -8,6 +8,7 @@ import "pages/username_page.dart";
 import "pages/profile_info_page.dart";
 import "pages/home_page.dart";
 import "pages/search_page.dart";
+import "pages/notification_page.dart";
 
 final router = GoRouter(
   initialLocation: "/walkthrough",
@@ -39,6 +40,10 @@ final router = GoRouter(
     GoRoute(
       path: "/search",
       builder: (context, state) => const SearchPage(),
+    ),
+    GoRoute(
+      path: "/notification",
+      builder: (context, state) => const NotificationPage(),
     ),
     GoRoute(path: "/login", builder: (context, state) => const LoginPage()),
   ],

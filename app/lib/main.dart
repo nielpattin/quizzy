@@ -7,6 +7,7 @@ import "package:http/http.dart" as http;
 import "firebase_options.dart";
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "router.dart";
+import "theme.dart";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,17 +28,8 @@ class QuizzyApp extends StatelessWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: "Quizzy",
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.lightBlue,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
+      theme: lightTheme,
+      darkTheme: darkTheme,
       routerConfig: router,
     );
   }

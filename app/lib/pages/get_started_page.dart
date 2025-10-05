@@ -7,7 +7,6 @@ class GetStartedPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1F2E),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -17,18 +16,18 @@ class GetStartedPage extends StatelessWidget {
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.go("/walkthrough"),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: 0.33,
                         backgroundColor: Colors.grey[800],
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF6366F1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
                         ),
                         minHeight: 6,
                       ),
@@ -36,41 +35,41 @@ class GetStartedPage extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
-              const Text(
+              SizedBox(height: 40),
+              Text(
                 "Great!",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Text(
+              Text(
                 "Let's Get Started",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40),
               _OAuthButton(
                 icon: Icons.code,
                 label: "Sign Up with GitHub",
                 onTap: () => context.go("/account-type"),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _OAuthButton(
                 icon: Icons.g_mobiledata,
                 label: "Sign Up with Google",
-                iconColor: const Color(0xFF4285F4),
+                iconColor: Color(0xFF4285F4),
                 onTap: () => context.go("/account-type"),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _OAuthButton(
                 icon: Icons.window,
                 label: "Sign Up with Microsoft",
-                iconColor: const Color(0xFF00A4EF),
+                iconColor: Color(0xFF00A4EF),
                 onTap: () => context.go("/account-type"),
               ),
             ],
@@ -84,13 +83,13 @@ class GetStartedPage extends StatelessWidget {
 class _OAuthButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color iconColor;
+  final Color? iconColor;
   final VoidCallback onTap;
 
   const _OAuthButton({
     required this.icon,
     required this.label,
-    this.iconColor = Colors.white,
+    this.iconColor,
     required this.onTap,
   });
 
@@ -102,24 +101,24 @@ class _OAuthButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2A3142),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            Icon(icon, color: iconColor, size: 28),
-            const SizedBox(width: 16),
+            Icon(icon, color: iconColor ?? Theme.of(context).colorScheme.onSurface, size: 28),
+            SizedBox(width: 16),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward, color: Colors.white, size: 24),
+            Icon(Icons.arrow_forward, color: Theme.of(context).colorScheme.onSurface, size: 24),
           ],
         ),
       ),

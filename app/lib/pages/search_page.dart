@@ -46,7 +46,6 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1F2E),
       body: SafeArea(
         child: Column(
           children: [
@@ -55,31 +54,31 @@ class _SearchPageState extends State<SearchPage> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A3142),
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: TextField(
                         controller: _searchController,
                         onSubmitted: (_) => _performSearch(),
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                         decoration: InputDecoration(
                           hintText: _selectedFilter == 0
                               ? "Search quizzes"
                               : _selectedFilter == 1
                                   ? "Search people"
                                   : "Search collections",
-                          hintStyle: const TextStyle(color: Colors.white54),
-                          prefixIcon: const Icon(Icons.search, color: Color(0xFF6366F1)),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
+                          prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.primary),
                           suffixIcon: _searchController.text.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white54),
+                                  icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
                                   onPressed: _clearSearch,
                                 )
                               : null,
@@ -101,13 +100,13 @@ class _SearchPageState extends State<SearchPage> {
                     isSelected: _selectedFilter == 0,
                     onTap: () => setState(() => _selectedFilter = 0),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   _FilterButton(
                     label: "People",
                     isSelected: _selectedFilter == 1,
                     onTap: () => setState(() => _selectedFilter = 1),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   _FilterButton(
                     label: "Collections",
                     isSelected: _selectedFilter == 2,
@@ -116,7 +115,7 @@ class _SearchPageState extends State<SearchPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Expanded(
               child: _hasSearched
                   ? _buildSearchResults()
@@ -132,18 +131,18 @@ class _SearchPageState extends State<SearchPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
             "Recent",
             style: TextStyle(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -159,7 +158,7 @@ class _SearchPageState extends State<SearchPage> {
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
                       ),
                     ),
                   ),
@@ -168,14 +167,14 @@ class _SearchPageState extends State<SearchPage> {
                       Expanded(
                         child: Text(
                           _recentSearches[index],
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 16,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                        icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), size: 20),
                         onPressed: () {},
                       ),
                     ],
@@ -212,7 +211,7 @@ class _SearchPageState extends State<SearchPage> {
       itemBuilder: (context, index) {
         return Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF2A3142),
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -235,13 +234,13 @@ class _SearchPageState extends State<SearchPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1),
+                          color: Theme.of(context).colorScheme.primary,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
+                        child: Text(
                           "16 Qs",
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
@@ -257,10 +256,10 @@ class _SearchPageState extends State<SearchPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "What is the world of",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -270,25 +269,25 @@ class _SearchPageState extends State<SearchPage> {
                       const Spacer(),
                       Row(
                         children: [
-                          const CircleAvatar(
+                          CircleAvatar(
                             radius: 10,
-                            backgroundColor: Color(0xFF6366F1),
-                            child: Icon(Icons.person, size: 12, color: Colors.white),
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            child: Icon(Icons.person, size: 12, color: Theme.of(context).colorScheme.onSurface),
                           ),
-                          const SizedBox(width: 6),
-                          const Expanded(
+                          SizedBox(width: 6),
+                          Expanded(
                             child: Text(
                               "Nhat Vi",
-                              style: TextStyle(color: Colors.white60, fontSize: 11),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 11),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
+                      SizedBox(height: 4),
+                      Text(
                         "1 month ago • 7.6K plays",
-                        style: TextStyle(color: Colors.white38, fontSize: 10),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38), fontSize: 10),
                       ),
                     ],
                   ),
@@ -314,44 +313,44 @@ class _SearchPageState extends State<SearchPage> {
               CircleAvatar(
                 radius: 28,
                 backgroundColor: Colors.primaries[index % Colors.primaries.length],
-                child: const Icon(Icons.person, color: Colors.white, size: 28),
+                child: Icon(Icons.person, color: Theme.of(context).colorScheme.onSurface, size: 28),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       "Nhat ${['Vi', 'Simon', 'Bao', 'Le', 'Long', 'Quang', 'Son', 'Anh'][index]}",
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       "@Nhat_${['vi_2k', 'Simon', 'Bao', 'Le', 'Long', 'Quang', 'Son', 'Anh'][index]}",
-                      style: const TextStyle(
-                        color: Colors.white60,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 14,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               ElevatedButton(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isFollowing
-                      ? Colors.transparent
-                      : const Color(0xFF6366F1),
+                      ? Theme.of(context).colorScheme.surface
+                      : Theme.of(context).colorScheme.primary,
                   foregroundColor: isFollowing
-                      ? const Color(0xFF6366F1)
+                      ? Theme.of(context).colorScheme.primary
                       : Colors.white,
                   side: isFollowing
-                      ? const BorderSide(color: Color(0xFF6366F1))
+                      ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
                       : null,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
@@ -360,7 +359,7 @@ class _SearchPageState extends State<SearchPage> {
                 ),
                 child: Text(
                   isFollowing ? "Following" : "Follow",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -425,7 +424,7 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                   child: Text(
                     collections[index],
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -460,16 +459,17 @@ class _FilterButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6366F1) : Colors.transparent,
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
           border: Border.all(
-            color: isSelected ? const Color(0xFF6366F1) : Colors.white54,
+            color: Theme.of(context).colorScheme.primary,
+            width: 2,
           ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white70,
+            color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),

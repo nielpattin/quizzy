@@ -20,7 +20,6 @@ class _UsernamePageState extends State<UsernamePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1F2E),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -30,18 +29,18 @@ class _UsernamePageState extends State<UsernamePage> {
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.go("/account-type"),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: 0.75,
                         backgroundColor: Colors.grey[800],
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF6366F1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
                         ),
                         minHeight: 6,
                       ),
@@ -49,64 +48,64 @@ class _UsernamePageState extends State<UsernamePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 60),
-              const Text(
+              SizedBox(height: 60),
+              Text(
                 "Your Username?",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 40),
-              const Text(
+              SizedBox(height: 40),
+              Text(
                 "Email",
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Color(0xFF6366F1), width: 2),
+                    bottom: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   "le_nguyen02@gmaill.com",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 16,
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              const Text(
+              SizedBox(height: 32),
+              Text(
                 "Username",
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               TextField(
                 controller: _usernameController,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 16,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: "le_nguyen02",
-                  hintStyle: TextStyle(color: Colors.white38),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6366F1), width: 2),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                   ),
                   focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6366F1), width: 2),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                   ),
                 ),
               ),
@@ -117,14 +116,14 @@ class _UsernamePageState extends State<UsernamePage> {
                 child: ElevatedButton(
                   onPressed: () => context.go("/profile-info"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF9CA3FF),
-                    foregroundColor: const Color(0xFF1A1F2E),
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                    foregroundColor: Theme.of(context).scaffoldBackgroundColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(28),
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: Text(
                     "Continue",
                     style: TextStyle(
                       fontSize: 18,
@@ -133,7 +132,7 @@ class _UsernamePageState extends State<UsernamePage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
             ],
           ),
         ),

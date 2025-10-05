@@ -35,7 +35,7 @@ class _WalkthroughPageState extends State<WalkthroughPage> {
                   child: Text(
                     "Walkthrough ${_currentPage + 1}",
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                   ),
@@ -68,7 +68,7 @@ class _WalkthroughPageState extends State<WalkthroughPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -81,7 +81,7 @@ class _WalkthroughPageState extends State<WalkthroughPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           "Get Started",
                           style: TextStyle(
                             fontSize: 16,
@@ -90,7 +90,7 @@ class _WalkthroughPageState extends State<WalkthroughPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -98,12 +98,12 @@ class _WalkthroughPageState extends State<WalkthroughPage> {
                         onPressed: () => context.go("/login"),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white, width: 2),
+                          side: BorderSide(color: Theme.of(context).colorScheme.onSurface, width: 2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           "Login",
                           style: TextStyle(
                             fontSize: 16,
