@@ -35,9 +35,9 @@ class _WalkthroughPageState extends State<WalkthroughPage> {
                   child: Text(
                     "Walkthrough ${_currentPage + 1}",
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -98,7 +98,10 @@ class _WalkthroughPageState extends State<WalkthroughPage> {
                         onPressed: () => context.go("/login"),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          side: BorderSide(color: Theme.of(context).colorScheme.onSurface, width: 2),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            width: 2,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),

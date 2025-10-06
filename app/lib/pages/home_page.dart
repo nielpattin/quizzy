@@ -1,9 +1,11 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "feedy_page.dart";
+import "../widgets/bottom_nav.dart";
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final bool showBottomNav;
+  const HomePage({super.key, this.showBottomNav = true});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -29,7 +31,11 @@ class _HomePageState extends State<HomePage> {
                       color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.quiz, color: Theme.of(context).colorScheme.onSurface, size: 24),
+                    child: Icon(
+                      Icons.quiz,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: 24,
+                    ),
                   ),
                   SizedBox(width: 12),
                   Text(
@@ -42,11 +48,17 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(
+                      Icons.search,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     onPressed: () => context.push("/search"),
                   ),
                   IconButton(
-                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(
+                      Icons.notifications_outlined,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     onPressed: () => context.push("/notification"),
                   ),
                 ],
@@ -74,194 +86,187 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: _selectedTab == 0
                   ? SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Featured Today",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    _FeaturedCard(),
-                    SizedBox(height: 32),
-                    Text(
-                      "Browse Topics",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      children: [
-                        _TopicCard(
-                          label: "Education",
-                          icon: Icons.school,
-                        ),
-                        SizedBox(width: 12),
-                        _TopicCard(
-                          label: "Game",
-                          icon: Icons.games,
-                        ),
-                        SizedBox(width: 12),
-                        _TopicCard(
-                          label: "Business",
-                          icon: Icons.business,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Trending Now",
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Featured Today",
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: () {},
-                          child: Row(
+                          SizedBox(height: 16),
+                          _FeaturedCard(),
+                          SizedBox(height: 32),
+                          Text(
+                            "Browse Topics",
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Row(
                             children: [
-                              Text(
-                                "View all",
-                                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                              _TopicCard(
+                                label: "Education",
+                                icon: Icons.school,
                               ),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_forward, color: Theme.of(context).colorScheme.primary, size: 16),
+                              SizedBox(width: 12),
+                              _TopicCard(label: "Game", icon: Icons.games),
+                              SizedBox(width: 12),
+                              _TopicCard(
+                                label: "Business",
+                                icon: Icons.business,
+                              ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    SizedBox(
-                      height: 200,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          _TrendingCard(
-                            title: "Modern Art or\nJust Scribbles?",
+                          SizedBox(height: 32),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Trending Now",
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {},
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      "View all",
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Icon(
+                                      Icons.arrow_forward,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      size: 16,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+                          SizedBox(
+                            height: 200,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                _TrendingCard(
+                                  title: "Modern Art or\nJust Scribbles?",
+                                  author: "Ly Nguyên",
+                                  category: "Art",
+                                  count: 16,
+                                ),
+                                SizedBox(width: 12),
+                                _TrendingCard(
+                                  title: "Guess the Song\nfrom 3 Words",
+                                  author: "Ly Nguyên",
+                                  category: "Entertainment",
+                                  count: 16,
+                                  isSessions: true,
+                                ),
+                                SizedBox(width: 12),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 32),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Continue Playing",
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {},
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      "View all",
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Icon(
+                                      Icons.arrow_forward,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      size: 16,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+                          _ContinuePlayingItem(
+                            title: "Herbs vs. Weeds: Can You Tell?",
+                            author: "Ly Nguyên",
+                            category: "Plants",
+                            count: 16,
+                          ),
+                          SizedBox(height: 12),
+                          _ContinuePlayingItem(
+                            title: "Modern Art or Just Scribbles?",
                             author: "Ly Nguyên",
                             category: "Art",
                             count: 16,
                           ),
-                          SizedBox(width: 12),
-                          _TrendingCard(
-                            title: "Guess the Song\nfrom 3 Words",
+                          SizedBox(height: 12),
+                          _ContinuePlayingItem(
+                            title: "Guess the Song from 3 Words",
                             author: "Ly Nguyên",
                             category: "Entertainment",
                             count: 16,
-                            isSessions: true,
                           ),
-                          SizedBox(width: 12),
+                          SizedBox(height: 12),
+                          _ContinuePlayingItem(
+                            title: "Famous Entrepreneurs and Their Companies",
+                            author: "Ly Nguyên",
+                            category: "Business",
+                            count: 16,
+                          ),
+                          SizedBox(height: 24),
                         ],
                       ),
-                    ),
-                    SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Continue Playing",
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {},
-                          child: Row(
-                            children: [
-                              Text(
-                                "View all",
-                                style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_forward, color: Theme.of(context).colorScheme.primary, size: 16),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    _ContinuePlayingItem(
-                      title: "Herbs vs. Weeds: Can You Tell?",
-                      author: "Ly Nguyên",
-                      category: "Plants",
-                      count: 16,
-                    ),
-                    SizedBox(height: 12),
-                    _ContinuePlayingItem(
-                      title: "Modern Art or Just Scribbles?",
-                      author: "Ly Nguyên",
-                      category: "Art",
-                      count: 16,
-                    ),
-                    SizedBox(height: 12),
-                    _ContinuePlayingItem(
-                      title: "Guess the Song from 3 Words",
-                      author: "Ly Nguyên",
-                      category: "Entertainment",
-                      count: 16,
-                    ),
-                    SizedBox(height: 12),
-                    _ContinuePlayingItem(
-                      title: "Famous Entrepreneurs and Their Companies",
-                      author: "Ly Nguyên",
-                      category: "Business",
-                      count: 16,
-                    ),
-                    SizedBox(height: 24),
-                  ],
-                ),
-              )
+                    )
                   : const FeedyPage(),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          border: Border(
-            top: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavItem(icon: Icons.home, label: "Home", isSelected: true),
-                _NavItem(
-                  icon: Icons.library_books_outlined, 
-                  label: "Library",
-                  onTap: () => context.go("/library"),
-                ),
-                _NavItem(icon: Icons.play_arrow, label: "Join"),
-                _NavItem(icon: Icons.add_box_outlined, label: "Create"),
-                _NavItem(
-                  icon: Icons.person_outline, 
-                  label: "Profile",
-                  onTap: () => context.push("/profile"),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      bottomNavigationBar: widget.showBottomNav
+          ? const BottomNav(selectedIndex: 0)
+          : null,
     );
   }
 }
@@ -285,15 +290,22 @@ class _TabButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
-          border: isSelected ? null : Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
+          border: isSelected
+              ? null
+              : Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected 
-                ? Colors.white 
+            color: isSelected
+                ? Colors.white
                 : Theme.of(context).colorScheme.primary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -321,10 +333,7 @@ class _FeaturedCard extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.grey[700]!,
-                  Colors.grey[900]!,
-                ],
+                colors: [Colors.grey[700]!, Colors.grey[900]!],
               ),
             ),
           ),
@@ -336,7 +345,10 @@ class _FeaturedCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(12),
@@ -348,7 +360,10 @@ class _FeaturedCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(12),
@@ -380,11 +395,17 @@ class _FeaturedCard extends StatelessWidget {
                     SizedBox(width: 8),
                     Text(
                       "Ly Nguyên",
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(8),
@@ -415,10 +436,7 @@ class _TopicCard extends StatelessWidget {
   final String label;
   final IconData icon;
 
-  const _TopicCard({
-    required this.label,
-    required this.icon,
-  });
+  const _TopicCard({required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -432,7 +450,11 @@ class _TopicCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Theme.of(context).colorScheme.onSurface, size: 32),
+            Icon(
+              icon,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 32,
+            ),
             SizedBox(height: 8),
             Text(
               label,
@@ -490,7 +512,10 @@ class _TrendingCard extends StatelessWidget {
                   top: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(10),
@@ -506,7 +531,10 @@ class _TrendingCard extends StatelessWidget {
                     bottom: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(10),
@@ -535,38 +563,46 @@ class _TrendingCard extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 8),
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 8,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Icon(Icons.person, size: 10, color: Colors.white),
-                      ),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          author,
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 11),
-                          overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 8,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      child: Icon(Icons.person, size: 10, color: Colors.white),
+                    ),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        author,
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          fontSize: 11,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.copy, size: 10, color: Colors.white),
-                            SizedBox(width: 4),
-                            Text(
-                              "$count",
-                              style: TextStyle(color: Colors.white, fontSize: 11),
-                            ),
-                          ],
-                        ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
                       ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.copy, size: 10, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            "$count",
+                            style: TextStyle(color: Colors.white, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -615,14 +651,20 @@ class _ContinuePlayingItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     category,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 11),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
                 SizedBox(height: 8),
@@ -642,12 +684,21 @@ class _ContinuePlayingItem extends StatelessWidget {
                     CircleAvatar(
                       radius: 8,
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                      child: Icon(Icons.person, size: 10, color: Theme.of(context).colorScheme.onSurface),
+                      child: Icon(
+                        Icons.person,
+                        size: 10,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                     SizedBox(width: 6),
                     Text(
                       author,
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12),
+                      style: TextStyle(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -663,53 +714,20 @@ class _ContinuePlayingItem extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.copy, size: 12, color: Theme.of(context).colorScheme.onSurface),
+                Icon(
+                  Icons.copy,
+                  size: 12,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 SizedBox(width: 4),
                 Text(
                   "$count",
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 12,
+                  ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-            size: 26,
-          ),
-          SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
         ],

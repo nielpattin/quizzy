@@ -36,7 +36,9 @@ class LoginPage extends StatelessWidget {
               height: 40,
               child: CircularProgressIndicator(
                 strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary,
+                ),
               ),
             ),
           ],
@@ -62,7 +64,10 @@ class LoginPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               IconButton(
-                icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 onPressed: () => context.go("/walkthrough"),
               ),
               SizedBox(height: 40),
@@ -148,7 +153,11 @@ class _OAuthButton extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(Icons.arrow_forward, color: Theme.of(context).colorScheme.onSurface, size: 24),
+            Icon(
+              Icons.arrow_forward,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 24,
+            ),
           ],
         ),
       ),

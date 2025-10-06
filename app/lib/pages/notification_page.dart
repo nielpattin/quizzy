@@ -17,7 +17,10 @@ class _NotificationPageState extends State<NotificationPage> {
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -30,7 +33,10 @@ class _NotificationPageState extends State<NotificationPage> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.done_all, color: Theme.of(context).colorScheme.onSurface),
+            icon: Icon(
+              Icons.done_all,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             tooltip: "Mark all as read",
             onPressed: () {},
           ),
@@ -188,15 +194,24 @@ class _TabButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: isSelected ? null : Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
+          border: isSelected
+              ? null
+              : Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary,
+              color: isSelected
+                  ? Colors.white
+                  : Theme.of(context).colorScheme.primary,
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),
@@ -251,7 +266,11 @@ class _NotificationItem extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: avatarColor,
-                child: Icon(avatar, color: Theme.of(context).colorScheme.onSurface, size: 24),
+                child: Icon(
+                  avatar,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  size: 24,
+                ),
               ),
               Positioned(
                 right: 0,
@@ -266,7 +285,11 @@ class _NotificationItem extends StatelessWidget {
                       width: 2,
                     ),
                   ),
-                  child: Icon(icon, color: Theme.of(context).colorScheme.onSurface, size: 12),
+                  child: Icon(
+                    icon,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    size: 12,
+                  ),
                 ),
               ),
             ],
@@ -284,14 +307,18 @@ class _NotificationItem extends StatelessWidget {
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 15,
-                          fontWeight: isUnread ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight: isUnread
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
                     Text(
                       time,
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.54),
                         fontSize: 12,
                       ),
                     ),
@@ -301,7 +328,9 @@ class _NotificationItem extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                     fontSize: 14,
                   ),
                   maxLines: 2,
@@ -356,7 +385,11 @@ class _FriendRequestItem extends StatelessWidget {
               CircleAvatar(
                 radius: 28,
                 backgroundColor: avatarColor,
-                child: Icon(Icons.person, color: Theme.of(context).colorScheme.onSurface, size: 28),
+                child: Icon(
+                  Icons.person,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  size: 28,
+                ),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -375,7 +408,9 @@ class _FriendRequestItem extends StatelessWidget {
                     Text(
                       username,
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 14,
                       ),
                     ),
@@ -383,7 +418,9 @@ class _FriendRequestItem extends StatelessWidget {
                     Text(
                       "$mutualFriends mutual friends",
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.54),
                         fontSize: 12,
                       ),
                     ),
@@ -408,10 +445,7 @@ class _FriendRequestItem extends StatelessWidget {
                   ),
                   child: Text(
                     "Accept",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -422,7 +456,10 @@ class _FriendRequestItem extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.surface,
                     foregroundColor: Theme.of(context).colorScheme.primary,
-                    side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -430,10 +467,7 @@ class _FriendRequestItem extends StatelessWidget {
                   ),
                   child: Text(
                     "Decline",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

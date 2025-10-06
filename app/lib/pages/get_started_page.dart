@@ -16,7 +16,10 @@ class GetStartedPage extends StatelessWidget {
               Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     onPressed: () => context.go("/walkthrough"),
                   ),
                   SizedBox(width: 8),
@@ -106,7 +109,11 @@ class _OAuthButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: iconColor ?? Theme.of(context).colorScheme.onSurface, size: 28),
+            Icon(
+              icon,
+              color: iconColor ?? Theme.of(context).colorScheme.onSurface,
+              size: 28,
+            ),
             SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -118,7 +125,11 @@ class _OAuthButton extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(Icons.arrow_forward, color: Theme.of(context).colorScheme.onSurface, size: 24),
+            Icon(
+              Icons.arrow_forward,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 24,
+            ),
           ],
         ),
       ),

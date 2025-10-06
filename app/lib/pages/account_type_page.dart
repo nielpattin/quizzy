@@ -16,7 +16,10 @@ class AccountTypePage extends StatelessWidget {
               Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     onPressed: () => context.go("/get-started"),
                   ),
                   SizedBox(width: 8),
@@ -117,7 +120,13 @@ class _AccountTypeButton extends StatelessWidget {
                   bottomLeft: Radius.circular(12),
                 ),
               ),
-              child: Center(child: Icon(icon, color: Theme.of(context).colorScheme.onSurface, size: 32)),
+              child: Center(
+                child: Icon(
+                  icon,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  size: 32,
+                ),
+              ),
             ),
             Expanded(
               child: Center(

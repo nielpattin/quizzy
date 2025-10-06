@@ -14,7 +14,8 @@ class FeedyPage extends StatelessWidget {
           child: _FeedCard(
             author: "Ly Nguyên",
             category: "Animal",
-            question: "What is the surprising real color of a Polar Bear's skin, which helps it absorb heat in the Arctic environment",
+            question:
+                "What is the surprising real color of a Polar Bear's skin, which helps it absorb heat in the Arctic environment",
             likes: 152,
             comments: 28,
             isAnswered: index % 2 == 1,
@@ -59,7 +60,11 @@ class _FeedCard extends StatelessWidget {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: Icon(Icons.person, color: Theme.of(context).colorScheme.onSurface, size: 24),
+                  child: Icon(
+                    Icons.person,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    size: 24,
+                  ),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -73,9 +78,16 @@ class _FeedCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.54),
+                    ),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
@@ -111,13 +123,7 @@ class _FeedCard extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                Center(
-                  child: Icon(
-                    Icons.pets,
-                    size: 120,
-                    color: Colors.black,
-                  ),
-                ),
+                Center(child: Icon(Icons.pets, size: 120, color: Colors.black)),
                 if (isAnswered)
                   Container(
                     decoration: BoxDecoration(
@@ -125,11 +131,7 @@ class _FeedCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
-                      child: Icon(
-                        Icons.close,
-                        size: 100,
-                        color: Colors.red,
-                      ),
+                      child: Icon(Icons.close, size: 100, color: Colors.red),
                     ),
                   ),
               ],
@@ -141,12 +143,20 @@ class _FeedCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.favorite_border, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), size: 24),
+                    Icon(
+                      Icons.favorite_border,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      size: 24,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       "$likes",
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
@@ -156,12 +166,20 @@ class _FeedCard extends StatelessWidget {
                 SizedBox(width: 24),
                 Row(
                   children: [
-                    Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), size: 24),
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      size: 24,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       "$comments",
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
@@ -169,7 +187,13 @@ class _FeedCard extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                Icon(Icons.share, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), size: 24),
+                Icon(
+                  Icons.share,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  size: 24,
+                ),
               ],
             ),
           ),

@@ -26,9 +26,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       barrierDismissible: false,
       builder: (context) => Dialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(40.0),
           child: Column(
@@ -60,7 +58,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               Text(
                 "We are preparing for you..",
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
               ),
@@ -70,7 +70,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                 height: 48,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
             ],
@@ -98,7 +100,10 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     onPressed: () => context.go("/username"),
                   ),
                   SizedBox(width: 8),
@@ -130,7 +135,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               Text(
                 "Don't worry, your data will remain private and\nonly you can see it. Except Name",
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                   fontSize: 14,
                   height: 1.4,
                 ),
@@ -139,7 +146,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               Text(
                 "Full Name",
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -153,12 +162,22 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                 ),
                 decoration: InputDecoration(
                   hintText: "Le Nguyen",
-                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)),
+                  hintStyle: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.38),
+                  ),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                   focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                 ),
               ),
@@ -166,7 +185,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               Text(
                 "Date of Birth",
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -180,12 +201,22 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                 ),
                 decoration: InputDecoration(
                   hintText: "27/12/2000",
-                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)),
+                  hintStyle: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.38),
+                  ),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                   focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                 ),
                 keyboardType: TextInputType.datetime,
@@ -194,7 +225,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               Text(
                 "Country",
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -203,7 +236,10 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               Container(
                 decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                 ),
                 child: DropdownButtonHideUnderline(
@@ -232,10 +268,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                         value: "United Kingdom",
                         child: Text("United Kingdom"),
                       ),
-                      DropdownMenuItem(
-                        value: "Canada",
-                        child: Text("Canada"),
-                      ),
+                      DropdownMenuItem(value: "Canada", child: Text("Canada")),
                       DropdownMenuItem(
                         value: "Australia",
                         child: Text("Australia"),
@@ -258,7 +291,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                 child: ElevatedButton(
                   onPressed: _showSuccessModal,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.8),
                     foregroundColor: Theme.of(context).scaffoldBackgroundColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(28),
@@ -267,10 +302,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                   ),
                   child: Text(
                     "Continue",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

@@ -8,7 +8,8 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
+class _ProfilePageState extends State<ProfilePage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -31,13 +32,19 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         actions: [
           IconButton(
-            icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.onSurface),
+            icon: Icon(
+              Icons.edit_outlined,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             onPressed: () {
               context.go("/profile-info");
             },
           ),
           IconButton(
-            icon: Icon(Icons.settings_outlined, color: Theme.of(context).colorScheme.onSurface),
+            icon: Icon(
+              Icons.settings_outlined,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             onPressed: () {},
           ),
         ],
@@ -90,7 +97,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 Text(
                   "@nhat_vi_2k",
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                     fontSize: 14,
                   ),
                 ),
@@ -108,16 +117,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(
-            count: "1.2K",
-            label: "Followers",
-            onTap: () {},
-          ),
-          _StatItem(
-            count: "342",
-            label: "Following",
-            onTap: () {},
-          ),
+          _StatItem(count: "1.2K", label: "Followers", onTap: () {}),
+          _StatItem(count: "342", label: "Following", onTap: () {}),
           _StatItem(
             count: "28",
             label: "Quizzes",
@@ -156,22 +157,38 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.location_on, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+              Icon(
+                Icons.location_on,
+                size: 14,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
               SizedBox(width: 4),
               Text(
                 "Vietnam",
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                   fontSize: 12,
                 ),
               ),
               SizedBox(width: 12),
-              Icon(Icons.cake, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+              Icon(
+                Icons.cake,
+                size: 14,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
               SizedBox(width: 4),
               Text(
                 "Jan 15, 2000",
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                   fontSize: 12,
                 ),
               ),
@@ -188,7 +205,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       child: TabBar(
         controller: _tabController,
         labelColor: Theme.of(context).colorScheme.primary,
-        unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+        unselectedLabelColor: Theme.of(
+          context,
+        ).colorScheme.onSurface.withValues(alpha: 0.6),
         indicatorColor: Theme.of(context).colorScheme.primary,
         indicatorWeight: 3,
         tabs: [
@@ -224,9 +243,22 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             "Sports Trivia",
             "Food & Cooking",
             "Animals World",
-            "Space Exploration"
+            "Space Exploration",
           ][index],
-          category: ["Art", "Technology", "Science", "Culture", "History", "Geography", "Movies", "Music", "Sports", "Food", "Animals", "Space"][index],
+          category: [
+            "Art",
+            "Technology",
+            "Science",
+            "Culture",
+            "History",
+            "Geography",
+            "Movies",
+            "Music",
+            "Sports",
+            "Food",
+            "Animals",
+            "Space",
+          ][index],
           plays: (index + 1) * 127,
           color: Colors.primaries[index % Colors.primaries.length],
         );
@@ -250,8 +282,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
-
-
   Widget _buildPostsTab() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -263,7 +293,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             "Reached 1K plays on my Tech Trivia quiz! Thanks everyone! 🚀",
             "Working on a new series of science quizzes. Stay tuned! 🔬",
             "Had an amazing quiz session today with 50+ players! 🎯",
-            "New collection dropping next week. Get ready! 📚"
+            "New collection dropping next week. Get ready! 📚",
           ][index],
           likes: (index + 1) * 45,
           comments: (index + 1) * 12,
@@ -306,7 +336,9 @@ class _StatItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
                 fontSize: 12,
               ),
             ),
@@ -360,7 +392,10 @@ class _QuizCard extends StatelessWidget {
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(10),
@@ -393,12 +428,20 @@ class _QuizCard extends StatelessWidget {
                   SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.play_arrow, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                      Icon(
+                        Icons.play_arrow,
+                        size: 14,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
                       SizedBox(width: 4),
                       Text(
                         "$plays plays",
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                           fontSize: 12,
                         ),
                       ),
@@ -446,10 +489,16 @@ class _SessionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.emoji_events, color: Theme.of(context).colorScheme.primary, size: 24),
+                child: Icon(
+                  Icons.emoji_events,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -468,7 +517,9 @@ class _SessionCard extends StatelessWidget {
                     Text(
                       date,
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 13,
                       ),
                     ),
@@ -495,10 +546,7 @@ class _SessionStat extends StatelessWidget {
   final String label;
   final String value;
 
-  const _SessionStat({
-    required this.label,
-    required this.value,
-  });
+  const _SessionStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -516,7 +564,9 @@ class _SessionStat extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
             fontSize: 12,
           ),
         ),
@@ -573,7 +623,9 @@ class _PostCard extends StatelessWidget {
                     Text(
                       time,
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 12,
                       ),
                     ),
@@ -611,10 +663,7 @@ class _PostAction extends StatelessWidget {
   final IconData icon;
   final int count;
 
-  const _PostAction({
-    required this.icon,
-    required this.count,
-  });
+  const _PostAction({required this.icon, required this.count});
 
   @override
   Widget build(BuildContext context) {
@@ -625,13 +674,21 @@ class _PostAction extends StatelessWidget {
         padding: const EdgeInsets.all(4.0),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            Icon(
+              icon,
+              size: 20,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
             if (count > 0) ...[
               SizedBox(width: 4),
               Text(
                 "$count",
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                   fontSize: 13,
                 ),
               ),

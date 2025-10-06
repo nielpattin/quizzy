@@ -3,13 +3,14 @@ import "package:go_router/go_router.dart";
 import "library/widgets/main_segments.dart";
 import "library/widgets/section_header.dart";
 import "library/widgets/sort_button.dart";
-import "library/widgets/bottom_nav.dart";
+import "../widgets/bottom_nav.dart";
 import "library/tabs/created_tab.dart";
 import "library/tabs/saved_tab.dart";
 import "library/tabs/game_tab.dart";
 
 class LibraryPage extends StatefulWidget {
-  const LibraryPage({super.key});
+  final bool showBottomNav;
+  const LibraryPage({super.key, this.showBottomNav = true});
 
   @override
   State<LibraryPage> createState() => _LibraryPageState();
@@ -45,7 +46,9 @@ class _LibraryPageState extends State<LibraryPage> {
           ),
         ],
       ),
-      bottomNavigationBar: const BottomNav(selectedIndex: 1),
+      bottomNavigationBar: widget.showBottomNav
+          ? const BottomNav(selectedIndex: 1)
+          : null,
     );
   }
 

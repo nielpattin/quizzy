@@ -54,7 +54,10 @@ class _SearchPageState extends State<SearchPage> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     onPressed: () => context.pop(),
                   ),
                   SizedBox(width: 8),
@@ -67,23 +70,42 @@ class _SearchPageState extends State<SearchPage> {
                       child: TextField(
                         controller: _searchController,
                         onSubmitted: (_) => _performSearch(),
-                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 16,
+                        ),
                         decoration: InputDecoration(
                           hintText: _selectedFilter == 0
                               ? "Search quizzes"
                               : _selectedFilter == 1
-                                  ? "Search people"
-                                  : "Search collections",
-                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
-                          prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.primary),
+                              ? "Search people"
+                              : "Search collections",
+                          hintStyle: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.54),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                           suffixIcon: _searchController.text.isNotEmpty
                               ? IconButton(
-                                  icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
+                                  icon: Icon(
+                                    Icons.close,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.54),
+                                  ),
                                   onPressed: _clearSearch,
                                 )
                               : null,
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                       ),
                     ),
@@ -158,7 +180,9 @@ class _SearchPageState extends State<SearchPage> {
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.1),
                       ),
                     ),
                   ),
@@ -174,7 +198,13 @@ class _SearchPageState extends State<SearchPage> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), size: 20),
+                        icon: Icon(
+                          Icons.close,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.54),
+                          size: 20,
+                        ),
                         onPressed: () {},
                       ),
                     ],
@@ -232,7 +262,10 @@ class _SearchPageState extends State<SearchPage> {
                       top: 8,
                       left: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary,
                           borderRadius: BorderRadius.circular(8),
@@ -271,14 +304,25 @@ class _SearchPageState extends State<SearchPage> {
                         children: [
                           CircleAvatar(
                             radius: 10,
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            child: Icon(Icons.person, size: 12, color: Theme.of(context).colorScheme.onSurface),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: Icon(
+                              Icons.person,
+                              size: 12,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                           ),
                           SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               "Nhat Vi",
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 11),
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                                fontSize: 11,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -287,7 +331,12 @@ class _SearchPageState extends State<SearchPage> {
                       SizedBox(height: 4),
                       Text(
                         "1 month ago • 7.6K plays",
-                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38), fontSize: 10),
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.38),
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),
@@ -312,8 +361,13 @@ class _SearchPageState extends State<SearchPage> {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: Colors.primaries[index % Colors.primaries.length],
-                child: Icon(Icons.person, color: Theme.of(context).colorScheme.onSurface, size: 28),
+                backgroundColor:
+                    Colors.primaries[index % Colors.primaries.length],
+                child: Icon(
+                  Icons.person,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  size: 28,
+                ),
               ),
               SizedBox(width: 16),
               Expanded(
@@ -332,7 +386,9 @@ class _SearchPageState extends State<SearchPage> {
                     Text(
                       "@Nhat_${['vi_2k', 'Simon', 'Bao', 'Le', 'Long', 'Quang', 'Son', 'Anh'][index]}",
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 14,
                       ),
                     ),
@@ -350,19 +406,22 @@ class _SearchPageState extends State<SearchPage> {
                       ? Theme.of(context).colorScheme.primary
                       : Colors.white,
                   side: isFollowing
-                      ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
+                      ? BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        )
                       : null,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                 ),
                 child: Text(
                   isFollowing ? "Following" : "Follow",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -393,7 +452,7 @@ class _SearchPageState extends State<SearchPage> {
           "Algorithms",
           "OOP",
           "Security",
-          "AI"
+          "AI",
         ];
         return Container(
           decoration: BoxDecoration(
@@ -459,7 +518,9 @@ class _FilterButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surface,
           border: Border.all(
             color: Theme.of(context).colorScheme.primary,
             width: 2,
@@ -469,7 +530,9 @@ class _FilterButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary,
+            color: isSelected
+                ? Colors.white
+                : Theme.of(context).colorScheme.primary,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
