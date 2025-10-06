@@ -1,0 +1,203 @@
+class MockLibraryData {
+  static final List<Map<String, dynamic>> createdQuizzes = [
+    {
+      "id": "q1",
+      "title": "Having Fun & Always Smile!",
+      "timeAgo": "1d",
+      "plays": 10,
+      "questions": 16,
+      "isPublic": true,
+    },
+    {
+      "id": "q2",
+      "title": "Identify the Famous Painting",
+      "timeAgo": "2d",
+      "plays": 20,
+      "questions": 16,
+      "isPublic": false,
+    },
+    {
+      "id": "q3",
+      "title": "Science Facts Everyone Gets Wrong",
+      "timeAgo": "3d",
+      "plays": 30,
+      "questions": 16,
+      "isPublic": true,
+    },
+    {
+      "id": "q4",
+      "title": "Pop Culture Trivia 2024",
+      "timeAgo": "4d",
+      "plays": 40,
+      "questions": 16,
+      "isPublic": false,
+    },
+    {
+      "id": "q5",
+      "title": "Geography Challenge",
+      "timeAgo": "5d",
+      "plays": 50,
+      "questions": 16,
+      "isPublic": true,
+    },
+    {
+      "id": "q6",
+      "title": "Movie Quotes Master",
+      "timeAgo": "6d",
+      "plays": 60,
+      "questions": 16,
+      "isPublic": false,
+    },
+    {
+      "id": "q7",
+      "title": "Music Legends Quiz",
+      "timeAgo": "7d",
+      "plays": 70,
+      "questions": 16,
+      "isPublic": true,
+    },
+    {
+      "id": "q8",
+      "title": "Sports History",
+      "timeAgo": "8d",
+      "plays": 80,
+      "questions": 16,
+      "isPublic": false,
+    },
+  ];
+
+  static final List<Map<String, dynamic>> savedQuizzes = [
+    {
+      "id": "s1",
+      "title": "World Capitals Master",
+      "timeAgo": "2d",
+      "plays": 526,
+      "questions": 20,
+      "isPublic": null,
+    },
+    {
+      "id": "s2",
+      "title": "Classic Literature Quiz",
+      "timeAgo": "3d",
+      "plays": 1052,
+      "questions": 20,
+      "isPublic": null,
+    },
+    {
+      "id": "s3",
+      "title": "90s Movies Trivia",
+      "timeAgo": "4d",
+      "plays": 1578,
+      "questions": 20,
+      "isPublic": null,
+    },
+    {
+      "id": "s4",
+      "title": "Ancient Civilizations",
+      "timeAgo": "5d",
+      "plays": 893,
+      "questions": 20,
+      "isPublic": null,
+    },
+    {
+      "id": "s5",
+      "title": "Modern Tech Innovations",
+      "timeAgo": "6d",
+      "plays": 742,
+      "questions": 20,
+      "isPublic": null,
+    },
+    {
+      "id": "s6",
+      "title": "Food & Cuisine Around the World",
+      "timeAgo": "7d",
+      "plays": 431,
+      "questions": 20,
+      "isPublic": null,
+    },
+  ];
+
+  static final List<Map<String, dynamic>> collections = [
+    {"id": "c1", "title": "Tech & Science", "quizCount": 24},
+    {"id": "c2", "title": "Entertainment", "quizCount": 18},
+    {"id": "c3", "title": "General Knowledge", "quizCount": 30},
+    {"id": "c4", "title": "Sports & Games", "quizCount": 12},
+    {"id": "c5", "title": "History & Geography", "quizCount": 16},
+  ];
+
+  static final List<Map<String, dynamic>> soloPlays = [
+    {
+      "id": "sp1",
+      "title": "Daily Geography Sprint",
+      "timeAgo": "1d",
+      "plays": 234,
+      "questions": 10,
+      "isPublic": null,
+    },
+    {
+      "id": "sp2",
+      "title": "Quick Space Facts",
+      "timeAgo": "2d",
+      "plays": 156,
+      "questions": 8,
+      "isPublic": null,
+    },
+    {
+      "id": "sp3",
+      "title": "Music Year Match",
+      "timeAgo": "4d",
+      "plays": 89,
+      "questions": 12,
+      "isPublic": null,
+    },
+  ];
+
+  static final List<Map<String, dynamic>> gameSessions = [
+    {
+      "id": "gs1",
+      "title":
+          "World History Marathon: Ancient Civilizations Through Modern Times",
+      "topic": "History",
+      "length": "25 Questions",
+      "date": "1d",
+      "isLive": true,
+      "joined": 142,
+    },
+    {
+      "id": "gs2",
+      "title": "Quick Math Challenge",
+      "topic": "Mathematics",
+      "length": "10 Questions",
+      "date": "2d",
+      "isLive": false,
+      "joined": 67,
+    },
+    {
+      "id": "gs3",
+      "title": "Ultimate Pop Culture Trivia Night Extravaganza 2024 Edition",
+      "topic": "Entertainment",
+      "length": "30 Questions",
+      "date": "3d",
+      "isLive": true,
+      "joined": 201,
+    },
+    {
+      "id": "gs4",
+      "title": "Science Lightning Round",
+      "topic": "Science",
+      "length": "15 Questions",
+      "date": "5d",
+      "isLive": false,
+      "joined": 98,
+    },
+    {
+      "id": "gs5",
+      "title": "Geography Masters Championship 2024",
+      "topic": "Geography",
+      "length": "40 Questions",
+      "date": "7d",
+      "isLive": false,
+      "joined": 289,
+    },
+  ];
+}
