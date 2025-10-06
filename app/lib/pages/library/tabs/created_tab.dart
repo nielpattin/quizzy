@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "../widgets/created_sub_tabs.dart";
 import "../widgets/section_header.dart";
 import "../widgets/collection_card.dart";
@@ -118,6 +119,7 @@ class _QuizzesList extends StatelessWidget {
           questions: it.qs,
           plays: it.plays,
           gradient: gradientForIndex(i),
+          onTap: () => context.push("/quiz/1"),
         );
       },
     );

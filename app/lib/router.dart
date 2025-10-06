@@ -11,6 +11,7 @@ import "pages/main_navigation_page.dart";
 import "pages/search_page.dart";
 import "pages/notification_page.dart";
 import "pages/profile_page.dart";
+import "pages/quiz_detail_page.dart";
 
 final router = GoRouter(
   initialLocation: "/walkthrough",
@@ -124,6 +125,28 @@ final router = GoRouter(
           );
         },
       ),
+    ),
+    GoRoute(
+      path: "/quiz/:id",
+      pageBuilder: (context, state) {
+        final quizId = state.pathParameters["id"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: QuizDetailPage(quizId: quizId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
     ),
     GoRoute(
       path: "/login",

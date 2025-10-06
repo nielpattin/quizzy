@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "../widgets/section_header.dart";
 import "../widgets/quiz_play_card.dart";
 import "../utils/gradients.dart";
@@ -57,6 +58,7 @@ class _FavoritesList extends StatelessWidget {
           questions: f.$4,
           plays: f.$3,
           gradient: gradientForIndex(i + 3),
+          onTap: () => context.push("/quiz/${i % 2 == 0 ? '2' : '3'}"),
         );
       },
     );
