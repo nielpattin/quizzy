@@ -34,6 +34,7 @@ class BottomNav extends StatelessWidget {
                 icon: Icons.library_books_outlined,
                 label: "Library",
                 isSelected: selectedIndex == 1,
+                onTap: () => context.go("/library"),
               ),
               const _NavItem(icon: Icons.play_arrow, label: "Join"),
               const _NavItem(icon: Icons.add_box_outlined, label: "Create"),

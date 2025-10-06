@@ -245,7 +245,11 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _NavItem(icon: Icons.home, label: "Home", isSelected: true),
-                _NavItem(icon: Icons.library_books_outlined, label: "Library"),
+                _NavItem(
+                  icon: Icons.library_books_outlined, 
+                  label: "Library",
+                  onTap: () => context.go("/library"),
+                ),
                 _NavItem(icon: Icons.play_arrow, label: "Join"),
                 _NavItem(icon: Icons.add_box_outlined, label: "Create"),
                 _NavItem(
