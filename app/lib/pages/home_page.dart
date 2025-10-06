@@ -248,7 +248,11 @@ class _HomePageState extends State<HomePage> {
                 _NavItem(icon: Icons.library_books_outlined, label: "Library"),
                 _NavItem(icon: Icons.play_arrow, label: "Join"),
                 _NavItem(icon: Icons.add_box_outlined, label: "Create"),
-                _NavItem(icon: Icons.person_outline, label: "Profile"),
+                _NavItem(
+                  icon: Icons.person_outline, 
+                  label: "Profile",
+                  onTap: () => context.push("/profile"),
+                ),
               ],
             ),
           ),
@@ -674,33 +678,38 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isSelected;
+  final VoidCallback? onTap;
 
   const _NavItem({
     required this.icon,
     required this.label,
     this.isSelected = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-          size: 26,
-        ),
-        SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
             color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            size: 26,
           ),
-        ),
-      ],
+          SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
