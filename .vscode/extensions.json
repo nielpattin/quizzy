@@ -3,6 +3,7 @@
         "oven.bun-vscode",
         "dart-code.flutter",
         "dart-code.dart-code",
-        "bradlc.vscode-tailwindcss"
+        "bradlc.vscode-tailwindcss",
+        "fronterior.biome-monorepo"
     ]
 }

@@ -1,0 +1,30 @@
+{
+  "name": "backend",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:web": "bun run --filter web dev",
+    "dev:server": "bun run --filter server dev",
+    "build": "bun run --filter web build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "db:up": "bun run --filter server db:up",
+    "db:down": "bun run --filter server db:down",
+    "db:logs": "bun run --filter server db:logs",
+    "db:reset": "bun run --filter server db:reset",
+    "db:generate": "bun run --filter server db:generate",
+    "db:migrate": "bun run --filter server db:migrate",
+    "db:studio": "bun run --filter server db:studio",
+    "db:push": "bun run --filter server db:push"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
