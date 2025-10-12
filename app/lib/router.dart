@@ -1,6 +1,8 @@
-import "package:firebase_auth/firebase_auth.dart";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:quizzy/pages/forgot_password_page.dart";
+import "package:quizzy/pages/signup_page.dart";
+import "pages/splash_page.dart";
 import "pages/walkthrough_page.dart";
 import "pages/get_started_page.dart";
 import "pages/login_page.dart";
@@ -12,10 +14,22 @@ import "pages/search_page.dart";
 import "pages/notification_page.dart";
 import "pages/profile_page.dart";
 import "pages/quiz_detail_page.dart";
+import "pages/settings_page.dart";
+import "pages/email_confirmation_page.dart";
 
 final router = GoRouter(
-  initialLocation: "/walkthrough",
+  initialLocation: "/",
   routes: [
+    GoRoute(
+      path: "/",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const SplashPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    ),
     GoRoute(
       path: "/walkthrough",
       pageBuilder: (context, state) => CustomTransitionPage(
@@ -158,17 +172,51 @@ final router = GoRouter(
         },
       ),
     ),
+    GoRoute(
+      path: "/signup",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const SignupPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    ),
+    GoRoute(
+      path: "/email-confirmation",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const EmailConfirmationPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    ),
+    GoRoute(
+      path: "/forgot-password",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const ForgotPasswordPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    ),
+    GoRoute(
+      path: "/settings",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const SettingsPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                ),
+            child: child,
+          );
+        },
+      ),
+    ),
   ],
-  redirect: (context, state) {
-    final user = FirebaseAuth.instance.currentUser;
-    final isOnWalkthrough = state.matchedLocation == "/walkthrough";
-    final isOnGetStarted = state.matchedLocation == "/get-started";
-    final isOnLogin = state.matchedLocation == "/login";
-
-    if (user != null && (isOnWalkthrough || isOnGetStarted || isOnLogin)) {
-      return "/home";
-    }
-
-    return null;
-  },
 );

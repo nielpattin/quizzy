@@ -1,8 +1,13 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:supabase_flutter/supabase_flutter.dart";
+import "package:http/http.dart" as http;
+import "package:flutter_dotenv/flutter_dotenv.dart";
+import "dart:convert";
 import "home_page.dart";
 import "library_page.dart";
 import "join_page.dart";
+import "../widgets/auth_modal.dart";
 
 class MainNavigationPage extends StatefulWidget {
   final int initialIndex;
@@ -14,11 +19,56 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   late int _currentIndex;
+  bool _isCheckingSetup = true;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _checkSetupStatus();
+  }
+
+  Future<void> _checkSetupStatus() async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        setState(() {
+          _isCheckingSetup = false;
+        });
+        return;
+      }
+
+      final token = session.accessToken;
+      final serverUrl = dotenv.env["SERVER_URL"]!;
+
+      final response = await http.get(
+        Uri.parse("$serverUrl/api/user/profile"),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final userData = data["user"];
+        if (mounted && userData["setup_account_completed"] == false) {
+          context.go(
+            "/setup-account",
+            extra: {
+              "email": userData["email"],
+              "name": userData["name"],
+              "image": userData["image"],
+            },
+          );
+          return;
+        }
+      }
+    } catch (e) {
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingSetup = false;
+        });
+      }
+    }
   }
 
   void _onNavTap(int index, BuildContext context) {
@@ -97,7 +147,14 @@ class _BottomNav extends StatelessWidget {
                 icon: Icons.person_outline,
                 label: "Profile",
                 isSelected: selectedIndex == 4,
-                onTap: () => context.push("/profile"),
+                onTap: () {
+                  final session = Supabase.instance.client.auth.currentSession;
+                  if (session == null) {
+                    showAuthModal(context);
+                  } else {
+                    context.push("/profile");
+                  }
+                },
               ),
             ],
           ),

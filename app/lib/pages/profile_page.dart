@@ -1,5 +1,9 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:supabase_flutter/supabase_flutter.dart";
+import "package:http/http.dart" as http;
+import "package:flutter_dotenv/flutter_dotenv.dart";
+import "dart:convert";
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -11,6 +15,10 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isLoading = true;
+  String? _username;
+  String? _fullName;
+  String? _avatarUrl;
 
   @override
   void initState() {
@@ -22,6 +30,62 @@ class _ProfilePageState extends State<ProfilePage>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadProfile() async {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final token = session.accessToken;
+      final serverUrl = dotenv.env["SERVER_URL"]!;
+      final response = await http.get(
+        Uri.parse("$serverUrl/api/user/profile"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final profileData = data["user"];
+
+        if (profileData["setup_account_completed"] == false) {
+          if (mounted) {
+            context.go(
+              "/setup-account",
+              extra: {
+                "email": profileData["email"],
+                "name": profileData["name"],
+                "image": profileData["image"],
+              },
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          _username = profileData["username"];
+          _fullName = profileData["name"];
+          _avatarUrl = profileData["avatar_url"];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -45,7 +109,9 @@ class _ProfilePageState extends State<ProfilePage>
               Icons.settings_outlined,
               color: Theme.of(context).colorScheme.onSurface,
             ),
-            onPressed: () {},
+            onPressed: () {
+              context.push("/settings");
+            },
           ),
         ],
       ),
