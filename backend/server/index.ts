@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import userRoutes from '@/routes/user'
+import testRoutes from '@/routes/test'
 
 const app = new Hono()
 
@@ -15,6 +16,7 @@ app.get('/', (c) => {
 })
 
 app.route('/api/user', userRoutes)
+app.route('/api/test', testRoutes)
 
 export default {
   port: 8000,
