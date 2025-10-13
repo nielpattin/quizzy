@@ -1,12 +1,11 @@
 # Backend Workspace
 
-Bun monorepo workspace containing the Hono API server and React frontend for Quizzy.
+Bun workspace containing the Hono API server and React frontend for Quizzy.
 
 ## Structure
 
-- **`apps/server/`** - Hono API server with PostgreSQL + Drizzle ORM
-- **`apps/web/`** - React frontend with TanStack Router
-- **`packages/shared/`** - Shared types, schemas, and utilities
+- **`server/`** - Hono API server with PostgreSQL + Drizzle ORM
+- **`client/`** - React frontend with TanStack Router
 
 ## Getting Started
 
@@ -18,10 +17,7 @@ bun install
 bun run db:up
 
 # Start server (port 8000)
-bun run dev:server
-
-# Start web frontend
-bun run dev:web
+bun run dev
 ```
 
 ## Database Commands
@@ -40,12 +36,56 @@ bun run db:studio      # Open Drizzle Studio GUI
 ## Development Commands
 
 ```bash
-bun run dev            # Start all apps in dev mode
-bun run dev:web        # Start React frontend only
-bun run dev:server     # Start Hono server only
-bun run build          # Build web for production
-bun run typecheck      # Check TypeScript errors in all apps
+bun run dev            # Start Hono server with hot reload
+bun run typecheck      # Check TypeScript errors
 ```
+
+## Project Structure
+
+```
+server/
+  db/
+    index.ts           # Database client
+    schema.ts          # Drizzle schema definitions
+  lib/
+    supabase.ts        # Supabase client setup
+  middleware/
+    auth.ts            # JWT verification middleware
+  routes/
+    user.ts            # User API routes
+  index.ts             # App entry point
+
+client/
+  src/
+    routes/            # TanStack Router file-based routes
+    components/        # React components
+      ui/              # shadcn/ui components
+    lib/               # Utilities
+```
+
+## Environment Variables
+
+Create a `.env` file in `backend/`:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/quizzy
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+## API Routes
+
+- `GET /` - API health check
+- `POST /api/user/setup` - Complete user setup (username, full name, DOB)
+- All routes require valid Supabase JWT token in `Authorization` header
+
+## Database Schema
+
+See `server/db/schema.ts` for all table definitions. Key tables:
+
+- `user` - User profiles with full_name, username, date_of_birth
+- `account` - OAuth account links (email-based auto-linking)
 
 ## Tech Stack
 

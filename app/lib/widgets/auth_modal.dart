@@ -2,8 +2,6 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "package:google_sign_in/google_sign_in.dart" as gs;
-import "package:supabase_flutter/supabase_flutter.dart";
-import "package:google_sign_in/google_sign_in.dart" as gs;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 
 class AuthModal extends StatefulWidget {
@@ -26,22 +24,46 @@ class _AuthModalState extends State<AuthModal> {
     });
 
     try {
+      debugPrint('[AUTH_MODAL] Starting Google sign-in...');
       final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID']!;
       await gs.GoogleSignIn.instance.initialize(serverClientId: webClientId);
+
+      debugPrint('[AUTH_MODAL] Opening Google authentication...');
       final account = await gs.GoogleSignIn.instance.authenticate();
       final idToken = account.authentication.idToken;
       if (idToken == null) throw Exception('No ID token from Google');
 
-      await Supabase.instance.client.auth.signInWithIdToken(
+      debugPrint('[AUTH_MODAL] Got ID token, signing in with Supabase...');
+      final response = await Supabase.instance.client.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
       );
 
-      if (!mounted) return;
-      Navigator.pop(context);
-      widget.onAuthSuccess?.call();
-      context.go('/home');
-    } catch (e) {
+      debugPrint('[AUTH_MODAL] Sign-in response received');
+      debugPrint('[AUTH_MODAL] Full response:');
+      debugPrint(
+        '  - Session: ${response.session != null ? "EXISTS" : "NULL"}',
+      );
+      debugPrint('  - User ID: ${response.user?.id}');
+      debugPrint('  - User email: ${response.user?.email}');
+      debugPrint('  - User metadata: ${response.user?.userMetadata}');
+      debugPrint(
+        '  - Access token: ${response.session?.accessToken?.substring(0, 20)}...',
+      );
+      debugPrint('  - Session user: ${response.session?.user.id}');
+
+      if (response.session != null) {
+        if (!mounted) return;
+        Navigator.pop(context);
+        widget.onAuthSuccess?.call();
+        debugPrint('[AUTH_MODAL] Redirecting to /splash for setup check');
+        context.go('/splash');
+      } else {
+        throw Exception('No session returned from Supabase');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[AUTH_MODAL] Error during Google sign-in: $e');
+      debugPrint('[AUTH_MODAL] Stack trace: $stackTrace');
       setState(() {
         _errorMessage = 'Error: $e';
       });
@@ -56,15 +78,15 @@ class _AuthModalState extends State<AuthModal> {
       _errorMessage = null;
     });
     try {
+      debugPrint('[AUTH_MODAL] Starting GitHub OAuth...');
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.github,
         redirectTo: 'com.quizzy.app://login-callback/',
       );
-      await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.github,
-        redirectTo: 'com.quizzy.app://login-callback/',
-      );
-    } catch (e) {
+      debugPrint('[AUTH_MODAL] GitHub OAuth initiated');
+    } catch (e, stackTrace) {
+      debugPrint('[AUTH_MODAL] Error during GitHub OAuth: $e');
+      debugPrint('[AUTH_MODAL] Stack trace: $stackTrace');
       setState(() {
         _errorMessage = 'Error: $e';
         _isLoading = false;

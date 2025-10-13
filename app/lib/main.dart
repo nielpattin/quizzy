@@ -8,8 +8,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   FlutterError.onError = (FlutterErrorDetails details) {
-    print('🔴 Flutter Error: ${details.exception}');
-    print('🔴 Stack trace: ${details.stack}');
+    debugPrint('[MAIN] Flutter Error: ${details.exception}');
+    debugPrint('[MAIN] Stack trace: ${details.stack}');
     FlutterError.presentError(details);
   };
 
@@ -19,6 +19,18 @@ Future<void> main() async {
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+
+  debugPrint('[MAIN] Supabase initialized');
+  debugPrint('[MAIN] Setting up auth state listener...');
+
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    final event = data.event;
+    final session = data.session;
+    debugPrint('[AUTH_LISTENER] Event: $event');
+    debugPrint(
+      '[AUTH_LISTENER] Session: ${session != null ? "EXISTS (user: ${session.user.id})" : "NULL"}',
+    );
+  });
 
   runApp(const QuizzyApp());
 }

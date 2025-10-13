@@ -1,30 +1,26 @@
 {
-  "name": "backend",
-  "type": "module",
-  "private": true,
+  "name": "server",
   "scripts": {
-    "dev": "bun run --filter '*' dev",
-    "dev:web": "bun run --filter web dev",
-    "dev:server": "bun run --filter server dev",
-    "build": "bun run --filter web build",
-    "typecheck": "bun run --filter '*' typecheck",
-    "db:up": "bun run --filter server db:up",
-    "db:down": "bun run --filter server db:down",
-    "db:logs": "bun run --filter server db:logs",
-    "db:reset": "bun run --filter server db:reset",
-    "db:generate": "bun run --filter server db:generate",
-    "db:migrate": "bun run --filter server db:migrate",
-    "db:studio": "bun run --filter server db:studio",
-    "db:push": "bun run --filter server db:push"
+    "dev": "bun --hot server/index.ts",
+    "typecheck": "bunx tsc --noEmit",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f db",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:push": "drizzle-kit push"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.75.0",
+    "drizzle-orm": "^0.44.6",
+    "hono": "^4.9.10",
+    "postgres": "^3.4.7"
   },
   "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+    "@types/bun": "latest",
+    "drizzle-kit": "^0.31.5"
+  }
 }

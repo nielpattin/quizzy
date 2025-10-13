@@ -1,27 +1,38 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "package:quizzy/pages/forgot_password_page.dart";
-import "package:quizzy/pages/signup_page.dart";
-import "pages/splash_page.dart";
-import "pages/walkthrough_page.dart";
-import "pages/get_started_page.dart";
-import "pages/login_page.dart";
-import "pages/account_type_page.dart";
-import "pages/username_page.dart";
-import "pages/profile_info_page.dart";
-import "pages/main_navigation_page.dart";
-import "pages/search_page.dart";
-import "pages/notification_page.dart";
-import "pages/profile_page.dart";
-import "pages/quiz_detail_page.dart";
-import "pages/settings_page.dart";
-import "pages/email_confirmation_page.dart";
+import "pages/common/splash_page.dart";
+import "pages/common/notification_page.dart";
+import "pages/auth/walkthrough_page.dart";
+import "pages/auth/get_started_page.dart";
+import "pages/auth/login_page.dart";
+import "pages/auth/signup_page.dart";
+import "pages/auth/forgot_password_page.dart";
+import "pages/auth/email_confirmation_page.dart";
+import "pages/auth/setup_account_page.dart";
+import "pages/auth/account_type_page.dart";
+import "pages/home/main_navigation_page.dart";
+import "pages/profile/username_page.dart";
+import "pages/profile/profile_info_page.dart";
+import "pages/profile/profile_page.dart";
+import "pages/profile/settings_page.dart";
+import "pages/social/search_page.dart";
+import "pages/quiz/quiz_detail_page.dart";
 
 final router = GoRouter(
   initialLocation: "/",
   routes: [
     GoRoute(
       path: "/",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const SplashPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    ),
+    GoRoute(
+      path: "/splash",
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const SplashPage(),
@@ -45,6 +56,16 @@ final router = GoRouter(
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const GetStartedPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    ),
+    GoRoute(
+      path: "/setup-account",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const SetupAccountPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
