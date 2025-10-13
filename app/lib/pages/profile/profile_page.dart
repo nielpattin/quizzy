@@ -4,6 +4,7 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "dart:convert";
+import "../../services/test_data_service.dart";
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -19,6 +20,11 @@ class _ProfilePageState extends State<ProfilePage>
   String? _username;
   String? _fullName;
   String? _avatarUrl;
+  Map<String, dynamic>? _stats;
+  Map<String, dynamic>? _bio;
+  List<dynamic> _quizzes = [];
+  List<dynamic> _sessions = [];
+  List<dynamic> _posts = [];
 
   @override
   void initState() {
@@ -49,22 +55,36 @@ class _ProfilePageState extends State<ProfilePage>
       final serverUrl = dotenv.env["SERVER_URL"]!;
       debugPrint('[PROFILE] Fetching from: $serverUrl/api/user/profile');
 
-      final response = await http.get(
-        Uri.parse("$serverUrl/api/user/profile"),
-        headers: {"Authorization": "Bearer $token"},
-      );
+      final results = await Future.wait([
+        http.get(
+          Uri.parse("$serverUrl/api/user/profile"),
+          headers: {"Authorization": "Bearer $token"},
+        ),
+        TestDataService.getProfileStats(),
+        TestDataService.getProfileBio(),
+        TestDataService.getProfileQuizzes(),
+        TestDataService.getProfileSessions(),
+        TestDataService.getProfilePosts(),
+      ]);
 
-      debugPrint('[PROFILE] Response status: ${response.statusCode}');
-      debugPrint('[PROFILE] Response body: ${response.body}');
+      final profileResponse = results[0] as http.Response;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      debugPrint('[PROFILE] Response status: ${profileResponse.statusCode}');
+      debugPrint('[PROFILE] Response body: ${profileResponse.body}');
+
+      if (profileResponse.statusCode == 200) {
+        final profileData = json.decode(profileResponse.body);
 
         if (mounted) {
           setState(() {
-            _username = data["username"];
-            _fullName = data["fullName"];
-            _avatarUrl = data["profilePictureUrl"];
+            _username = profileData["username"];
+            _fullName = profileData["fullName"];
+            _avatarUrl = profileData["profilePictureUrl"];
+            _stats = results[1] as Map<String, dynamic>;
+            _bio = results[2] as Map<String, dynamic>;
+            _quizzes = results[3] as List<dynamic>;
+            _sessions = results[4] as List<dynamic>;
+            _posts = results[5] as List<dynamic>;
             _isLoading = false;
           });
           debugPrint(
@@ -72,7 +92,9 @@ class _ProfilePageState extends State<ProfilePage>
           );
         }
       } else {
-        debugPrint('[PROFILE] Failed to load profile: ${response.statusCode}');
+        debugPrint(
+          '[PROFILE] Failed to load profile: ${profileResponse.statusCode}',
+        );
         setState(() {
           _isLoading = false;
         });
@@ -214,22 +236,45 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildStatsRow() {
+    if (_stats == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _StatItem(count: "...", label: "Followers", onTap: () {}),
+            _StatItem(count: "...", label: "Following", onTap: () {}),
+            _StatItem(count: "...", label: "Quizzes", onTap: () {}),
+            _StatItem(count: "...", label: "Sessions", onTap: () {}),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(count: "1.2K", label: "Followers", onTap: () {}),
-          _StatItem(count: "342", label: "Following", onTap: () {}),
           _StatItem(
-            count: "28",
+            count: "${_stats!["followers"]}",
+            label: "Followers",
+            onTap: () {},
+          ),
+          _StatItem(
+            count: "${_stats!["following"]}",
+            label: "Following",
+            onTap: () {},
+          ),
+          _StatItem(
+            count: "${_stats!["quizzes"]}",
             label: "Quizzes",
             onTap: () {
               _tabController.animateTo(0);
             },
           ),
           _StatItem(
-            count: "156",
+            count: "${_stats!["sessions"]}",
             label: "Sessions",
             onTap: () {
               _tabController.animateTo(1);
@@ -241,13 +286,45 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildBioSection() {
+    if (_bio == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 200,
+              height: 16,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              width: 150,
+              height: 14,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Quiz enthusiast 🎯 | Learning through play",
+            _bio!["bio"],
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface,
               fontSize: 13,
@@ -268,7 +345,7 @@ class _ProfilePageState extends State<ProfilePage>
               ),
               SizedBox(width: 4),
               Text(
-                "Vietnam",
+                _bio!["location"],
                 style: TextStyle(
                   color: Theme.of(
                     context,
@@ -286,7 +363,7 @@ class _ProfilePageState extends State<ProfilePage>
               ),
               SizedBox(width: 4),
               Text(
-                "Jan 15, 2000",
+                _bio!["birthday"],
                 style: TextStyle(
                   color: Theme.of(
                     context,
@@ -322,6 +399,19 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildQuizzesTab() {
+    if (_quizzes.isEmpty) {
+      return Center(
+        child: Text(
+          "No quizzes yet",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -330,38 +420,13 @@ class _ProfilePageState extends State<ProfilePage>
         mainAxisSpacing: 12,
         childAspectRatio: 0.75,
       ),
-      itemCount: 12,
+      itemCount: _quizzes.length,
       itemBuilder: (context, index) {
+        final quiz = _quizzes[index];
         return _QuizCard(
-          title: [
-            "Modern Art Quiz",
-            "Tech Trivia",
-            "Science Facts",
-            "Pop Culture",
-            "History Challenge",
-            "Geography Test",
-            "Movie Quotes",
-            "Music Legends",
-            "Sports Trivia",
-            "Food & Cooking",
-            "Animals World",
-            "Space Exploration",
-          ][index],
-          category: [
-            "Art",
-            "Technology",
-            "Science",
-            "Culture",
-            "History",
-            "Geography",
-            "Movies",
-            "Music",
-            "Sports",
-            "Food",
-            "Animals",
-            "Space",
-          ][index],
-          plays: (index + 1) * 127,
+          title: quiz["title"],
+          category: quiz["category"],
+          plays: quiz["plays"],
           color: Colors.primaries[index % Colors.primaries.length],
         );
       },
@@ -369,37 +434,59 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildSessionsTab() {
+    if (_sessions.isEmpty) {
+      return Center(
+        child: Text(
+          "No sessions yet",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: 8,
+      itemCount: _sessions.length,
       itemBuilder: (context, index) {
+        final session = _sessions[index];
         return _SessionCard(
-          title: "Tech Trivia Session #${index + 1}",
-          date: "2 days ago",
-          score: "${(index + 1) * 850}",
-          rank: "${index + 1}",
-          totalPlayers: "24",
+          title: session["title"],
+          date: session["date"],
+          score: "${session["score"]}",
+          rank: "${session["rank"]}",
+          totalPlayers: "${session["totalPlayers"]}",
         );
       },
     );
   }
 
   Widget _buildPostsTab() {
+    if (_posts.isEmpty) {
+      return Center(
+        child: Text(
+          "No posts yet",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: 5,
+      itemCount: _posts.length,
       itemBuilder: (context, index) {
+        final post = _posts[index];
         return _PostCard(
-          text: [
-            "Just created a new quiz about modern art! Check it out 🎨",
-            "Reached 1K plays on my Tech Trivia quiz! Thanks everyone! 🚀",
-            "Working on a new series of science quizzes. Stay tuned! 🔬",
-            "Had an amazing quiz session today with 50+ players! 🎯",
-            "New collection dropping next week. Get ready! 📚",
-          ][index],
-          likes: (index + 1) * 45,
-          comments: (index + 1) * 12,
-          time: "${index + 1}d ago",
+          text: post["text"],
+          likes: post["likes"],
+          comments: post["comments"],
+          time: post["time"],
           fullName: _fullName ?? "User",
           avatarUrl: _avatarUrl,
         );

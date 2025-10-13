@@ -1,24 +1,75 @@
 import "package:flutter/material.dart";
+import "../../services/test_data_service.dart";
 
-class FeedyPage extends StatelessWidget {
+class FeedyPage extends StatefulWidget {
   const FeedyPage({super.key});
 
   @override
+  State<FeedyPage> createState() => _FeedyPageState();
+}
+
+class _FeedyPageState extends State<FeedyPage> {
+  bool _isLoading = true;
+  List<dynamic> _feedItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFeed();
+  }
+
+  Future<void> _loadFeed() async {
+    try {
+      final data = await TestDataService.getFeed();
+      if (mounted) {
+        setState(() {
+          _feedItems = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("[FeedyPage] Error loading feed: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (_feedItems.isEmpty) {
+      return Center(
+        child: Text(
+          "No feed items available",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: 5,
+      itemCount: _feedItems.length,
       itemBuilder: (context, index) {
+        final item = _feedItems[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
           child: _FeedCard(
-            author: "Ly Nguyên",
-            category: "Animal",
-            question:
-                "What is the surprising real color of a Polar Bear's skin, which helps it absorb heat in the Arctic environment",
-            likes: 152,
-            comments: 28,
-            isAnswered: index % 2 == 1,
+            author: item["author"],
+            category: item["category"],
+            question: item["question"],
+            likes: item["likes"],
+            comments: item["comments"],
+            isAnswered: item["isAnswered"] ?? false,
           ),
         );
       },

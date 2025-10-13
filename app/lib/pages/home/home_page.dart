@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "feedy_page.dart";
 import "../../widgets/bottom_nav.dart";
+import "../../services/test_data_service.dart";
 
 class HomePage extends StatefulWidget {
   final bool showBottomNav;
@@ -13,6 +14,42 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedTab = 0;
+  bool _isLoading = true;
+  Map<String, dynamic>? _featured;
+  List<dynamic> _trending = [];
+  List<dynamic> _continuePlaying = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final results = await Future.wait([
+        TestDataService.getFeatured(),
+        TestDataService.getTrending(),
+        TestDataService.getContinuePlaying(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _featured = results[0] as Map<String, dynamic>;
+          _trending = results[1] as List<dynamic>;
+          _continuePlaying = results[2] as List<dynamic>;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("[HomePage] Error loading data: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,180 +122,176 @@ class _HomePageState extends State<HomePage> {
             SizedBox(height: 24),
             Expanded(
               child: _selectedTab == 0
-                  ? SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Featured Today",
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
+                  ? _isLoading
+                        ? Center(child: CircularProgressIndicator())
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
                             ),
-                          ),
-                          SizedBox(height: 16),
-                          _FeaturedCard(),
-                          SizedBox(height: 32),
-                          Text(
-                            "Browse Topics",
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Row(
-                            children: [
-                              _TopicCard(
-                                label: "Education",
-                                icon: Icons.school,
-                              ),
-                              SizedBox(width: 12),
-                              _TopicCard(label: "Game", icon: Icons.games),
-                              SizedBox(width: 12),
-                              _TopicCard(
-                                label: "Business",
-                                icon: Icons.business,
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 32),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Trending Now",
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Featured Today",
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              TextButton(
-                                onPressed: () {},
-                                child: Row(
+                                SizedBox(height: 16),
+                                if (_featured != null)
+                                  _FeaturedCard(data: _featured!),
+                                SizedBox(height: 32),
+                                Text(
+                                  "Browse Topics",
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 16),
+                                Row(
                                   children: [
-                                    Text(
-                                      "View all",
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                      ),
+                                    _TopicCard(
+                                      label: "Education",
+                                      icon: Icons.school,
                                     ),
-                                    SizedBox(width: 4),
-                                    Icon(
-                                      Icons.arrow_forward,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      size: 16,
+                                    SizedBox(width: 12),
+                                    _TopicCard(
+                                      label: "Game",
+                                      icon: Icons.games,
+                                    ),
+                                    SizedBox(width: 12),
+                                    _TopicCard(
+                                      label: "Business",
+                                      icon: Icons.business,
                                     ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          SizedBox(
-                            height: 200,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              children: [
-                                _TrendingCard(
-                                  title: "Modern Art or\nJust Scribbles?",
-                                  author: "Ly Nguyên",
-                                  category: "Art",
-                                  count: 16,
+                                SizedBox(height: 32),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Trending Now",
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {},
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            "View all",
+                                            style: TextStyle(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                            ),
+                                          ),
+                                          SizedBox(width: 4),
+                                          Icon(
+                                            Icons.arrow_forward,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                SizedBox(width: 12),
-                                _TrendingCard(
-                                  title: "Guess the Song\nfrom 3 Words",
-                                  author: "Ly Nguyên",
-                                  category: "Entertainment",
-                                  count: 16,
-                                  isSessions: true,
+                                SizedBox(height: 16),
+                                SizedBox(
+                                  height: 200,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _trending.length,
+                                    separatorBuilder: (context, index) =>
+                                        SizedBox(width: 12),
+                                    itemBuilder: (context, index) {
+                                      final item = _trending[index];
+                                      return _TrendingCard(
+                                        title: item["title"],
+                                        author: item["author"],
+                                        category: item["category"],
+                                        count: item["count"],
+                                        isSessions: item["isSessions"] ?? false,
+                                      );
+                                    },
+                                  ),
                                 ),
-                                SizedBox(width: 12),
+                                SizedBox(height: 32),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Continue Playing",
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {},
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            "View all",
+                                            style: TextStyle(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                            ),
+                                          ),
+                                          SizedBox(width: 4),
+                                          Icon(
+                                            Icons.arrow_forward,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 16),
+                                ..._continuePlaying.map(
+                                  (item) => Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: 12.0,
+                                    ),
+                                    child: _ContinuePlayingItem(
+                                      title: item["title"],
+                                      author: item["author"],
+                                      category: item["category"],
+                                      count: item["count"],
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 24),
                               ],
                             ),
-                          ),
-                          SizedBox(height: 32),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Continue Playing",
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {},
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      "View all",
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                      ),
-                                    ),
-                                    SizedBox(width: 4),
-                                    Icon(
-                                      Icons.arrow_forward,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      size: 16,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          _ContinuePlayingItem(
-                            title: "Herbs vs. Weeds: Can You Tell?",
-                            author: "Ly Nguyên",
-                            category: "Plants",
-                            count: 16,
-                          ),
-                          SizedBox(height: 12),
-                          _ContinuePlayingItem(
-                            title: "Modern Art or Just Scribbles?",
-                            author: "Ly Nguyên",
-                            category: "Art",
-                            count: 16,
-                          ),
-                          SizedBox(height: 12),
-                          _ContinuePlayingItem(
-                            title: "Guess the Song from 3 Words",
-                            author: "Ly Nguyên",
-                            category: "Entertainment",
-                            count: 16,
-                          ),
-                          SizedBox(height: 12),
-                          _ContinuePlayingItem(
-                            title: "Famous Entrepreneurs and Their Companies",
-                            author: "Ly Nguyên",
-                            category: "Business",
-                            count: 16,
-                          ),
-                          SizedBox(height: 24),
-                        ],
-                      ),
-                    )
+                          )
                   : const FeedyPage(),
             ),
           ],
@@ -317,6 +350,10 @@ class _TabButton extends StatelessWidget {
 }
 
 class _FeaturedCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+
+  const _FeaturedCard({required this.data});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -354,30 +391,31 @@ class _FeaturedCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        "Plants",
+                        data["category"],
                         style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                    if (data["type"] == "session")
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          "Sessions",
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        "Sessions",
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ),
                   ],
                 ),
                 const Spacer(),
                 Text(
-                  "Herbs vs. Weeds: Can You Tell?",
+                  data["title"],
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -394,7 +432,7 @@ class _FeaturedCard extends StatelessWidget {
                     ),
                     SizedBox(width: 8),
                     Text(
-                      "Ly Nguyên",
+                      data["author"],
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -415,7 +453,7 @@ class _FeaturedCard extends StatelessWidget {
                           Icon(Icons.copy, size: 12, color: Colors.white),
                           SizedBox(width: 4),
                           Text(
-                            "16",
+                            "${data["count"]}",
                             style: TextStyle(color: Colors.white, fontSize: 12),
                           ),
                         ],
