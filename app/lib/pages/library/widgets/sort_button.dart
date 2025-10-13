@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "section_header.dart";
+import "../services/library_service.dart" show SortOption;
 
 class SortButton extends StatelessWidget {
   final SortOption option;

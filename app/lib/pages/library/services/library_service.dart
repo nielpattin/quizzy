@@ -2,7 +2,7 @@ import "../models/quiz.dart";
 import "../models/collection.dart";
 import "../models/game_session.dart";
 import "../utils/gradients.dart";
-import "mock_data.dart";
+import "../../../services/test_data_service.dart";
 
 enum SortOption {
   newest("Newest", 0),
@@ -17,9 +17,9 @@ enum SortOption {
 
 class LibraryService {
   static Future<List<Quiz>> fetchCreatedQuizzes(SortOption sort) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    final data = await TestDataService.getCreatedQuizzes();
 
-    final quizzes = MockLibraryData.createdQuizzes
+    final quizzes = data
         .asMap()
         .entries
         .map((e) => Quiz.fromJson(e.value, gradientForIndex(e.key)))
@@ -40,9 +40,9 @@ class LibraryService {
   }
 
   static Future<List<Quiz>> fetchSavedQuizzes(SortOption sort) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    final data = await TestDataService.getSavedQuizzes();
 
-    final quizzes = MockLibraryData.savedQuizzes
+    final quizzes = data
         .asMap()
         .entries
         .map((e) => Quiz.fromJson(e.value, gradientForIndex(e.key + 3)))
@@ -63,9 +63,9 @@ class LibraryService {
   }
 
   static Future<List<Collection>> fetchCollections() async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    final data = await TestDataService.getCollections();
 
-    return MockLibraryData.collections
+    return data
         .asMap()
         .entries
         .map((e) => Collection.fromJson(e.value, gradientForIndex(e.key + 10)))
@@ -73,9 +73,9 @@ class LibraryService {
   }
 
   static Future<List<Quiz>> fetchSoloPlays() async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    final data = await TestDataService.getSoloPlays();
 
-    return MockLibraryData.soloPlays
+    return data
         .asMap()
         .entries
         .map((e) => Quiz.fromJson(e.value, gradientForIndex(e.key)))
@@ -83,9 +83,9 @@ class LibraryService {
   }
 
   static Future<List<GameSession>> fetchMySessions(SortOption sort) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    final data = await TestDataService.getGameSessions();
 
-    final sessions = MockLibraryData.gameSessions
+    final sessions = data
         .asMap()
         .entries
         .map((e) => GameSession.fromJson(e.value, gradientForIndex(e.key)))
@@ -95,9 +95,9 @@ class LibraryService {
   }
 
   static Future<List<GameSession>> fetchRecentSessions(SortOption sort) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    final data = await TestDataService.getGameSessions();
 
-    final sessions = MockLibraryData.gameSessions
+    final sessions = data
         .asMap()
         .entries
         .map((e) => GameSession.fromJson(e.value, gradientForIndex(e.key)))

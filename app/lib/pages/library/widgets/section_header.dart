@@ -1,16 +1,17 @@
 import "package:flutter/material.dart";
 import "sort_button.dart";
-
-enum SortOption { newest, mostPlayed, alphabetical }
+import "../services/library_service.dart" show SortOption;
 
 extension SortOptionX on SortOption {
   String get label => switch (this) {
     SortOption.newest => "Newest",
+    SortOption.oldest => "Oldest",
     SortOption.mostPlayed => "Most Played",
     SortOption.alphabetical => "A–Z",
   };
   IconData get icon => switch (this) {
     SortOption.newest => Icons.fiber_new,
+    SortOption.oldest => Icons.history,
     SortOption.mostPlayed => Icons.leaderboard,
     SortOption.alphabetical => Icons.sort_by_alpha,
   };

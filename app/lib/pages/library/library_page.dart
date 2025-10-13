@@ -1,8 +1,8 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "widgets/main_segments.dart";
-import "widgets/section_header.dart";
 import "widgets/sort_button.dart";
+import "services/library_service.dart" show SortOption;
 import "../../widgets/bottom_nav.dart";
 import "tabs/created_tab.dart";
 import "tabs/saved_tab.dart";

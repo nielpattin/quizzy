@@ -4,7 +4,9 @@ import "../widgets/created_sub_tabs.dart";
 import "../widgets/section_header.dart";
 import "../widgets/collection_card.dart";
 import "../widgets/quiz_play_card.dart";
-import "../utils/gradients.dart";
+import "../services/library_service.dart";
+import "../models/quiz.dart";
+import "../models/collection.dart";
 
 class CreatedTab extends StatefulWidget {
   final int selectedSubTab;
@@ -61,46 +63,72 @@ class _CreatedTabState extends State<CreatedTab> {
   }
 }
 
-class _QuizzesList extends StatelessWidget {
+class _QuizzesList extends StatefulWidget {
   final SortOption sort;
   const _QuizzesList({required this.sort});
 
   @override
+  State<_QuizzesList> createState() => _QuizzesListState();
+}
+
+class _QuizzesListState extends State<_QuizzesList> {
+  bool _isLoading = true;
+  List<Quiz> _quizzes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuizzes();
+  }
+
+  @override
+  void didUpdateWidget(_QuizzesList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sort != widget.sort) {
+      _loadQuizzes();
+    }
+  }
+
+  Future<void> _loadQuizzes() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final quizzes = await LibraryService.fetchCreatedQuizzes(widget.sort);
+      if (mounted) {
+        setState(() {
+          _quizzes = quizzes;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("[CreatedTab] Error loading quizzes: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final items = [
-      (
-        title: "Having Fun & Always Smile!",
-        time: "1d",
-        plays: 10,
-        qs: 16,
-        pub: true,
-      ),
-      (
-        title: "Identify the Famous Painting",
-        time: "2d",
-        plays: 20,
-        qs: 16,
-        pub: false,
-      ),
-      (
-        title: "Science Facts Everyone Gets Wrong",
-        time: "3d",
-        plays: 30,
-        qs: 16,
-        pub: true,
-      ),
-      (
-        title: "Pop Culture Trivia 2024",
-        time: "4d",
-        plays: 40,
-        qs: 16,
-        pub: false,
-      ),
-      (title: "Geography Challenge", time: "5d", plays: 50, qs: 16, pub: true),
-      (title: "Movie Quotes Master", time: "6d", plays: 60, qs: 16, pub: false),
-      (title: "Music Legends Quiz", time: "7d", plays: 70, qs: 16, pub: true),
-      (title: "Sports History", time: "8d", plays: 80, qs: 16, pub: false),
-    ];
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (_quizzes.isEmpty) {
+      return Center(
+        child: Text(
+          "No quizzes yet",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
 
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -110,15 +138,15 @@ class _QuizzesList extends StatelessWidget {
         mainAxisSpacing: 12,
         childAspectRatio: 0.65,
       ),
-      itemCount: items.length,
+      itemCount: _quizzes.length,
       itemBuilder: (context, i) {
-        final it = items[i];
+        final quiz = _quizzes[i];
         return QuizPlayCard(
-          title: it.title,
-          timeAgo: it.time,
-          questions: it.qs,
-          plays: it.plays,
-          gradient: gradientForIndex(i),
+          title: quiz.title,
+          timeAgo: quiz.timeAgo,
+          questions: quiz.questions,
+          plays: quiz.plays,
+          gradient: quiz.gradient,
           onTap: () => context.push("/quiz/1"),
         );
       },
@@ -126,18 +154,64 @@ class _QuizzesList extends StatelessWidget {
   }
 }
 
-class _CollectionsList extends StatelessWidget {
+class _CollectionsList extends StatefulWidget {
   const _CollectionsList();
 
   @override
+  State<_CollectionsList> createState() => _CollectionsListState();
+}
+
+class _CollectionsListState extends State<_CollectionsList> {
+  bool _isLoading = true;
+  List<Collection> _collections = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCollections();
+  }
+
+  Future<void> _loadCollections() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final collections = await LibraryService.fetchCollections();
+      if (mounted) {
+        setState(() {
+          _collections = collections;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("[CreatedTab] Error loading collections: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final cols = [
-      ("Tech & Science", 24),
-      ("Entertainment", 18),
-      ("General Knowledge", 30),
-      ("Sports & Games", 12),
-      ("History & Geography", 16),
-    ];
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (_collections.isEmpty) {
+      return Center(
+        child: Text(
+          "No collections yet",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -146,13 +220,13 @@ class _CollectionsList extends StatelessWidget {
         mainAxisSpacing: 12,
         childAspectRatio: 0.85,
       ),
-      itemCount: cols.length,
+      itemCount: _collections.length,
       itemBuilder: (context, i) {
-        final c = cols[i];
+        final collection = _collections[i];
         return CollectionCard(
-          title: c.$1,
-          quizCount: c.$2,
-          gradient: gradientForIndex(i + 10),
+          title: collection.title,
+          quizCount: collection.quizCount,
+          gradient: collection.gradient,
         );
       },
     );

@@ -3,6 +3,9 @@ import "../widgets/game_sub_tabs.dart";
 import "../widgets/section_header.dart";
 import "../widgets/quiz_play_card.dart";
 import "../widgets/game_session_card.dart";
+import "../services/library_service.dart";
+import "../models/quiz.dart";
+import "../models/game_session.dart";
 
 class GameTab extends StatefulWidget {
   final int selectedSubTab;
@@ -46,155 +49,102 @@ class _GameTabState extends State<GameTab> {
   }
 }
 
-class _GameList extends StatelessWidget {
+class _GameList extends StatefulWidget {
   final bool mine;
   final SortOption sort;
   const _GameList({required this.mine, required this.sort});
 
   @override
-  Widget build(BuildContext context) {
-    final quizPlays = [
-      (
-        title: "Daily Geography Sprint",
-        time: "1d",
-        qs: 10,
-        plays: 234,
-        gradient: [Colors.orange[300]!, Colors.brown[400]!],
-      ),
-      (
-        title: "Quick Space Facts",
-        time: "2d",
-        qs: 8,
-        plays: 156,
-        gradient: [Colors.blue[300]!, Colors.indigo[400]!],
-      ),
-      (
-        title: "Music Year Match",
-        time: "4d",
-        qs: 12,
-        plays: 89,
-        gradient: [Colors.purple[300]!, Colors.blue[400]!],
-      ),
-    ];
-    final sessionData = [
-      (
-        title:
-            "World History Marathon: Ancient Civilizations Through Modern Times",
-        topic: "History",
-        length: "25 Questions",
-        date: "1d",
-        isOngoing: true,
-        joined: 142,
-        gradient: [Colors.deepOrange[400]!, Colors.brown[700]!],
-      ),
-      (
-        title: "Quick Math Challenge",
-        topic: "Mathematics",
-        length: "10 Questions",
-        date: "2d",
-        isOngoing: false,
-        joined: 67,
-        gradient: [Colors.blue[400]!, Colors.indigo[700]!],
-      ),
-      (
-        title: "Ultimate Pop Culture Trivia Night Extravaganza 2024 Edition",
-        topic: "Entertainment",
-        length: "30 Questions",
-        date: "3d",
-        isOngoing: true,
-        joined: 201,
-        gradient: [Colors.pink[400]!, Colors.purple[700]!],
-      ),
-      (
-        title: "Science Lightning Round",
-        topic: "Science",
-        length: "15 Questions",
-        date: "5d",
-        isOngoing: false,
-        joined: 156,
-        gradient: [Colors.green[400]!, Colors.teal[700]!],
-      ),
-      (
-        title:
-            "Geography Expert Challenge: Exploring Every Continent and Ocean",
-        topic: "Geography",
-        length: "40 Questions",
-        date: "7d",
-        isOngoing: false,
-        joined: 289,
-        gradient: [Colors.cyan[400]!, Colors.blue[800]!],
-      ),
-    ];
+  State<_GameList> createState() => _GameListState();
+}
 
-    final data =
-        <
-          ({
-            String kind,
-            String title,
-            String time,
-            int qs,
-            List<Color> gradient,
-            bool? live,
-            int? joined,
-            String? length,
-            int? plays,
-          })
-        >[];
-    if (mine) {
-      for (final s in sessionData) {
-        data.add((
-          kind: 'session',
-          title: s.title,
-          time: s.date,
-          qs: int.tryParse(s.length.split(' ').first) ?? 0,
-          gradient: s.gradient,
-          live: s.isOngoing,
-          joined: s.joined,
-          length: s.length,
-          plays: null,
-        ));
+class _GameListState extends State<_GameList> {
+  bool _isLoading = true;
+  List<Quiz> _soloPlays = [];
+  List<GameSession> _sessions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  @override
+  void didUpdateWidget(_GameList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sort != widget.sort || oldWidget.mine != widget.mine) {
+      _loadData();
+    }
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      if (widget.mine) {
+        final sessions = await LibraryService.fetchMySessions(widget.sort);
+        if (mounted) {
+          setState(() {
+            _sessions = sessions;
+            _soloPlays = [];
+            _isLoading = false;
+          });
+        }
+      } else {
+        final results = await Future.wait([
+          LibraryService.fetchSoloPlays(),
+          LibraryService.fetchRecentSessions(widget.sort),
+        ]);
+        if (mounted) {
+          setState(() {
+            _soloPlays = results[0] as List<Quiz>;
+            _sessions = results[1] as List<GameSession>;
+            _isLoading = false;
+          });
+        }
       }
-    } else {
-      for (final q in quizPlays) {
-        data.add((
-          kind: 'quiz',
-          title: q.title,
-          time: q.time,
-          qs: q.qs,
-          gradient: q.gradient,
-          live: null,
-          joined: null,
-          length: null,
-          plays: q.plays,
-        ));
+    } catch (e) {
+      debugPrint("[GameTab] Error loading data: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      for (final s in sessionData) {
-        data.add((
-          kind: 'session',
-          title: s.title,
-          time: s.date,
-          qs: int.tryParse(s.length.split(' ').first) ?? 0,
-          gradient: s.gradient,
-          live: s.isOngoing,
-          joined: s.joined,
-          length: s.length,
-          plays: null,
-        ));
-      }
-      data.sort((a, b) {
-        final na =
-            int.tryParse(a.time.replaceAll(RegExp(r'[^0-9]'), '')) ?? 9999;
-        final nb =
-            int.tryParse(b.time.replaceAll(RegExp(r'[^0-9]'), '')) ?? 9999;
-        return na.compareTo(nb);
-      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
     }
 
-    final crossAxisCount = 2;
+    final data = <dynamic>[];
+    if (widget.mine) {
+      data.addAll(_sessions);
+    } else {
+      data.addAll(_soloPlays);
+      data.addAll(_sessions);
+    }
+
+    if (data.isEmpty) {
+      return Center(
+        child: Text(
+          widget.mine ? "No games yet" : "No recent games",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
         childAspectRatio: 0.65,
@@ -202,22 +152,23 @@ class _GameList extends StatelessWidget {
       itemCount: data.length,
       itemBuilder: (context, i) {
         final item = data[i];
-        if (item.kind == 'session') {
+        if (item is GameSession) {
           return GameSessionCard(
             title: item.title,
-            length: item.length ?? "${item.qs} Questions",
-            date: item.time,
-            isLive: item.live ?? false,
-            joined: item.joined ?? 0,
+            length: item.length,
+            date: item.date,
+            isLive: item.isLive,
+            joined: item.joined,
             gradient: item.gradient,
           );
         }
+        final quiz = item as Quiz;
         return QuizPlayCard(
-          title: item.title,
-          timeAgo: item.time,
-          questions: item.qs,
-          plays: item.plays,
-          gradient: item.gradient,
+          title: quiz.title,
+          timeAgo: quiz.timeAgo,
+          questions: quiz.questions,
+          plays: quiz.plays,
+          gradient: quiz.gradient,
         );
       },
     );
