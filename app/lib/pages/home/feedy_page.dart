@@ -37,6 +37,14 @@ class _FeedyPageState extends State<FeedyPage> {
     }
   }
 
+  Future<void> _refreshFeed() async {
+    debugPrint("[FeedyPage] Refreshing feed...");
+    setState(() {
+      _isLoading = true;
+    });
+    await _loadFeed();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -56,23 +64,26 @@ class _FeedyPageState extends State<FeedyPage> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: _feedItems.length,
-      itemBuilder: (context, index) {
-        final item = _feedItems[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: _FeedCard(
-            author: item["author"],
-            category: item["category"],
-            question: item["question"],
-            likes: item["likes"],
-            comments: item["comments"],
-            isAnswered: item["isAnswered"] ?? false,
-          ),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _refreshFeed,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: _feedItems.length,
+        itemBuilder: (context, index) {
+          final item = _feedItems[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: _FeedCard(
+              author: item["author"],
+              category: item["category"],
+              question: item["question"],
+              likes: item["likes"],
+              comments: item["comments"],
+              isAnswered: item["isAnswered"] ?? false,
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -174,7 +185,13 @@ class _FeedCard extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                Center(child: Icon(Icons.pets, size: 120, color: Colors.black)),
+                Center(
+                  child: Icon(
+                    Icons.pets,
+                    size: 120,
+                    color: Theme.of(context).colorScheme.surface,
+                  ),
+                ),
                 if (isAnswered)
                   Container(
                     decoration: BoxDecoration(

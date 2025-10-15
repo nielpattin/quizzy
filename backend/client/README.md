@@ -93,7 +93,3 @@ The web app calls the Hono server API at `http://localhost:8000`.
 - [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS
 - [shadcn/ui](https://ui.shadcn.com) - Component library
 - [Biome](https://biomejs.dev) - Linter & formatter
-
-## Demo Files
-
-Files prefixed with `demo.*` can be safely deleted. They demonstrate various features.

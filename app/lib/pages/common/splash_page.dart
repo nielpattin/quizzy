@@ -78,7 +78,7 @@ class _SplashPageState extends State<SplashPage>
           }
         });
 
-        final timeout = Future.delayed(Duration(milliseconds: 500), () {
+        final timeout = Future.delayed(Duration(milliseconds: 3000), () {
           debugPrint('[SPLASH] Timeout waiting for auth state change');
           if (!completer.isCompleted) {
             completer.complete(null);

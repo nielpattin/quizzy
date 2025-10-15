@@ -3,15 +3,35 @@ import { Hono } from 'hono'
 const app = new Hono()
 
 app.get('/homepage/featured', (c) => {
-  return c.json({
-    id: 'f1',
-    title: 'Herbs vs. Weeds: Can You Tell?',
-    author: 'Ly Nguyên',
-    authorId: 'user123',
-    category: 'Plants',
-    count: 16,
-    type: 'session',
-  })
+  return c.json([
+    {
+      id: 'f1',
+      title: 'Herbs vs. Weeds: Can You Tell?',
+      author: 'Ly Nguyên',
+      authorId: 'user123',
+      category: 'Plants',
+      count: 16,
+      type: 'session',
+    },
+    {
+      id: 'f2',
+      title: 'World History: Ancient Civilizations',
+      author: 'Ly Nguyên',
+      authorId: 'user123',
+      category: 'History',
+      count: 24,
+      type: 'quiz',
+    },
+    {
+      id: 'f3',
+      title: 'Tech Giants Quiz Challenge',
+      author: 'Ly Nguyên',
+      authorId: 'user123',
+      category: 'Technology',
+      count: 18,
+      type: 'session',
+    },
+  ])
 })
 
 app.get('/homepage/topics', (c) => {
@@ -19,6 +39,13 @@ app.get('/homepage/topics', (c) => {
     { id: 't1', label: 'Education', icon: 'school' },
     { id: 't2', label: 'Game', icon: 'games' },
     { id: 't3', label: 'Business', icon: 'business' },
+    { id: 't4', label: 'Science', icon: 'science' },
+    { id: 't5', label: 'Sports', icon: 'sports' },
+    { id: 't6', label: 'Music', icon: 'music' },
+    { id: 't7', label: 'Art', icon: 'art' },
+    { id: 't8', label: 'History', icon: 'history' },
+    { id: 't9', label: 'Geography', icon: 'geography' },
+    { id: 't10', label: 'Technology', icon: 'technology' },
   ])
 })
 

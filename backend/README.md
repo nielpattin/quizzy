@@ -76,24 +76,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 ## API Routes
 
-- `GET /` - API health check
-- `POST /api/user/setup` - Complete user setup (username, full name, DOB)
-- All routes require valid Supabase JWT token in `Authorization` header
-
 ## Database Schema
-
-See `server/db/schema.ts` for all table definitions. Key tables:
-
-- `user` - User profiles with full_name, username, date_of_birth
-- `account` - OAuth account links (email-based auto-linking)
-
-## Tech Stack
-
-- **Runtime:** Bun
-- **Server:** Hono
-- **Database:** PostgreSQL + Drizzle ORM (Bun SQL driver)
-- **Frontend:** React + TanStack Router
-- **Styling:** Tailwind CSS + shadcn/ui
 
 ## Learn More
 

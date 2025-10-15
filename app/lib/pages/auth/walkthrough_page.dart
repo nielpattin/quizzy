@@ -41,7 +41,7 @@ class WalkthroughPage extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => context.go("/home"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     foregroundColor: Theme.of(context).colorScheme.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

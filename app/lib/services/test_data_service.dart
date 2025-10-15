@@ -6,7 +6,7 @@ import "package:http/http.dart" as http;
 class TestDataService {
   static final String _baseUrl = dotenv.env["SERVER_URL"]!;
 
-  static Future<Map<String, dynamic>> getFeatured() async {
+  static Future<List<dynamic>> getFeatured() async {
     try {
       final response = await http.get(
         Uri.parse("$_baseUrl/api/test/homepage/featured"),

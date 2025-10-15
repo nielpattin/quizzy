@@ -32,7 +32,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         redirectTo: 'com.quizzy.app://login-callback/',
       );
       setState(() {
-        _message = "Password reset email sent!";
+        _message =
+            "If account with your email exists, you will receive an email to reset your password";
       });
     } on AuthException catch (e) {
       setState(() {
@@ -86,7 +87,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   child: Text(
                     _message!,
                     style: TextStyle(
-                      color: _message == "Password reset email sent!"
+                      color: _message!.startsWith("If account")
                           ? Colors.green
                           : Colors.red,
                     ),

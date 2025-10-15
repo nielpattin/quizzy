@@ -17,6 +17,9 @@ import "pages/profile/profile_page.dart";
 import "pages/profile/settings_page.dart";
 import "pages/social/search_page.dart";
 import "pages/quiz/quiz_detail_page.dart";
+import "pages/quiz/category_page.dart";
+import "pages/quiz/trending_page.dart";
+import "pages/quiz/continue_playing_page.dart";
 
 final router = GoRouter(
   initialLocation: "/",
@@ -168,6 +171,70 @@ final router = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: QuizDetailPage(quizId: quizId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/category/:name",
+      pageBuilder: (context, state) {
+        final categoryName = state.pathParameters["name"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: CategoryPage(category: categoryName),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/trending",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const TrendingPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/continue-playing",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const ContinuePlayingPage(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position:
