@@ -20,6 +20,10 @@ import "pages/quiz/quiz_detail_page.dart";
 import "pages/quiz/category_page.dart";
 import "pages/quiz/trending_page.dart";
 import "pages/quiz/continue_playing_page.dart";
+import "pages/quiz/create_quiz_page.dart";
+import "pages/quiz/add_questions_page.dart";
+import "pages/quiz/play_quiz_page.dart";
+import "pages/quiz/create_question_page.dart";
 
 final router = GoRouter(
   initialLocation: "/",
@@ -246,6 +250,91 @@ final router = GoRouter(
                   ),
               child: child,
             );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/create-quiz",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const CreateQuizPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/:id/add-questions",
+      pageBuilder: (context, state) {
+        final quizId = state.pathParameters["id"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: AddQuestionsPage(quizId: quizId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/:id/create-question",
+      pageBuilder: (context, state) {
+        final quizId = state.pathParameters["id"]!;
+        final questionType =
+            state.uri.queryParameters["type"] ?? "multiple_choice";
+        final existingQuestion = state.extra as Map<String, dynamic>?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: CreateQuestionPage(
+            quizId: quizId,
+            questionType: questionType,
+            existingQuestion: existingQuestion,
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/:id/play",
+      pageBuilder: (context, state) {
+        final quizId = state.pathParameters["id"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: PlayQuizPage(quizId: quizId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
           },
         );
       },

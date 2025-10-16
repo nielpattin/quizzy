@@ -141,7 +141,14 @@ class _BottomNav extends StatelessWidget {
               _NavItem(
                 icon: Icons.add_box_outlined,
                 label: "Create",
-                onTap: () {},
+                onTap: () {
+                  final session = Supabase.instance.client.auth.currentSession;
+                  if (session == null) {
+                    showAuthModal(context);
+                  } else {
+                    context.push("/create-quiz");
+                  }
+                },
               ),
               _NavItem(
                 icon: Icons.person_outline,

@@ -1,6 +1,9 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "../../models/quiz_detail.dart";
+import "package:supabase_flutter/supabase_flutter.dart";
+import "dart:convert";
+import "package:http/http.dart" as http;
+import "package:flutter_dotenv/flutter_dotenv.dart";
 
 class QuizDetailPage extends StatefulWidget {
   final String quizId;
@@ -11,36 +14,123 @@ class QuizDetailPage extends StatefulWidget {
 }
 
 class _QuizDetailPageState extends State<QuizDetailPage> {
-  late QuizDetail quiz;
+  bool _isLoading = true;
+  String? _errorMessage;
+  Map<String, dynamic>? _quizData;
+  List<dynamic>? _questions;
   bool isFollowing = false;
   bool isFavorited = false;
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    if (widget.quizId == "1") {
-      quiz = MockQuizData.getOwnerQuiz();
-    } else if (widget.quizId == "2") {
-      quiz = MockQuizData.getOtherQuizHidden();
-    } else {
-      quiz = MockQuizData.getOtherQuizVisible();
+    _loadQuizData();
+  }
+
+  Future<void> _loadQuizData() async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      _currentUserId = session?.user.id;
+      final serverUrl = dotenv.env["SERVER_URL"] ?? "http://localhost:8000";
+
+      final quizResponse = await http.get(
+        Uri.parse("$serverUrl/api/quiz/${widget.quizId}"),
+        headers: {
+          if (session != null) "Authorization": "Bearer ${session.accessToken}",
+        },
+      );
+
+      if (quizResponse.statusCode != 200) {
+        throw Exception("Failed to load quiz");
+      }
+
+      final quiz = jsonDecode(quizResponse.body) as Map<String, dynamic>;
+
+      List<dynamic>? questions;
+      if (quiz["questionsVisible"] == true) {
+        final questionsResponse = await http.get(
+          Uri.parse("$serverUrl/api/quiz/${widget.quizId}/questions"),
+          headers: {
+            if (session != null)
+              "Authorization": "Bearer ${session.accessToken}",
+          },
+        );
+
+        if (questionsResponse.statusCode == 200) {
+          questions = jsonDecode(questionsResponse.body) as List;
+        }
+      }
+
+      setState(() {
+        _quizData = quiz;
+        _questions = questions;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
+  bool get _isOwner =>
+      _currentUserId != null && _quizData?["user"]?["id"] == _currentUserId;
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Error"),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => context.pop(),
+                  child: const Text("Go Back"),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.pop(),
         ),
         actions: [
-          if (!quiz.isOwner)
+          if (!_isOwner)
             IconButton(
-              icon: Icon(Icons.more_vert, color: Colors.white),
+              icon: const Icon(Icons.more_vert, color: Colors.white),
               onPressed: _showReportModal,
             ),
         ],
@@ -57,7 +147,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    quiz.description,
+                    _quizData!["description"] ?? "No description provided",
                     style: TextStyle(
                       color: Theme.of(
                         context,
@@ -71,9 +161,9 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
             ),
             _buildStats(),
             _buildCreatorInfo(),
-            if (quiz.isOwner) _buildEditButton(),
-            if (!quiz.isOwner) _buildActionButtons(),
-            if (quiz.questions != null && quiz.questions!.isNotEmpty)
+            if (_isOwner) _buildEditButton(),
+            if (!_isOwner) _buildActionButtons(),
+            if (_questions != null && _questions!.isNotEmpty)
               _buildQuestionsList(),
           ],
         ),
@@ -82,6 +172,8 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
   }
 
   Widget _buildHeader() {
+    final gradientColors = [const Color(0xFF64A7FF), const Color(0xFF4A90E2)];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -90,75 +182,24 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
           height: 240,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(int.parse(quiz.imageGradientStart)),
-                Color(int.parse(quiz.imageGradientEnd)),
-              ],
+              colors: gradientColors,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.5),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            alignment: Alignment.bottomLeft,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(12),
-              ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                quiz.collection,
+                _quizData!["title"],
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
                 ),
+                textAlign: TextAlign.center,
               ),
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  quiz.title,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    height: 1.2,
-                  ),
-                ),
-              ),
-              if (!quiz.isOwner)
-                IconButton(
-                  icon: Icon(
-                    isFavorited ? Icons.favorite : Icons.favorite_outline,
-                    color: isFavorited
-                        ? Colors.red
-                        : Theme.of(context).colorScheme.primary,
-                    size: 32,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      isFavorited = !isFavorited;
-                    });
-                  },
-                ),
-            ],
           ),
         ),
       ],
@@ -169,27 +210,22 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _StatItem(
-            icon: Icons.quiz_outlined,
-            value: "${quiz.questionCount}",
+            icon: Icons.question_answer,
             label: "Questions",
+            value: _quizData!["questionCount"].toString(),
           ),
           _StatItem(
             icon: Icons.play_circle_outline,
-            value: _formatCount(quiz.playCount),
             label: "Played",
+            value: _quizData!["playCount"].toString(),
           ),
           _StatItem(
-            icon: Icons.favorite_outline,
-            value: _formatCount(quiz.favoriteCount),
+            icon: Icons.favorite_border,
             label: "Favorites",
-          ),
-          _StatItem(
-            icon: Icons.share_outlined,
-            value: _formatCount(quiz.shareCount),
-            label: "Shares",
+            value: _quizData!["favoriteCount"].toString(),
           ),
         ],
       ),
@@ -197,6 +233,8 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
   }
 
   Widget _buildCreatorInfo() {
+    final user = _quizData!["user"];
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Row(
@@ -204,7 +242,12 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
           CircleAvatar(
             radius: 24,
             backgroundColor: Theme.of(context).colorScheme.primary,
-            child: const Icon(Icons.person, color: Colors.white, size: 28),
+            backgroundImage: user["profilePictureUrl"] != null
+                ? NetworkImage(user["profilePictureUrl"])
+                : null,
+            child: user["profilePictureUrl"] == null
+                ? const Icon(Icons.person, color: Colors.white, size: 28)
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -212,7 +255,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  quiz.creatorName,
+                  user["fullName"] ?? "Unknown",
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 16,
@@ -220,7 +263,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
                   ),
                 ),
                 Text(
-                  quiz.creatorUsername,
+                  "@${user["username"] ?? "unknown"}",
                   style: TextStyle(
                     color: Theme.of(
                       context,
@@ -231,7 +274,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
               ],
             ),
           ),
-          if (!quiz.isOwner)
+          if (!_isOwner)
             OutlinedButton(
               onPressed: () {
                 setState(() {
@@ -251,17 +294,12 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
                           context,
                         ).colorScheme.onSurface.withValues(alpha: 0.3)
                       : Theme.of(context).colorScheme.primary,
-                  width: 2,
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 10,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: Text(
-                isFollowing ? "Following" : "Follow",
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+              child: Text(isFollowing ? "Following" : "Follow"),
             ),
         ],
       ),
@@ -270,39 +308,46 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
 
   Widget _buildEditButton() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.edit),
-          label: const Text(
-            "Edit Quiz",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ElevatedButton.icon(
+            onPressed: () {
+              context.push("/quiz/${widget.quizId}/add-questions");
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text(
+              "Edit Quiz",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildActionButtons() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    context.push("/quiz/${widget.quizId}/play");
+                  },
                   icon: const Icon(Icons.play_arrow),
                   label: const Text(
                     "Play Solo",
@@ -359,17 +404,17 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
             ),
           ),
           const SizedBox(height: 16),
-          ...quiz.questions!.asMap().entries.map((entry) {
+          ..._questions!.asMap().entries.map((entry) {
             final index = entry.key;
             final question = entry.value;
             return Padding(
               padding: EdgeInsets.only(
-                bottom: index < quiz.questions!.length - 1 ? 12 : 0,
+                bottom: index < _questions!.length - 1 ? 12 : 0,
               ),
               child: _QuestionCard(
                 question: question,
                 index: index,
-                showAnswer: quiz.isOwner,
+                showAnswer: _isOwner,
               ),
             );
           }),
@@ -381,104 +426,72 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
   void _showReportModal() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Report Quiz",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _ReportOption(
-                icon: Icons.info_outline,
-                label: "Inappropriate Content",
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showReportConfirmation("Inappropriate Content");
-                },
-              ),
-              _ReportOption(
-                icon: Icons.copyright_outlined,
-                label: "Copyright Violation",
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showReportConfirmation("Copyright Violation");
-                },
-              ),
-              _ReportOption(
-                icon: Icons.error_outline,
-                label: "Misinformation",
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showReportConfirmation("Misinformation");
-                },
-              ),
-              _ReportOption(
-                icon: Icons.report_outlined,
-                label: "Other",
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showReportConfirmation("Other");
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showReportConfirmation(String reason) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Quiz reported for: $reason"),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              "Report Quiz",
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.flag),
+              title: const Text("Inappropriate Content"),
+              onTap: () {
+                context.pop();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.error),
+              title: const Text("Misleading Information"),
+              onTap: () {
+                context.pop();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.report),
+              title: const Text("Spam"),
+              onTap: () {
+                context.pop();
+              },
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  String _formatCount(int count) {
-    if (count >= 1000) {
-      return "${(count / 1000).toStringAsFixed(1)}k";
-    }
-    return count.toString();
   }
 }
 
 class _StatItem extends StatelessWidget {
   final IconData icon;
-  final String value;
   final String label;
+  final String value;
 
   const _StatItem({
     required this.icon,
-    required this.value,
     required this.label,
+    required this.value,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
-        const SizedBox(height: 4),
+        Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(height: 8),
         Text(
           value,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 18,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -488,7 +501,7 @@ class _StatItem extends StatelessWidget {
             color: Theme.of(
               context,
             ).colorScheme.onSurface.withValues(alpha: 0.6),
-            fontSize: 12,
+            fontSize: 14,
           ),
         ),
       ],
@@ -497,7 +510,7 @@ class _StatItem extends StatelessWidget {
 }
 
 class _QuestionCard extends StatelessWidget {
-  final Question question;
+  final Map<String, dynamic> question;
   final int index;
   final bool showAnswer;
 
@@ -509,11 +522,31 @@ class _QuestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final type = question["type"] as String;
+    final data = question["data"] as Map<String, dynamic>;
+
+    List<String> options = [];
+    int? correctIndex;
+
+    if (type == "multiple_choice" && data["options"] != null) {
+      options = (data["options"] as List).cast<String>();
+      correctIndex = data["correctIndex"] as int?;
+    } else if (type == "true_false") {
+      options = ["True", "False"];
+      final correctAnswer = data["correctAnswer"] as bool?;
+      correctIndex = correctAnswer == true ? 0 : 1;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,16 +557,15 @@ class _QuestionCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(8),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Text(
                     "${index + 1}",
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: theme.colorScheme.primary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
                     ),
                   ),
                 ),
@@ -541,116 +573,61 @@ class _QuestionCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  question.text,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 16,
+                  question["questionText"],
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ...question.options.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final option = entry.value;
-            final isCorrect = showAnswer && idx == question.correctAnswerIndex;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: isCorrect
-                      ? Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.1)
-                      : Theme.of(context).scaffoldBackgroundColor,
-                  border: Border.all(
+          if (options.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ...options.asMap().entries.map((entry) {
+              final optionIndex = entry.key;
+              final option = entry.value;
+              final isCorrect = showAnswer && optionIndex == correctIndex;
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
                     color: isCorrect
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.2),
-                    width: isCorrect ? 2 : 1,
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : isDark
+                        ? Colors.grey[800]
+                        : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: isCorrect
+                        ? Border.all(color: Colors.green, width: 2)
+                        : null,
                   ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    if (isCorrect)
-                      Icon(
-                        Icons.check_circle,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                    if (isCorrect) const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        option,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 14,
-                          fontWeight: isCorrect
-                              ? FontWeight.w600
-                              : FontWeight.normal,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          option,
+                          style: TextStyle(
+                            color: isCorrect
+                                ? Colors.green[700]
+                                : theme.colorScheme.onSurface,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      if (isCorrect)
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.green,
+                          size: 20,
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ],
         ],
-      ),
-    );
-  }
-}
-
-class _ReportOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ReportOption({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.7),
-                size: 24,
-              ),
-              const SizedBox(width: 16),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
