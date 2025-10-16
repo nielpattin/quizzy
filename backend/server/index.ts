@@ -3,6 +3,8 @@ import { cors } from 'hono/cors'
 import { Scalar } from '@scalar/hono-api-reference'
 import userRoutes from '@/routes/user'
 import testRoutes from '@/routes/test'
+import quizRoutes from '@/routes/quiz'
+import questionRoutes from '@/routes/question'
 
 const app = new OpenAPIHono()
 
@@ -18,6 +20,8 @@ app.get('/', (c) => {
 
 app.route('/api/user', userRoutes)
 app.route('/api/test', testRoutes)
+app.route('/api/quiz', quizRoutes)
+app.route('/api/question', questionRoutes)
 
 app.doc('/doc', {
   openapi: '3.1.0',
