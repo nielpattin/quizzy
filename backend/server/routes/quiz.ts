@@ -40,6 +40,134 @@ quizRoutes.post('/', authMiddleware, async (c) => {
   }
 })
 
+quizRoutes.get('/trending', async (c) => {
+  try {
+    const trendingQuizzes = await db
+      .select({
+        id: quizzes.id,
+        title: quizzes.title,
+        description: quizzes.description,
+        category: quizzes.category,
+        questionCount: quizzes.questionCount,
+        playCount: quizzes.playCount,
+        favoriteCount: quizzes.favoriteCount,
+        createdAt: quizzes.createdAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+      })
+      .from(quizzes)
+      .leftJoin(users, eq(quizzes.userId, users.id))
+      .where(and(eq(quizzes.isPublic, true), eq(quizzes.isDeleted, false)))
+      .orderBy(desc(quizzes.playCount))
+      .limit(20)
+
+    return c.json(trendingQuizzes)
+  } catch (error) {
+    console.error('Error fetching trending quizzes:', error)
+    return c.json({ error: 'Failed to fetch trending quizzes' }, 500)
+  }
+})
+
+quizRoutes.get('/category/:category', async (c) => {
+  const category = c.req.param('category')
+
+  try {
+    const categoryQuizzes = await db
+      .select({
+        id: quizzes.id,
+        title: quizzes.title,
+        description: quizzes.description,
+        category: quizzes.category,
+        questionCount: quizzes.questionCount,
+        playCount: quizzes.playCount,
+        favoriteCount: quizzes.favoriteCount,
+        createdAt: quizzes.createdAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+      })
+      .from(quizzes)
+      .leftJoin(users, eq(quizzes.userId, users.id))
+      .where(and(
+        eq(quizzes.category, category),
+        eq(quizzes.isPublic, true),
+        eq(quizzes.isDeleted, false)
+      ))
+      .orderBy(desc(quizzes.createdAt))
+      .limit(20)
+
+    return c.json(categoryQuizzes)
+  } catch (error) {
+    console.error('Error fetching category quizzes:', error)
+    return c.json({ error: 'Failed to fetch category quizzes' }, 500)
+  }
+})
+
+quizRoutes.get('/user/:userId', async (c) => {
+  const targetUserId = c.req.param('userId')
+
+  try {
+    const userQuizzes = await db
+      .select({
+        id: quizzes.id,
+        title: quizzes.title,
+        description: quizzes.description,
+        category: quizzes.category,
+        questionCount: quizzes.questionCount,
+        playCount: quizzes.playCount,
+        favoriteCount: quizzes.favoriteCount,
+        isPublic: quizzes.isPublic,
+        createdAt: quizzes.createdAt,
+        updatedAt: quizzes.updatedAt,
+      })
+      .from(quizzes)
+      .where(and(eq(quizzes.userId, targetUserId), eq(quizzes.isDeleted, false)))
+      .orderBy(desc(quizzes.createdAt))
+
+    return c.json(userQuizzes)
+  } catch (error) {
+    console.error('Error fetching user quizzes:', error)
+    return c.json({ error: 'Failed to fetch user quizzes' }, 500)
+  }
+})
+
+quizRoutes.get('/:id/questions', async (c) => {
+  const quizId = c.req.param('id')
+
+  try {
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(and(eq(quizzes.id, quizId), eq(quizzes.isDeleted, false)))
+
+    if (!quiz) {
+      return c.json({ error: 'Quiz not found' }, 404)
+    }
+
+    if (!quiz.questionsVisible && !quiz.isPublic) {
+      return c.json({ error: 'Questions are not visible for this quiz' }, 403)
+    }
+
+    const quizQuestions = await db
+      .select()
+      .from(questions)
+      .where(eq(questions.quizId, quizId))
+      .orderBy(questions.orderIndex)
+
+    return c.json(quizQuestions)
+  } catch (error) {
+    console.error('Error fetching questions:', error)
+    return c.json({ error: 'Failed to fetch questions' }, 500)
+  }
+})
+
 quizRoutes.get('/:id', async (c) => {
   const quizId = c.req.param('id')
 
@@ -152,134 +280,6 @@ quizRoutes.delete('/:id', authMiddleware, async (c) => {
   } catch (error) {
     console.error('Error deleting quiz:', error)
     return c.json({ error: 'Failed to delete quiz' }, 500)
-  }
-})
-
-quizRoutes.get('/trending', async (c) => {
-  try {
-    const trendingQuizzes = await db
-      .select({
-        id: quizzes.id,
-        title: quizzes.title,
-        description: quizzes.description,
-        category: quizzes.category,
-        questionCount: quizzes.questionCount,
-        playCount: quizzes.playCount,
-        favoriteCount: quizzes.favoriteCount,
-        createdAt: quizzes.createdAt,
-        user: {
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          profilePictureUrl: users.profilePictureUrl,
-        },
-      })
-      .from(quizzes)
-      .leftJoin(users, eq(quizzes.userId, users.id))
-      .where(and(eq(quizzes.isPublic, true), eq(quizzes.isDeleted, false)))
-      .orderBy(desc(quizzes.playCount))
-      .limit(20)
-
-    return c.json(trendingQuizzes)
-  } catch (error) {
-    console.error('Error fetching trending quizzes:', error)
-    return c.json({ error: 'Failed to fetch trending quizzes' }, 500)
-  }
-})
-
-quizRoutes.get('/category/:category', async (c) => {
-  const category = c.req.param('category')
-
-  try {
-    const categoryQuizzes = await db
-      .select({
-        id: quizzes.id,
-        title: quizzes.title,
-        description: quizzes.description,
-        category: quizzes.category,
-        questionCount: quizzes.questionCount,
-        playCount: quizzes.playCount,
-        favoriteCount: quizzes.favoriteCount,
-        createdAt: quizzes.createdAt,
-        user: {
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          profilePictureUrl: users.profilePictureUrl,
-        },
-      })
-      .from(quizzes)
-      .leftJoin(users, eq(quizzes.userId, users.id))
-      .where(and(
-        eq(quizzes.category, category),
-        eq(quizzes.isPublic, true),
-        eq(quizzes.isDeleted, false)
-      ))
-      .orderBy(desc(quizzes.createdAt))
-      .limit(20)
-
-    return c.json(categoryQuizzes)
-  } catch (error) {
-    console.error('Error fetching category quizzes:', error)
-    return c.json({ error: 'Failed to fetch category quizzes' }, 500)
-  }
-})
-
-quizRoutes.get('/:id/questions', async (c) => {
-  const quizId = c.req.param('id')
-
-  try {
-    const [quiz] = await db
-      .select()
-      .from(quizzes)
-      .where(and(eq(quizzes.id, quizId), eq(quizzes.isDeleted, false)))
-
-    if (!quiz) {
-      return c.json({ error: 'Quiz not found' }, 404)
-    }
-
-    if (!quiz.questionsVisible && !quiz.isPublic) {
-      return c.json({ error: 'Questions are not visible for this quiz' }, 403)
-    }
-
-    const quizQuestions = await db
-      .select()
-      .from(questions)
-      .where(eq(questions.quizId, quizId))
-      .orderBy(questions.orderIndex)
-
-    return c.json(quizQuestions)
-  } catch (error) {
-    console.error('Error fetching questions:', error)
-    return c.json({ error: 'Failed to fetch questions' }, 500)
-  }
-})
-
-quizRoutes.get('/user/:userId', async (c) => {
-  const targetUserId = c.req.param('userId')
-
-  try {
-    const userQuizzes = await db
-      .select({
-        id: quizzes.id,
-        title: quizzes.title,
-        description: quizzes.description,
-        category: quizzes.category,
-        questionCount: quizzes.questionCount,
-        playCount: quizzes.playCount,
-        favoriteCount: quizzes.favoriteCount,
-        isPublic: quizzes.isPublic,
-        createdAt: quizzes.createdAt,
-        updatedAt: quizzes.updatedAt,
-      })
-      .from(quizzes)
-      .where(and(eq(quizzes.userId, targetUserId), eq(quizzes.isDeleted, false)))
-      .orderBy(desc(quizzes.createdAt))
-
-    return c.json(userQuizzes)
-  } catch (error) {
-    console.error('Error fetching user quizzes:', error)
-    return c.json({ error: 'Failed to fetch user quizzes' }, 500)
   }
 })
 

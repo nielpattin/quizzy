@@ -5,6 +5,13 @@ import userRoutes from '@/routes/user'
 import testRoutes from '@/routes/test'
 import quizRoutes from '@/routes/quiz'
 import questionRoutes from '@/routes/question'
+import collectionRoutes from '@/routes/collection'
+import sessionRoutes from '@/routes/session'
+import favoriteRoutes from '@/routes/favorite'
+import followRoutes from '@/routes/follow'
+import socialRoutes from '@/routes/social'
+import searchRoutes from '@/routes/search'
+import notificationRoutes from '@/routes/notification'
 
 const app = new OpenAPIHono()
 
@@ -22,6 +29,13 @@ app.route('/api/user', userRoutes)
 app.route('/api/test', testRoutes)
 app.route('/api/quiz', quizRoutes)
 app.route('/api/question', questionRoutes)
+app.route('/api/collection', collectionRoutes)
+app.route('/api/session', sessionRoutes)
+app.route('/api/favorite', favoriteRoutes)
+app.route('/api/follow', followRoutes)
+app.route('/api/social', socialRoutes)
+app.route('/api/search', searchRoutes)
+app.route('/api/notification', notificationRoutes)
 
 app.doc('/doc', {
   openapi: '3.1.0',
