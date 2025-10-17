@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { seed, reset } from 'drizzle-seed';
-import { sql, notInArray } from 'drizzle-orm';
+import { sql, notInArray, inArray } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from './schema';
 
@@ -77,7 +77,7 @@ const main = async () => {
 		const excludedUsers = await db
 			.select({ id: schema.users.id, email: schema.users.email })
 			.from(schema.users)
-			.where(sql`${schema.users.email} = ANY(${EXCLUDE_USERS})`);
+			.where(inArray(schema.users.email, EXCLUDE_USERS));
 
 		if (excludedUsers.length > 0) {
 			console.log(`\n✅ Found ${excludedUsers.length} protected user(s) in database`);
@@ -90,13 +90,25 @@ const main = async () => {
 			await db.delete(schema.comments).where(notInArray(schema.comments.userId, excludedUserIds));
 			await db.delete(schema.postLikes).where(notInArray(schema.postLikes.userId, excludedUserIds));
 			await db.delete(schema.posts).where(notInArray(schema.posts.userId, excludedUserIds));
-			await db.delete(schema.follows).where(
-				sql`${schema.follows.followerId} != ALL(${excludedUserIds}) AND ${schema.follows.followingId} != ALL(${excludedUserIds})`
-			);
+			// Delete follows where neither follower nor following is in excluded list
+			if (excludedUserIds.length > 0) {
+				await db.delete(schema.follows).where(
+					notInArray(schema.follows.followerId, excludedUserIds)
+				).where(
+					notInArray(schema.follows.followingId, excludedUserIds)
+				);
+			}
 			await db.delete(schema.savedQuizzes).where(notInArray(schema.savedQuizzes.userId, excludedUserIds));
-			await db.delete(schema.gameSessionParticipants).where(
-				sql`${schema.gameSessionParticipants.userId} IS NULL OR ${schema.gameSessionParticipants.userId} != ALL(${excludedUserIds})`
-			);
+			// Delete game session participants where user is not in excluded list
+			if (excludedUserIds.length > 0) {
+				await db.delete(schema.gameSessionParticipants).where(
+					sql`${schema.gameSessionParticipants.userId} IS NULL OR ${notInArray(schema.gameSessionParticipants.userId, excludedUserIds)}`
+				);
+			} else {
+				await db.delete(schema.gameSessionParticipants).where(
+					sql`${schema.gameSessionParticipants.userId} IS NULL`
+				);
+			}
 			await db.delete(schema.gameSessions).where(notInArray(schema.gameSessions.hostId, excludedUserIds));
 			await db.delete(schema.questionsSnapshots);
 			await db.delete(schema.quizSnapshots);
