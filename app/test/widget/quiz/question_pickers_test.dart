@@ -5,17 +5,13 @@ import 'package:quizzy/pages/quiz/widgets/question_pickers.dart';
 void main() {
   group('Time Limit Picker', () {
     testWidgets('displays all time limit options', (tester) async {
-      String? selectedTime;
-
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  showTimeLimitPicker(context, '20 sec', (time) {
-                    selectedTime = time;
-                  });
+                  showTimeLimitPicker(context, '20 sec', (time) {});
                 },
                 child: const Text('Open Picker'),
               ),
@@ -58,10 +54,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final selectedButton = tester.widget<Container>(
-        find.ancestor(
-          of: find.text('20 sec'),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .ancestor(of: find.text('20 sec'), matching: find.byType(Container))
+            .first,
       );
 
       final decoration = selectedButton.decoration as BoxDecoration;
@@ -127,17 +122,13 @@ void main() {
 
   group('Points Picker', () {
     testWidgets('displays all points options', (tester) async {
-      String? selectedPoints;
-
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  showPointsPicker(context, '100 coki', (points) {
-                    selectedPoints = points;
-                  });
+                  showPointsPicker(context, '100 coki', (points) {});
                 },
                 child: const Text('Open Picker'),
               ),
@@ -180,10 +171,12 @@ void main() {
       await tester.pumpAndSettle();
 
       final selectedButton = tester.widget<Container>(
-        find.ancestor(
-          of: find.text('100 coki'),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .ancestor(
+              of: find.text('100 coki'),
+              matching: find.byType(Container),
+            )
+            .first,
       );
 
       final decoration = selectedButton.decoration as BoxDecoration;
@@ -222,21 +215,13 @@ void main() {
 
   group('Question Type Picker', () {
     testWidgets('displays all question type options', (tester) async {
-      String? selectedType;
-
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  showQuestionTypePicker(
-                    context,
-                    'multiple_choice',
-                    (type) {
-                      selectedType = type;
-                    },
-                  );
+                  showQuestionTypePicker(context, 'multiple_choice', (type) {});
                 },
                 child: const Text('Open Picker'),
               ),
@@ -264,11 +249,7 @@ void main() {
             body: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  showQuestionTypePicker(
-                    context,
-                    'multiple_choice',
-                    (type) {},
-                  );
+                  showQuestionTypePicker(context, 'multiple_choice', (type) {});
                 },
                 child: const Text('Open Picker'),
               ),
@@ -281,10 +262,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final selectedButton = tester.widget<Container>(
-        find.ancestor(
-          of: find.text('Quiz'),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .ancestor(of: find.text('Quiz'), matching: find.byType(Container))
+            .first,
       );
 
       final decoration = selectedButton.decoration as BoxDecoration;
@@ -300,13 +280,9 @@ void main() {
             body: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  showQuestionTypePicker(
-                    context,
-                    'multiple_choice',
-                    (type) {
-                      selectedType = type;
-                    },
-                  );
+                  showQuestionTypePicker(context, 'multiple_choice', (type) {
+                    selectedType = type;
+                  });
                 },
                 child: const Text('Open Picker'),
               ),

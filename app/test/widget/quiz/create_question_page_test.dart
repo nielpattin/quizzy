@@ -4,7 +4,9 @@ import 'package:quizzy/pages/quiz/create_question_page.dart';
 
 void main() {
   group('Create Question Page - Form Validation', () {
-    testWidgets('displays character counter starting at 0/1000', (tester) async {
+    testWidgets('displays character counter starting at 0/1000', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: CreateQuestionPage(
@@ -27,10 +29,7 @@ void main() {
         ),
       );
 
-      await tester.enterText(
-        find.byType(TextField).first,
-        'What is Flutter?',
-      );
+      await tester.enterText(find.byType(TextField).first, 'What is Flutter?');
       await tester.pumpAndSettle();
 
       expect(find.text('17/1000'), findsOneWidget);
@@ -47,17 +46,16 @@ void main() {
       );
 
       final longText = 'a' * 1500;
-      await tester.enterText(
-        find.byType(TextField).first,
-        longText,
-      );
+      await tester.enterText(find.byType(TextField).first, longText);
       await tester.pump();
 
       final textField = tester.widget<TextField>(find.byType(TextField).first);
       expect(textField.controller?.text.length, lessThanOrEqualTo(1000));
     });
 
-    testWidgets('shows validation error when saving empty question', (tester) async {
+    testWidgets('shows validation error when saving empty question', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: CreateQuestionPage(
@@ -73,7 +71,9 @@ void main() {
       expect(find.text('Please enter a question'), findsOneWidget);
     });
 
-    testWidgets('shows validation error when no correct answer selected', (tester) async {
+    testWidgets('shows validation error when no correct answer selected', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: CreateQuestionPage(
@@ -83,10 +83,7 @@ void main() {
         ),
       );
 
-      await tester.enterText(
-        find.byType(TextField).first,
-        'What is Flutter?',
-      );
+      await tester.enterText(find.byType(TextField).first, 'What is Flutter?');
       await tester.pump();
 
       await tester.tap(find.text('Save'));
@@ -95,7 +92,9 @@ void main() {
       expect(find.text('Please select the correct answer'), findsOneWidget);
     });
 
-    testWidgets('shows validation error for true/false without selection', (tester) async {
+    testWidgets('shows validation error for true/false without selection', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: CreateQuestionPage(
@@ -247,7 +246,9 @@ void main() {
       expect(find.text('Answer'), findsNWidgets(4));
     });
 
-    testWidgets('displays true/false options for true_false type', (tester) async {
+    testWidgets('displays true/false options for true_false type', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: CreateQuestionPage(
