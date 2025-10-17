@@ -2,7 +2,8 @@ import "../models/quiz.dart";
 import "../models/collection.dart";
 import "../models/game_session.dart";
 import "../utils/gradients.dart";
-import "../../../services/test_data_service.dart";
+import "../../../services/api_service.dart";
+import "package:supabase_flutter/supabase_flutter.dart";
 
 enum SortOption {
   newest("Newest", 0),
@@ -17,7 +18,10 @@ enum SortOption {
 
 class LibraryService {
   static Future<List<Quiz>> fetchCreatedQuizzes(SortOption sort) async {
-    final data = await TestDataService.getCreatedQuizzes();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    final data = await ApiService.getUserQuizzes(userId);
 
     final quizzes = data
         .asMap()
@@ -40,13 +44,12 @@ class LibraryService {
   }
 
   static Future<List<Quiz>> fetchSavedQuizzes(SortOption sort) async {
-    final data = await TestDataService.getSavedQuizzes();
+    final data = await ApiService.getFavorites();
 
-    final quizzes = data
-        .asMap()
-        .entries
-        .map((e) => Quiz.fromJson(e.value, gradientForIndex(e.key + 3)))
-        .toList();
+    final quizzes = data.asMap().entries.map((e) {
+      final quizData = e.value["quiz"];
+      return Quiz.fromJson(quizData, gradientForIndex(e.key + 3));
+    }).toList();
 
     switch (sort) {
       case SortOption.oldest:
@@ -63,7 +66,10 @@ class LibraryService {
   }
 
   static Future<List<Collection>> fetchCollections() async {
-    final data = await TestDataService.getCollections();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    final data = await ApiService.getUserCollections(userId);
 
     return data
         .asMap()
@@ -73,17 +79,14 @@ class LibraryService {
   }
 
   static Future<List<Quiz>> fetchSoloPlays() async {
-    final data = await TestDataService.getSoloPlays();
-
-    return data
-        .asMap()
-        .entries
-        .map((e) => Quiz.fromJson(e.value, gradientForIndex(e.key)))
-        .toList();
+    return [];
   }
 
   static Future<List<GameSession>> fetchMySessions(SortOption sort) async {
-    final data = await TestDataService.getGameSessions();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    final data = await ApiService.getHostedSessions(userId);
 
     final sessions = data
         .asMap()
@@ -95,7 +98,10 @@ class LibraryService {
   }
 
   static Future<List<GameSession>> fetchRecentSessions(SortOption sort) async {
-    final data = await TestDataService.getGameSessions();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    final data = await ApiService.getPlayedSessions(userId);
 
     final sessions = data
         .asMap()

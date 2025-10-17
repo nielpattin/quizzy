@@ -31,10 +31,15 @@ class GameSession {
       id: json["id"] as String,
       title: json["title"] as String,
       topic: json["topic"] as String?,
-      length: json["length"] as String,
-      date: json["date"] as String,
-      isLive: json["isLive"] as bool,
-      joined: json["joined"] as int,
+      length:
+          json["length"] as String? ?? "${json["estimatedMinutes"] ?? 0} min",
+      date:
+          json["date"] as String? ?? json["createdAt"] as String? ?? "Unknown",
+      isLive: json["isLive"] as bool? ?? false,
+      joined:
+          json["joined"] as int? ??
+          (json["participants"] as List?)?.length ??
+          0,
       questions: json["questions"] as int?,
       gradient: gradient,
     );

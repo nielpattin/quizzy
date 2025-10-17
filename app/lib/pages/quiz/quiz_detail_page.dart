@@ -4,6 +4,7 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
+import "../../services/api_service.dart";
 
 class QuizDetailPage extends StatefulWidget {
   final String quizId;
@@ -26,6 +27,8 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
   void initState() {
     super.initState();
     _loadQuizData();
+    _checkFollowStatus();
+    _checkFavoriteStatus();
   }
 
   Future<void> _loadQuizData() async {
@@ -72,6 +75,159 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
         _errorMessage = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _checkFollowStatus() async {
+    if (_isOwner) return;
+
+    try {
+      final creatorUserId = _quizData?["user"]?["id"];
+      if (creatorUserId != null) {
+        final following = await ApiService.isFollowing(creatorUserId);
+        setState(() => isFollowing = following);
+      }
+    } catch (e) {
+      // Silently ignore follow status check errors
+    }
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    try {
+      final favorited = await ApiService.isFavorited(widget.quizId);
+      setState(() => isFavorited = favorited);
+    } catch (e) {
+      // Silently ignore favorite status check errors
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    final creatorUserId = _quizData?["user"]?["id"];
+    if (creatorUserId == null) return;
+
+    try {
+      if (isFollowing) {
+        await ApiService.unfollowUser(creatorUserId);
+      } else {
+        await ApiService.followUser(creatorUserId);
+      }
+      setState(() => isFollowing = !isFollowing);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+      }
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    try {
+      if (isFavorited) {
+        await ApiService.unfavoriteQuiz(widget.quizId);
+      } else {
+        await ApiService.favoriteQuiz(widget.quizId);
+      }
+      setState(() {
+        isFavorited = !isFavorited;
+        if (_quizData != null) {
+          _quizData!["favoriteCount"] =
+              (_quizData!["favoriteCount"] ?? 0) + (isFavorited ? 1 : -1);
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+      }
+    }
+  }
+
+  Future<void> _createGame() async {
+    try {
+      final session = await ApiService.createSession(
+        widget.quizId,
+        title: _quizData!["title"],
+        estimatedMinutes: (_quizData!["questionCount"] as int) * 2,
+      );
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Game Created!"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Session Code:", style: TextStyle(fontSize: 16)),
+                const SizedBox(height: 8),
+                Text(
+                  session["code"],
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text("Players can join using this code in the Join tab."),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => context.pop(),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error creating game: ${e.toString()}")),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteQuiz() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Quiz?"),
+        content: const Text("This action cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => context.pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ApiService.deleteQuiz(widget.quizId);
+        if (mounted) {
+          context.pop();
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Quiz deleted")));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+        }
+      }
     }
   }
 
@@ -128,6 +284,18 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
           onPressed: () => context.pop(),
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              isFavorited ? Icons.favorite : Icons.favorite_border,
+              color: isFavorited ? Colors.red : Colors.white,
+            ),
+            onPressed: _toggleFavorite,
+          ),
+          if (_isOwner)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.white),
+              onPressed: _deleteQuiz,
+            ),
           if (!_isOwner)
             IconButton(
               icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -276,11 +444,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
           ),
           if (!_isOwner)
             OutlinedButton(
-              onPressed: () {
-                setState(() {
-                  isFollowing = !isFollowing;
-                });
-              },
+              onPressed: _toggleFollow,
               style: OutlinedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.surface,
                 foregroundColor: isFollowing
@@ -366,7 +530,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: _createGame,
                   icon: const Icon(Icons.group),
                   label: const Text(
                     "Create Game",

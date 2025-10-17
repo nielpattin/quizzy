@@ -23,9 +23,9 @@ class Quiz {
     return Quiz(
       id: json["id"] as String,
       title: json["title"] as String,
-      timeAgo: json["timeAgo"] as String,
-      plays: json["plays"] as int,
-      questions: json["questions"] as int,
+      timeAgo: json["timeAgo"] as String? ?? "Recently",
+      plays: (json["plays"] ?? json["playCount"] ?? 0) as int,
+      questions: (json["questions"] ?? json["questionCount"] ?? 0) as int,
       isPublic: json["isPublic"] as bool?,
       gradient: gradient,
     );

@@ -158,7 +158,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: InputDecoration(
                   labelText: "Category",
                   border: OutlineInputBorder(

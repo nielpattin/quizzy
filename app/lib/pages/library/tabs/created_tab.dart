@@ -147,7 +147,7 @@ class _QuizzesListState extends State<_QuizzesList> {
           questions: quiz.questions,
           plays: quiz.plays,
           gradient: quiz.gradient,
-          onTap: () => context.push("/quiz/1"),
+          onTap: () => context.push("/quiz/${quiz.id}"),
         );
       },
     );

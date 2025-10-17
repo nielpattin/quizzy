@@ -4,7 +4,7 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "dart:convert";
-import "../../services/test_data_service.dart";
+import "../../services/api_service.dart";
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -34,6 +34,13 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh profile when dependencies change (e.g., navigation)
+    _loadProfile();
+  }
+
+  @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
@@ -53,6 +60,7 @@ class _ProfilePageState extends State<ProfilePage>
     try {
       final token = session.accessToken;
       final serverUrl = dotenv.env["SERVER_URL"]!;
+      final userId = session.user.id;
       debugPrint('[PROFILE] Fetching from: $serverUrl/api/user/profile');
 
       final results = await Future.wait([
@@ -60,11 +68,9 @@ class _ProfilePageState extends State<ProfilePage>
           Uri.parse("$serverUrl/api/user/profile"),
           headers: {"Authorization": "Bearer $token"},
         ),
-        TestDataService.getProfileStats(),
-        TestDataService.getProfileBio(),
-        TestDataService.getProfileQuizzes(),
-        TestDataService.getProfileSessions(),
-        TestDataService.getProfilePosts(),
+        ApiService.getUserQuizzes(userId),
+        ApiService.getHostedSessions(userId),
+        ApiService.getUserPosts(userId),
       ]);
 
       final profileResponse = results[0] as http.Response;
@@ -74,17 +80,28 @@ class _ProfilePageState extends State<ProfilePage>
 
       if (profileResponse.statusCode == 200) {
         final profileData = json.decode(profileResponse.body);
+        final quizzes = results[1] as List<dynamic>;
+        final sessions = results[2] as List<dynamic>;
+        final posts = results[3] as List<dynamic>;
+
+        final stats = {
+          "quizzes": quizzes.length,
+          "sessions": sessions.length,
+          "posts": posts.length,
+          "followers": profileData["followersCount"] ?? 0,
+          "following": profileData["followingCount"] ?? 0,
+        };
 
         if (mounted) {
           setState(() {
             _username = profileData["username"];
             _fullName = profileData["fullName"];
             _avatarUrl = profileData["profilePictureUrl"];
-            _stats = results[1] as Map<String, dynamic>;
-            _bio = results[2] as Map<String, dynamic>;
-            _quizzes = results[3] as List<dynamic>;
-            _sessions = results[4] as List<dynamic>;
-            _posts = results[5] as List<dynamic>;
+            _stats = stats;
+            _bio = {"bio": profileData["bio"] ?? ""};
+            _quizzes = quizzes;
+            _sessions = sessions;
+            _posts = posts;
             _isLoading = false;
           });
           debugPrint(
@@ -99,9 +116,8 @@ class _ProfilePageState extends State<ProfilePage>
           _isLoading = false;
         });
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       debugPrint('[PROFILE] Error loading profile: $e');
-      debugPrint('[PROFILE] Stack trace: $stackTrace');
       setState(() {
         _isLoading = false;
       });
@@ -120,8 +136,11 @@ class _ProfilePageState extends State<ProfilePage>
               Icons.edit_outlined,
               color: Theme.of(context).colorScheme.onSurface,
             ),
-            onPressed: () {
-              context.go("/profile-info");
+            onPressed: () async {
+              final result = await context.push<bool>("/edit-profile");
+              if (result == true) {
+                _loadProfile(); // Refresh profile if update was successful
+              }
             },
           ),
           IconButton(
@@ -286,94 +305,23 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildBioSection() {
-    if (_bio == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 200,
-              height: 16,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            SizedBox(height: 8),
-            Container(
-              width: 150,
-              height: 14,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ],
-        ),
-      );
+    final bioText = _bio?["bio"] as String?;
+
+    if (bioText == null || bioText.isEmpty) {
+      return SizedBox.shrink();
     }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _bio!["bio"],
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontSize: 13,
-              height: 1.3,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(
-                Icons.location_on,
-                size: 14,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-              SizedBox(width: 4),
-              Text(
-                _bio!["location"],
-                style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontSize: 12,
-                ),
-              ),
-              SizedBox(width: 12),
-              Icon(
-                Icons.cake,
-                size: 14,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-              SizedBox(width: 4),
-              Text(
-                _bio!["birthday"],
-                style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ],
+      child: Text(
+        bioText,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontSize: 13,
+          height: 1.3,
+        ),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -424,9 +372,10 @@ class _ProfilePageState extends State<ProfilePage>
       itemBuilder: (context, index) {
         final quiz = _quizzes[index];
         return _QuizCard(
+          id: quiz["id"],
           title: quiz["title"],
-          category: quiz["category"],
-          plays: quiz["plays"],
+          category: quiz["category"] ?? "General",
+          plays: quiz["playCount"] ?? 0,
           color: Colors.primaries[index % Colors.primaries.length],
         );
       },
@@ -541,12 +490,14 @@ class _StatItem extends StatelessWidget {
 }
 
 class _QuizCard extends StatelessWidget {
+  final String id;
   final String title;
   final String category;
   final int plays;
   final Color color;
 
   const _QuizCard({
+    required this.id,
     required this.title,
     required this.category,
     required this.plays,
@@ -556,9 +507,7 @@ class _QuizCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {
-        // TODO: Navigate to quiz detail page
-      },
+      onTap: () => context.push("/quiz/$id"),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(

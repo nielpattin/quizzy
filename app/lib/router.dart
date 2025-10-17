@@ -2,19 +2,21 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "pages/common/splash_page.dart";
 import "pages/common/notification_page.dart";
-import "pages/auth/walkthrough_page.dart";
+import "pages/auth/welcome_page.dart";
 import "pages/auth/get_started_page.dart";
+import "pages/auth/account_type_page.dart";
 import "pages/auth/login_page.dart";
 import "pages/auth/signup_page.dart";
 import "pages/auth/forgot_password_page.dart";
 import "pages/auth/email_confirmation_page.dart";
 import "pages/auth/setup_account_page.dart";
-import "pages/auth/account_type_page.dart";
 import "pages/home/main_navigation_page.dart";
+
 import "pages/profile/username_page.dart";
 import "pages/profile/profile_info_page.dart";
 import "pages/profile/profile_page.dart";
 import "pages/profile/settings_page.dart";
+import "pages/profile/edit_profile_page.dart";
 import "pages/social/search_page.dart";
 import "pages/quiz/quiz_detail_page.dart";
 import "pages/quiz/category_page.dart";
@@ -49,10 +51,10 @@ final router = GoRouter(
       ),
     ),
     GoRoute(
-      path: "/walkthrough",
+      path: "/welcome",
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
-        child: const WalkthroughPage(),
+        child: const WelcomePage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -112,6 +114,7 @@ final router = GoRouter(
       path: "/home",
       builder: (context, state) => const MainNavigationPage(initialIndex: 0),
     ),
+
     GoRoute(
       path: "/library",
       builder: (context, state) => const MainNavigationPage(initialIndex: 1),
@@ -120,6 +123,7 @@ final router = GoRouter(
       path: "/join",
       builder: (context, state) => const MainNavigationPage(initialIndex: 2),
     ),
+
     GoRoute(
       path: "/search",
       pageBuilder: (context, state) => CustomTransitionPage(
@@ -232,6 +236,22 @@ final router = GoRouter(
           },
         );
       },
+    ),
+    GoRoute(
+      path: "/edit-profile",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const EditProfilePage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                ),
+            child: child,
+          );
+        },
+      ),
     ),
     GoRoute(
       path: "/continue-playing",
