@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "../../services/api_service.dart";
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -10,6 +11,117 @@ class NotificationPage extends StatefulWidget {
 
 class _NotificationPageState extends State<NotificationPage> {
   int _selectedTab = 0;
+  List<dynamic> _notifications = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() => _isLoading = true);
+    try {
+      final notifications = await ApiService.getNotifications();
+      setState(() {
+        _notifications = notifications;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error loading notifications: ${e.toString()}"),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _markAsRead(String notificationId) async {
+    try {
+      await ApiService.markAsRead(notificationId);
+      setState(() {
+        final index = _notifications.indexWhere(
+          (n) => n["id"] == notificationId,
+        );
+        if (index != -1) {
+          _notifications[index]["isUnread"] = false;
+        }
+      });
+    } catch (e) {
+      // Silently ignore errors when marking as read
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    try {
+      await ApiService.markAllAsRead();
+      setState(() {
+        for (var notification in _notifications) {
+          notification["isUnread"] = false;
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+      }
+    }
+  }
+
+  Future<void> _deleteNotification(String notificationId) async {
+    try {
+      await ApiService.deleteNotification(notificationId);
+      setState(() {
+        _notifications.removeWhere((n) => n["id"] == notificationId);
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+      }
+    }
+  }
+
+  String _formatTime(String timestamp) {
+    try {
+      final createdAt = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(createdAt);
+
+      if (difference.inMinutes < 60) {
+        return "${difference.inMinutes}m ago";
+      } else if (difference.inHours < 24) {
+        return "${difference.inHours}h ago";
+      } else if (difference.inDays < 7) {
+        return "${difference.inDays}d ago";
+      } else {
+        return "${(difference.inDays / 7).floor()}w ago";
+      }
+    } catch (e) {
+      return "";
+    }
+  }
+
+  IconData _getNotificationIcon(String type) {
+    switch (type) {
+      case "like":
+        return Icons.favorite;
+      case "comment":
+        return Icons.comment;
+      case "follow":
+        return Icons.person_add;
+      case "quiz":
+        return Icons.quiz;
+      default:
+        return Icons.notifications;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +150,7 @@ class _NotificationPageState extends State<NotificationPage> {
               color: Theme.of(context).colorScheme.onSurface,
             ),
             tooltip: "Mark all as read",
-            onPressed: () {},
+            onPressed: _markAllAsRead,
           ),
         ],
       ),
@@ -77,101 +189,111 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Widget _buildNotifications() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_notifications.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.notifications_off_outlined,
+              size: 64,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "No notifications yet",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: 10,
+      itemCount: _notifications.length,
       itemBuilder: (context, index) {
-        final isUnread = index < 3;
-        return _NotificationItem(
-          avatar: Icons.person,
-          avatarColor: Colors.primaries[index % Colors.primaries.length],
-          title: _getNotificationTitle(index),
-          subtitle: _getNotificationSubtitle(index),
-          time: _getNotificationTime(index),
-          isUnread: isUnread,
-          icon: _getNotificationIcon(index),
+        final notification = _notifications[index];
+        return Dismissible(
+          key: Key(notification["id"]),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
+          onDismissed: (_) => _deleteNotification(notification["id"]),
+          child: GestureDetector(
+            onTap: () {
+              if (notification["isUnread"]) {
+                _markAsRead(notification["id"]);
+              }
+            },
+            child: _NotificationItem(
+              avatar: Icons.person,
+              avatarColor: Theme.of(context).colorScheme.primary,
+              title: notification["title"] ?? "",
+              subtitle: notification["message"] ?? "",
+              time: _formatTime(notification["createdAt"]),
+              isUnread: notification["isUnread"] ?? false,
+              icon: _getNotificationIcon(notification["type"] ?? ""),
+            ),
+          ),
         );
       },
     );
   }
 
   Widget _buildFriendRequests() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return _FriendRequestItem(
-          name: "User ${index + 1}",
-          username: "@user${index + 1}",
-          mutualFriends: (index + 1) * 3,
-          avatarColor: Colors.primaries[index % Colors.primaries.length],
-        );
-      },
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.people_outline,
+            size: 64,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "No friend requests",
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Friend requests will appear here",
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.4),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
-  }
-
-  String _getNotificationTitle(int index) {
-    final titles = [
-      "Ly Nguyên liked your quiz",
-      "Nhat Vi commented on your post",
-      "New quiz in History collection",
-      "You earned a new badge!",
-      "Nhat Bao started following you",
-      "Your quiz reached 1K plays",
-      "Ly Nguyên invited you to a quiz",
-      "New comment on your quiz",
-      "Weekly summary is ready",
-      "Nhat Simon shared your quiz",
-    ];
-    return titles[index % titles.length];
-  }
-
-  String _getNotificationSubtitle(int index) {
-    final subtitles = [
-      "Modern Art or Just Scribbles?",
-      "That's an interesting take!",
-      "Check out new quizzes in your favorite collection",
-      "You've completed 50 quizzes!",
-      "Nhat Bao is now following you",
-      "Congratulations! Your quiz is trending",
-      "Join the quiz challenge now",
-      "Someone commented on What is the world of",
-      "See how you performed this week",
-      "Your quiz was shared 10 times",
-    ];
-    return subtitles[index % subtitles.length];
-  }
-
-  String _getNotificationTime(int index) {
-    final times = [
-      "2m ago",
-      "15m ago",
-      "1h ago",
-      "2h ago",
-      "5h ago",
-      "1d ago",
-      "2d ago",
-      "3d ago",
-      "1w ago",
-      "2w ago",
-    ];
-    return times[index % times.length];
-  }
-
-  IconData _getNotificationIcon(int index) {
-    final icons = [
-      Icons.favorite,
-      Icons.comment,
-      Icons.collections_bookmark,
-      Icons.military_tech,
-      Icons.person_add,
-      Icons.trending_up,
-      Icons.mail,
-      Icons.comment,
-      Icons.bar_chart,
-      Icons.share,
-    ];
-    return icons[index % icons.length];
   }
 }
 
@@ -350,129 +472,6 @@ class _NotificationItem extends StatelessWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _FriendRequestItem extends StatelessWidget {
-  final String name;
-  final String username;
-  final int mutualFriends;
-  final Color avatarColor;
-
-  const _FriendRequestItem({
-    required this.name,
-    required this.username,
-    required this.mutualFriends,
-    required this.avatarColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: avatarColor,
-                child: Icon(
-                  Icons.person,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  size: 28,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      username,
-                      style: TextStyle(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "$mutualFriends mutual friends",
-                      style: TextStyle(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.54),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(
-                    "Accept",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.surface,
-                    foregroundColor: Theme.of(context).colorScheme.primary,
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(
-                    "Decline",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

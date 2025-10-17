@@ -162,8 +162,8 @@ class _SplashPageState extends State<SplashPage>
     await _ensureMinimumDelay(startTime);
 
     if (mounted) {
-      debugPrint('[SPLASH] No valid session, redirecting to /walkthrough');
-      context.go("/walkthrough");
+      debugPrint('[SPLASH] No valid session, redirecting to /welcome');
+      context.go("/welcome");
     }
   }
 

@@ -48,7 +48,7 @@ class _AuthModalState extends State<AuthModal> {
       debugPrint('  - User email: ${response.user?.email}');
       debugPrint('  - User metadata: ${response.user?.userMetadata}');
       debugPrint(
-        '  - Access token: ${response.session?.accessToken?.substring(0, 20)}...',
+        '  - Access token: ${response.session?.accessToken.substring(0, 20)}...',
       );
       debugPrint('  - Session user: ${response.session?.user.id}');
 
