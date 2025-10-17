@@ -19,7 +19,6 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   late int _currentIndex;
-  bool _isCheckingSetup = true;
 
   @override
   void initState() {
@@ -32,9 +31,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     try {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
-        setState(() {
-          _isCheckingSetup = false;
-        });
         return;
       }
 
@@ -62,12 +58,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         }
       }
     } catch (e) {
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCheckingSetup = false;
-        });
-      }
+      // Silently ignore setup check errors
     }
   }
 
@@ -83,7 +74,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       body: IndexedStack(
         index: _currentIndex,
         children: const [
-          HomePage(showBottomNav: false),
+          HomePage(),
           LibraryPage(showBottomNav: false),
           JoinPage(showBottomNav: false),
         ],
@@ -138,6 +129,7 @@ class _BottomNav extends StatelessWidget {
                 isSelected: selectedIndex == 2,
                 onTap: () => onTap(2),
               ),
+
               _NavItem(
                 icon: Icons.add_box_outlined,
                 label: "Create",

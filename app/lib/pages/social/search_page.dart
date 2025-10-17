@@ -1,5 +1,7 @@
+import "dart:async";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "../../services/api_service.dart";
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -12,6 +14,11 @@ class _SearchPageState extends State<SearchPage> {
   final _searchController = TextEditingController();
   int _selectedFilter = 0;
   bool _hasSearched = false;
+  bool _isLoading = false;
+  List<dynamic> _quizResults = [];
+  List<dynamic> _userResults = [];
+  List<dynamic> _collectionResults = [];
+  Timer? _debounce;
   final List<String> _recentSearches = [
     "History",
     "Javascript",
@@ -23,16 +30,70 @@ class _SearchPageState extends State<SearchPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      if (_debounce?.isActive ?? false) _debounce!.cancel();
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        if (_searchController.text.isNotEmpty) {
+          _performSearch();
+        }
+      });
+    });
+  }
+
+  @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  void _performSearch() {
-    if (_searchController.text.isNotEmpty) {
+  Future<void> _performSearch() async {
+    final query = _searchController.text.trim();
+
+    if (query.isEmpty) {
       setState(() {
-        _hasSearched = true;
+        _hasSearched = false;
+        _quizResults = [];
+        _userResults = [];
+        _collectionResults = [];
       });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _hasSearched = true;
+    });
+
+    try {
+      if (_selectedFilter == 0) {
+        final results = await ApiService.searchQuizzes(query);
+        setState(() {
+          _quizResults = results;
+        });
+      } else if (_selectedFilter == 1) {
+        final results = await ApiService.searchUsers(query);
+        setState(() {
+          _userResults = results;
+        });
+      } else {
+        final results = await ApiService.search(query);
+        setState(() {
+          _collectionResults = results["collections"] ?? [];
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -40,6 +101,9 @@ class _SearchPageState extends State<SearchPage> {
     setState(() {
       _searchController.clear();
       _hasSearched = false;
+      _quizResults = [];
+      _userResults = [];
+      _collectionResults = [];
     });
   }
 
@@ -120,19 +184,34 @@ class _SearchPageState extends State<SearchPage> {
                   _FilterButton(
                     label: "Quiz",
                     isSelected: _selectedFilter == 0,
-                    onTap: () => setState(() => _selectedFilter = 0),
+                    onTap: () {
+                      setState(() => _selectedFilter = 0);
+                      if (_searchController.text.isNotEmpty) {
+                        _performSearch();
+                      }
+                    },
                   ),
                   SizedBox(width: 12),
                   _FilterButton(
                     label: "People",
                     isSelected: _selectedFilter == 1,
-                    onTap: () => setState(() => _selectedFilter = 1),
+                    onTap: () {
+                      setState(() => _selectedFilter = 1);
+                      if (_searchController.text.isNotEmpty) {
+                        _performSearch();
+                      }
+                    },
                   ),
                   SizedBox(width: 12),
                   _FilterButton(
                     label: "Collections",
                     isSelected: _selectedFilter == 2,
-                    onTap: () => setState(() => _selectedFilter = 2),
+                    onTap: () {
+                      setState(() => _selectedFilter = 2);
+                      if (_searchController.text.isNotEmpty) {
+                        _performSearch();
+                      }
+                    },
                   ),
                 ],
               ),
@@ -219,6 +298,10 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildSearchResults() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (_selectedFilter == 0) {
       return _buildQuizResults();
     } else if (_selectedFilter == 1) {
@@ -229,6 +312,20 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildQuizResults() {
+    if (_quizResults.isEmpty) {
+      return Center(
+        child: Text(
+          "No quizzes found",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -237,112 +334,115 @@ class _SearchPageState extends State<SearchPage> {
         mainAxisSpacing: 12,
         childAspectRatio: 0.75,
       ),
-      itemCount: 8,
+      itemCount: _quizResults.length,
       itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    topRight: Radius.circular(12),
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "16 Qs",
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+        final quiz = _quizResults[index];
+        return GestureDetector(
+          onTap: () => context.push("/quiz/${quiz["id"]}"),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
                     ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  child: Stack(
                     children: [
-                      Text(
-                        "What is the world of",
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 10,
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            child: Icon(
-                              Icons.person,
-                              size: 12,
-                              color: Theme.of(context).colorScheme.onSurface,
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "${quiz["questionCount"]} Qs",
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              "Nhat Vi",
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.6),
-                                fontSize: 11,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "1 month ago • 7.6K plays",
-                        style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.38),
-                          fontSize: 10,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          quiz["title"],
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 10,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              child: Icon(
+                                Icons.person,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                quiz["user"]["fullName"] ?? "Unknown",
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                  fontSize: 11,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          "${quiz["playCount"]} plays",
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.38),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -350,81 +450,69 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildPeopleResults() {
+    if (_userResults.isEmpty) {
+      return Center(
+        child: Text(
+          "No users found",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: 8,
+      itemCount: _userResults.length,
       itemBuilder: (context, index) {
-        final isFollowing = index % 2 == 1;
+        final user = _userResults[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor:
-                    Colors.primaries[index % Colors.primaries.length],
-                child: Icon(
-                  Icons.person,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  size: 28,
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Nhat ${['Vi', 'Simon', 'Bao', 'Le', 'Long', 'Quang', 'Son', 'Anh'][index]}",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "@Nhat_${['vi_2k', 'Simon', 'Bao', 'Le', 'Long', 'Quang', 'Son', 'Anh'][index]}",
-                      style: TextStyle(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isFollowing
-                      ? Theme.of(context).colorScheme.surface
-                      : Theme.of(context).colorScheme.primary,
-                  foregroundColor: isFollowing
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.white,
-                  side: isFollowing
-                      ? BorderSide(
-                          color: Theme.of(context).colorScheme.primary,
-                          width: 2,
-                        )
+          child: GestureDetector(
+            onTap: () => context.push("/profile/${user["id"]}"),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  backgroundImage: user["profilePictureUrl"] != null
+                      ? NetworkImage(user["profilePictureUrl"])
                       : null,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
+                  child: user["profilePictureUrl"] == null
+                      ? const Icon(Icons.person, color: Colors.white, size: 28)
+                      : null,
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user["fullName"] ?? "Unknown",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "@${user["username"] ?? "unknown"}",
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Text(
-                  isFollowing ? "Following" : "Follow",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -432,6 +520,20 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildCollectionResults() {
+    if (_collectionResults.isEmpty) {
+      return Center(
+        child: Text(
+          "No collections found",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -440,58 +542,66 @@ class _SearchPageState extends State<SearchPage> {
         mainAxisSpacing: 12,
         childAspectRatio: 1.0,
       ),
-      itemCount: 10,
+      itemCount: _collectionResults.length,
       itemBuilder: (context, index) {
-        final collections = [
-          "Frontend",
-          "Backend",
-          "Fullstack",
-          "Software",
-          "Computing",
-          "Systems",
-          "Algorithms",
-          "OOP",
-          "Security",
-          "AI",
-        ];
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.9),
+        final collection = _collectionResults[index];
+        return GestureDetector(
+          onTap: () => context.push("/collection/${collection["id"]}"),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.9),
+                        ],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          collection["title"],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "${collection["quizCount"] ?? 0} quizzes",
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    collections[index],
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

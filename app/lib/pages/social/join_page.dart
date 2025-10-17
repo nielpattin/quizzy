@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:mobile_scanner/mobile_scanner.dart";
 import "package:go_router/go_router.dart";
 import "../../widgets/bottom_nav.dart";
+import "../../services/api_service.dart";
 
 class JoinPage extends StatefulWidget {
   final bool showBottomNav;
@@ -150,10 +151,86 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-class _EnterCodeView extends StatelessWidget {
+class _EnterCodeView extends StatefulWidget {
   final TextEditingController controller;
 
   const _EnterCodeView({required this.controller});
+
+  @override
+  State<_EnterCodeView> createState() => _EnterCodeViewState();
+}
+
+class _EnterCodeViewState extends State<_EnterCodeView> {
+  bool _isLoading = false;
+
+  Future<void> _joinSession() async {
+    final code = widget.controller.text.trim().toUpperCase();
+
+    if (code.isEmpty || code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter a valid 6-character code"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final session = await ApiService.getSessionByCode(code);
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Found Game!"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Quiz: ${session["title"]}"),
+                const SizedBox(height: 8),
+                Text("Host: ${session["host"]["fullName"]}"),
+                const SizedBox(height: 8),
+                Text("Status: ${session["isLive"] ? "Live" : "Waiting"}"),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => context.pop(),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  context.pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Game sessions will be available in Phase 2",
+                      ),
+                    ),
+                  );
+                },
+                child: const Text("Join"),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +266,7 @@ class _EnterCodeView extends StatelessWidget {
           ),
           SizedBox(height: 40),
           TextField(
-            controller: controller,
+            controller: widget.controller,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface,
@@ -220,25 +297,7 @@ class _EnterCodeView extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                if (controller.text.length == 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "Joining game with code: ${controller.text}",
-                      ),
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Please enter a valid 6-digit code"),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
+              onPressed: _isLoading ? null : _joinSession,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
@@ -248,10 +307,22 @@ class _EnterCodeView extends StatelessWidget {
                 ),
                 elevation: 0,
               ),
-              child: Text(
-                "Join Game",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      "Join Game",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ],
