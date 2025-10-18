@@ -5,6 +5,7 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "../../services/api_service.dart";
+import "../../utils/image_helper.dart";
 
 class QuizDetailPage extends StatefulWidget {
   final String quizId;
@@ -410,10 +411,14 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
           CircleAvatar(
             radius: 24,
             backgroundColor: Theme.of(context).colorScheme.primary,
-            backgroundImage: user["profilePictureUrl"] != null
-                ? NetworkImage(user["profilePictureUrl"])
-                : null,
-            child: user["profilePictureUrl"] == null
+            backgroundImage: ImageHelper.createValidNetworkImage(
+              user["profilePictureUrl"],
+            ),
+            child:
+                ImageHelper.createValidNetworkImage(
+                      user["profilePictureUrl"],
+                    ) ==
+                    null
                 ? const Icon(Icons.person, color: Colors.white, size: 28)
                 : null,
           ),

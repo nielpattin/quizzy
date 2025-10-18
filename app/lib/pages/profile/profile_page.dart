@@ -5,6 +5,7 @@ import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "dart:convert";
 import "../../services/api_service.dart";
+import "../../utils/image_helper.dart";
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -69,7 +70,7 @@ class _ProfilePageState extends State<ProfilePage>
           headers: {"Authorization": "Bearer $token"},
         ),
         ApiService.getUserQuizzes(userId),
-        ApiService.getHostedSessions(userId),
+        ApiService.getPlayedSessions(userId),
         ApiService.getUserPosts(userId),
       ]);
 
@@ -189,10 +190,12 @@ class _ProfilePageState extends State<ProfilePage>
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : _avatarUrl != null && _avatarUrl!.isNotEmpty
+              : ImageHelper.createValidNetworkImage(_avatarUrl) != null
               ? CircleAvatar(
                   radius: 32,
-                  backgroundImage: NetworkImage(_avatarUrl!),
+                  backgroundImage: ImageHelper.createValidNetworkImage(
+                    _avatarUrl,
+                  )!,
                   backgroundColor: Theme.of(context).colorScheme.primary,
                 )
               : CircleAvatar(
@@ -401,12 +404,24 @@ class _ProfilePageState extends State<ProfilePage>
       itemCount: _sessions.length,
       itemBuilder: (context, index) {
         final session = _sessions[index];
+        final participant = session["participant"] as Map<String, dynamic>?;
+        final score = participant?["score"] ?? 0;
+        final rank = participant?["rank"] ?? 0;
+        final totalPlayers = session["joinedCount"] ?? 0;
+        final startedAt = session["startedAt"];
+
+        String date = "Unknown date";
+        if (startedAt != null) {
+          final dateTime = DateTime.parse(startedAt).toLocal();
+          date = "${dateTime.day}/${dateTime.month}/${dateTime.year}";
+        }
+
         return _SessionCard(
-          title: session["title"],
-          date: session["date"],
-          score: "${session["score"]}",
-          rank: "${session["rank"]}",
-          totalPlayers: "${session["totalPlayers"]}",
+          title: session["title"] ?? "Untitled Session",
+          date: date,
+          score: "$score",
+          rank: "$rank",
+          totalPlayers: "$totalPlayers",
         );
       },
     );
@@ -431,11 +446,36 @@ class _ProfilePageState extends State<ProfilePage>
       itemCount: _posts.length,
       itemBuilder: (context, index) {
         final post = _posts[index];
+        final likes = post["likesCount"] ?? 0;
+        final comments = post["commentsCount"] ?? 0;
+        final createdAt = post["createdAt"];
+
+        String time = "Unknown time";
+        if (createdAt != null) {
+          final dateTime = DateTime.parse(createdAt).toLocal();
+          final now = DateTime.now();
+          final difference = now.difference(dateTime);
+
+          if (difference.inDays == 0) {
+            if (difference.inHours == 0) {
+              time = "${difference.inMinutes}m ago";
+            } else {
+              time = "${difference.inHours}h ago";
+            }
+          } else if (difference.inDays == 1) {
+            time = "Yesterday";
+          } else if (difference.inDays < 7) {
+            time = "${difference.inDays}d ago";
+          } else {
+            time = "${dateTime.day}/${dateTime.month}/${dateTime.year}";
+          }
+        }
+
         return _PostCard(
-          text: post["text"],
-          likes: post["likes"],
-          comments: post["comments"],
-          time: post["time"],
+          text: post["text"] ?? "",
+          likes: likes,
+          comments: comments,
+          time: time,
           fullName: _fullName ?? "User",
           avatarUrl: _avatarUrl,
         );
@@ -746,10 +786,12 @@ class _PostCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              avatarUrl != null && avatarUrl!.isNotEmpty
+              ImageHelper.createValidNetworkImage(avatarUrl) != null
                   ? CircleAvatar(
                       radius: 20,
-                      backgroundImage: NetworkImage(avatarUrl!),
+                      backgroundImage: ImageHelper.createValidNetworkImage(
+                        avatarUrl,
+                      )!,
                       backgroundColor: Theme.of(context).colorScheme.primary,
                     )
                   : CircleAvatar(

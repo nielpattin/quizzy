@@ -53,7 +53,7 @@
     "editor.defaultFormatter": "fronterior.biome-monorepo"
   },
   "[json]": {
-    "editor.defaultFormatter": "fronterior.biome-monorepo"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[jsonc]": {
     "editor.defaultFormatter": "vscode.json-language-features"

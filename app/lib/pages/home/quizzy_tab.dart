@@ -332,6 +332,7 @@ class _QuizzyTabState extends State<QuizzyTab> {
                           category: item["category"] ?? "General",
                           count: item["playCount"] ?? 0,
                           isSessions: item["isSessions"] ?? false,
+                          quizId: item["id"]?.toString() ?? "1",
                         );
                       },
                     ),

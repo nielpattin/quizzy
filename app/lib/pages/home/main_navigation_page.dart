@@ -8,6 +8,7 @@ import "home_page.dart";
 import "../library/library_page.dart";
 import "../social/join_page.dart";
 import "../../widgets/auth_modal.dart";
+import "../../utils/camera_state_manager.dart";
 
 class MainNavigationPage extends StatefulWidget {
   final int initialIndex;
@@ -19,12 +20,18 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   late int _currentIndex;
+  final CameraStateManager _cameraStateManager = CameraStateManager();
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     _checkSetupStatus();
+
+    // Update camera state based on initial index
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateCameraState();
+    });
   }
 
   Future<void> _checkSetupStatus() async {
@@ -63,9 +70,34 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   }
 
   void _onNavTap(int index, BuildContext context) {
+    final previousIndex = _currentIndex;
     setState(() {
       _currentIndex = index;
     });
+
+    debugPrint(
+      "DEBUG: MainNavigationPage navigation changed from $previousIndex to $index",
+    );
+
+    // Update camera state when navigation changes
+    _updateCameraState();
+  }
+
+  /// Update camera state based on current navigation index
+  void _updateCameraState() {
+    debugPrint(
+      "DEBUG: MainNavigationPage updating camera state for index $_currentIndex",
+    );
+
+    if (_currentIndex == 2) {
+      // We're on the join page
+      debugPrint("DEBUG: MainNavigationPage setting onJoinPage to true");
+      _cameraStateManager.setOnJoinPage(true);
+    } else {
+      // We're not on the join page
+      debugPrint("DEBUG: MainNavigationPage setting onJoinPage to false");
+      _cameraStateManager.setOnJoinPage(false);
+    }
   }
 
   @override
@@ -121,7 +153,14 @@ class _BottomNav extends StatelessWidget {
                 icon: Icons.library_books_outlined,
                 label: "Library",
                 isSelected: selectedIndex == 1,
-                onTap: () => onTap(1),
+                onTap: () {
+                  final session = Supabase.instance.client.auth.currentSession;
+                  if (session == null) {
+                    showAuthModal(context);
+                  } else {
+                    onTap(1);
+                  }
+                },
               ),
               _NavItem(
                 icon: Icons.play_arrow,

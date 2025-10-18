@@ -2,6 +2,7 @@ import "dart:async";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../services/api_service.dart";
+import "../../utils/image_helper.dart";
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -478,10 +479,14 @@ class _SearchPageState extends State<SearchPage> {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: Theme.of(context).colorScheme.primary,
-                  backgroundImage: user["profilePictureUrl"] != null
-                      ? NetworkImage(user["profilePictureUrl"])
-                      : null,
-                  child: user["profilePictureUrl"] == null
+                  backgroundImage: ImageHelper.createValidNetworkImage(
+                    user["profilePictureUrl"],
+                  ),
+                  child:
+                      ImageHelper.createValidNetworkImage(
+                            user["profilePictureUrl"],
+                          ) ==
+                          null
                       ? const Icon(Icons.person, color: Colors.white, size: 28)
                       : null,
                 ),

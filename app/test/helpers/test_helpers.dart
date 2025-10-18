@@ -75,8 +75,11 @@ Map<String, dynamic> createMockSession({
     "code": "ABC123",
     "isLive": isLive ?? false,
     "estimatedMinutes": 30,
+    "joinedCount": 5,
+    "startedAt": "2024-01-01T00:00:00Z",
+    "endedAt": "2024-01-01T00:30:00Z",
     "createdAt": "2024-01-01T00:00:00Z",
-    "host": {"id": "user-123", "fullName": "Test User"},
+    "participant": {"score": 85, "rank": 2, "joinedAt": "2024-01-01T00:00:00Z"},
   };
 }
 
@@ -90,9 +93,8 @@ Map<String, dynamic> createMockPost({
     "text": text ?? "Test post content",
     "likesCount": likesCount ?? 10,
     "commentsCount": 5,
-    "isLiked": false,
     "createdAt": "2024-01-01T00:00:00Z",
-    "user": {"id": "user-123", "fullName": "Test User"},
+    "updatedAt": "2024-01-01T00:00:00Z",
   };
 }
 

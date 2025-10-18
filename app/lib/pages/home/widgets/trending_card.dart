@@ -7,6 +7,7 @@ class TrendingCard extends StatelessWidget {
   final String category;
   final int count;
   final bool isSessions;
+  final String quizId;
 
   const TrendingCard({
     super.key,
@@ -15,12 +16,13 @@ class TrendingCard extends StatelessWidget {
     required this.category,
     required this.count,
     this.isSessions = false,
+    required this.quizId,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => context.push("/quiz/1"),
+      onTap: () => context.push("/quiz/$quizId"),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: 160,
