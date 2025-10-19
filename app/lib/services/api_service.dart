@@ -526,4 +526,32 @@ class ApiService {
       );
     });
   }
+
+  static Future<Map<String, dynamic>> fetchQuestionWithTiming(
+    String sessionId,
+    int questionIndex,
+  ) async {
+    return _handleRequest(() async {
+      final headers = await _getHeaders();
+      return http.get(
+        Uri.parse("$_baseUrl/api/session/$sessionId/question/$questionIndex"),
+        headers: headers,
+      );
+    });
+  }
+
+  static Future<Map<String, dynamic>> submitAnswerWithValidation(
+    String sessionId,
+    String questionId,
+    String answer,
+  ) async {
+    return _handleRequest(() async {
+      final headers = await _getHeaders();
+      return http.post(
+        Uri.parse("$_baseUrl/api/session/$sessionId/answer"),
+        headers: headers,
+        body: jsonEncode({"questionId": questionId, "answer": answer}),
+      );
+    });
+  }
 }
