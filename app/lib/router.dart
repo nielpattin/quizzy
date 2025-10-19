@@ -26,6 +26,7 @@ import "pages/quiz/create_quiz_page.dart";
 import "pages/quiz/add_questions_page.dart";
 import "pages/quiz/play_quiz_page.dart";
 import "pages/quiz/create_question_page.dart";
+import "pages/quiz/live_quiz_session_page.dart";
 import "utils/route_observer.dart";
 
 final router = GoRouter(
@@ -355,6 +356,19 @@ final router = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: PlayQuizPage(quizId: quizId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/session/live/:sessionId",
+      pageBuilder: (context, state) {
+        final sessionId = state.pathParameters["sessionId"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: LiveQuizSessionPage(sessionId: sessionId),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
