@@ -26,6 +26,9 @@ class CreatedTab extends StatefulWidget {
 }
 
 class _CreatedTabState extends State<CreatedTab> {
+  int? _quizzesCount;
+  int? _collectionsCount;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -37,7 +40,7 @@ class _CreatedTabState extends State<CreatedTab> {
         ),
         SectionHeader(
           title: widget.selectedSubTab == 0 ? "Quizzes" : "Collections",
-          count: widget.selectedSubTab == 0 ? 30 : 5,
+          count: widget.selectedSubTab == 0 ? _quizzesCount : _collectionsCount,
           showSort: widget.selectedSubTab == 0,
           sort: widget.sort,
           onSortTap: widget.onSortTap,
@@ -55,8 +58,21 @@ class _CreatedTabState extends State<CreatedTab> {
         ),
         Expanded(
           child: widget.selectedSubTab == 0
-              ? _QuizzesList(sort: widget.sort)
-              : const _CollectionsList(),
+              ? _QuizzesList(
+                  sort: widget.sort,
+                  onCountChanged: (count) {
+                    if (mounted && _quizzesCount != count) {
+                      setState(() => _quizzesCount = count);
+                    }
+                  },
+                )
+              : _CollectionsList(
+                  onCountChanged: (count) {
+                    if (mounted && _collectionsCount != count) {
+                      setState(() => _collectionsCount = count);
+                    }
+                  },
+                ),
         ),
       ],
     );
@@ -65,7 +81,8 @@ class _CreatedTabState extends State<CreatedTab> {
 
 class _QuizzesList extends StatefulWidget {
   final SortOption sort;
-  const _QuizzesList({required this.sort});
+  final Function(int) onCountChanged;
+  const _QuizzesList({required this.sort, required this.onCountChanged});
 
   @override
   State<_QuizzesList> createState() => _QuizzesListState();
@@ -100,6 +117,7 @@ class _QuizzesListState extends State<_QuizzesList> {
           _quizzes = quizzes;
           _isLoading = false;
         });
+        widget.onCountChanged(_quizzes.length);
       }
     } catch (e) {
       debugPrint("[CreatedTab] Error loading quizzes: $e");
@@ -107,6 +125,7 @@ class _QuizzesListState extends State<_QuizzesList> {
         setState(() {
           _isLoading = false;
         });
+        widget.onCountChanged(0);
       }
     }
   }
@@ -155,7 +174,8 @@ class _QuizzesListState extends State<_QuizzesList> {
 }
 
 class _CollectionsList extends StatefulWidget {
-  const _CollectionsList();
+  final Function(int) onCountChanged;
+  const _CollectionsList({required this.onCountChanged});
 
   @override
   State<_CollectionsList> createState() => _CollectionsListState();
@@ -182,6 +202,7 @@ class _CollectionsListState extends State<_CollectionsList> {
           _collections = collections;
           _isLoading = false;
         });
+        widget.onCountChanged(_collections.length);
       }
     } catch (e) {
       debugPrint("[CreatedTab] Error loading collections: $e");
@@ -189,6 +210,7 @@ class _CollectionsListState extends State<_CollectionsList> {
         setState(() {
           _isLoading = false;
         });
+        widget.onCountChanged(0);
       }
     }
   }

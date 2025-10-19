@@ -23,6 +23,30 @@ class GameSession {
     required this.gradient,
   });
 
+  static String _formatDate(String? dateStr) {
+    if (dateStr == null) return "Unknown";
+    try {
+      final date = DateTime.parse(dateStr);
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      return "${months[date.month - 1]} ${date.day}, ${date.year}";
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
   factory GameSession.fromJson(
     Map<String, dynamic> json,
     List<Color> gradient,
@@ -33,8 +57,9 @@ class GameSession {
       topic: json["topic"] as String?,
       length:
           json["length"] as String? ?? "${json["estimatedMinutes"] ?? 0} min",
-      date:
-          json["date"] as String? ?? json["createdAt"] as String? ?? "Unknown",
+      date: _formatDate(
+        json["date"] as String? ?? json["createdAt"] as String?,
+      ),
       isLive: json["isLive"] as bool? ?? false,
       joined:
           json["joined"] as int? ??

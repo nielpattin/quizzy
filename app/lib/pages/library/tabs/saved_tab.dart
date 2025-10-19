@@ -5,10 +5,17 @@ import "../widgets/quiz_play_card.dart";
 import "../services/library_service.dart";
 import "../models/quiz.dart";
 
-class SavedTab extends StatelessWidget {
+class SavedTab extends StatefulWidget {
   final SortOption sort;
   final VoidCallback onSortTap;
   const SavedTab({super.key, required this.sort, required this.onSortTap});
+
+  @override
+  State<SavedTab> createState() => _SavedTabState();
+}
+
+class _SavedTabState extends State<SavedTab> {
+  int? _savedCount;
 
   @override
   Widget build(BuildContext context) {
@@ -17,12 +24,21 @@ class SavedTab extends StatelessWidget {
       children: [
         SectionHeader(
           title: "Saved",
-          count: 18,
+          count: _savedCount,
           showSort: true,
-          sort: sort,
-          onSortTap: onSortTap,
+          sort: widget.sort,
+          onSortTap: widget.onSortTap,
         ),
-        Expanded(child: _FavoritesList(sort: sort)),
+        Expanded(
+          child: _FavoritesList(
+            sort: widget.sort,
+            onCountChanged: (count) {
+              if (mounted && _savedCount != count) {
+                setState(() => _savedCount = count);
+              }
+            },
+          ),
+        ),
       ],
     );
   }
@@ -30,7 +46,8 @@ class SavedTab extends StatelessWidget {
 
 class _FavoritesList extends StatefulWidget {
   final SortOption sort;
-  const _FavoritesList({required this.sort});
+  final Function(int) onCountChanged;
+  const _FavoritesList({required this.sort, required this.onCountChanged});
 
   @override
   State<_FavoritesList> createState() => _FavoritesListState();
@@ -65,6 +82,7 @@ class _FavoritesListState extends State<_FavoritesList> {
           _quizzes = quizzes;
           _isLoading = false;
         });
+        widget.onCountChanged(_quizzes.length);
       }
     } catch (e) {
       debugPrint("[SavedTab] Error loading saved quizzes: $e");
@@ -72,6 +90,7 @@ class _FavoritesListState extends State<_FavoritesList> {
         setState(() {
           _isLoading = false;
         });
+        widget.onCountChanged(0);
       }
     }
   }

@@ -19,6 +19,23 @@ class SetupAccountPage extends StatefulWidget {
 class _SetupAccountPageState extends State<SetupAccountPage> {
   final _usernameController = TextEditingController();
   final _nameController = TextEditingController();
+
+  void _debugPrintSession(String context) {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null) {
+      debugPrint('=== SESSION DEBUG ($context) ===');
+      debugPrint('Access Token: ${session.accessToken}');
+      debugPrint('Refresh Token: ${session.refreshToken}');
+      debugPrint('User ID: ${session.user.id}');
+      debugPrint('Email: ${session.user.email}');
+      debugPrint('Expires At: ${session.expiresAt}');
+      debugPrint('Is Expired: ${session.isExpired}');
+      debugPrint('===============================');
+    } else {
+      debugPrint('=== NO ACTIVE SESSION ($context) ===');
+    }
+  }
+
   final _dobController = TextEditingController();
   DateTime? _selectedDate;
   bool _isLoading = false;
@@ -39,59 +56,44 @@ class _SetupAccountPageState extends State<SetupAccountPage> {
   }
 
   Future<void> _fetchProfileData() async {
-    debugPrint('[SETUP] Fetching profile data...');
-    setState(() {
-      _isFetchingProfile = true;
-    });
+    debugPrint('[SETUP] Fetching profile data from session...');
 
     try {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
         debugPrint('[SETUP] No session found');
-        throw Exception("Not authenticated");
+        return;
       }
 
       debugPrint('[SETUP] Session found, User ID: ${session.user.id}');
+      debugPrint('[SETUP] User email: ${session.user.email}');
+      debugPrint('[SETUP] User metadata: ${session.user.userMetadata}');
 
-      final token = session.accessToken;
-      final serverUrl = dotenv.env["SERVER_URL"]!;
+      // Extract data from session (works for all auth methods)
+      final email = session.user.email;
 
-      debugPrint('[SETUP] Fetching from: $serverUrl/api/user/profile');
+      // For OAuth (Google, GitHub), metadata contains full_name/name
+      // For email/password, metadata is empty and name field stays empty
+      final fullName =
+          session.user.userMetadata?['full_name'] ??
+          session.user.userMetadata?['name'];
 
-      final response = await http.get(
-        Uri.parse("$serverUrl/api/user/profile"),
-        headers: {"Authorization": "Bearer $token"},
-      );
-
-      debugPrint('[SETUP] Response status: ${response.statusCode}');
-      debugPrint('[SETUP] Response body: ${response.body}');
+      debugPrint('[SETUP] Extracted email: $email');
+      debugPrint('[SETUP] Extracted name: $fullName');
 
       if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        debugPrint(
-          '[SETUP] User data: email=${data["email"]}, fullName=${data["fullName"]}, isSetupComplete=${data["isSetupComplete"]}',
-        );
-
-        setState(() {
-          _fetchedEmail = data["email"];
-          _fetchedName = data["fullName"];
-          if (_fetchedName != null && _fetchedName!.isNotEmpty) {
-            _nameController.text = _fetchedName!;
-            debugPrint('[SETUP] Pre-filled name: $_fetchedName');
-          }
-          _isFetchingProfile = false;
-        });
-      } else {
-        debugPrint('[SETUP] Failed to fetch profile: ${response.statusCode}');
-        setState(() {
-          _isFetchingProfile = false;
-        });
-      }
+      setState(() {
+        _fetchedEmail = email;
+        _fetchedName = fullName;
+        if (_fetchedName != null && _fetchedName!.isNotEmpty) {
+          _nameController.text = _fetchedName!;
+          debugPrint('[SETUP] Pre-filled name: $_fetchedName');
+        }
+        _isFetchingProfile = false;
+      });
     } catch (e, stackTrace) {
-      debugPrint('[SETUP] Error fetching profile: $e');
+      debugPrint('[SETUP] Error fetching profile from session: $e');
       debugPrint('[SETUP] Stack trace: $stackTrace');
       if (!mounted) return;
       setState(() {
@@ -173,6 +175,9 @@ class _SetupAccountPageState extends State<SetupAccountPage> {
 
       debugPrint('[SETUP] Session found, User ID: ${session.user.id}');
 
+      // Debug session before setup
+      _debugPrintSession('BEFORE SETUP');
+
       final token = session.accessToken;
       final serverUrl = dotenv.env["SERVER_URL"]!;
 
@@ -198,6 +203,9 @@ class _SetupAccountPageState extends State<SetupAccountPage> {
 
       debugPrint('[SETUP] Response status: ${response.statusCode}');
       debugPrint('[SETUP] Response body: ${response.body}');
+
+      // Debug session after setup response
+      _debugPrintSession('AFTER SETUP RESPONSE');
 
       if (!mounted) return;
 

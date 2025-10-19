@@ -25,12 +25,33 @@ class _AuthModalState extends State<AuthModal> {
 
     try {
       debugPrint('[AUTH_MODAL] Starting Google sign-in...');
-      final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID']!;
+      final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
+
+      if (webClientId == null || webClientId.isEmpty) {
+        throw Exception('GOOGLE_WEB_CLIENT_ID not found in .env file');
+      }
+
+      debugPrint('[AUTH_MODAL] Client ID: $webClientId');
+
+      // Initialize Google Sign-In with forced sign out to ensure clean state
+      await gs.GoogleSignIn.instance.signOut();
       await gs.GoogleSignIn.instance.initialize(serverClientId: webClientId);
+      debugPrint('[AUTH_MODAL] Google Sign-In initialized');
 
       debugPrint('[AUTH_MODAL] Opening Google authentication...');
-      final account = await gs.GoogleSignIn.instance.authenticate();
-      final idToken = account.authentication.idToken;
+      final account = await gs.GoogleSignIn.instance.authenticate().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Google Sign-In timed out');
+        },
+      );
+      debugPrint(
+        '[AUTH_MODAL] Authentication successful, user: ${account.email}',
+      );
+
+      // Get authentication
+      final googleAuth = account.authentication;
+      final idToken = googleAuth.idToken;
       if (idToken == null) throw Exception('No ID token from Google');
 
       debugPrint('[AUTH_MODAL] Got ID token, signing in with Supabase...');

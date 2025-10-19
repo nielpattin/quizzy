@@ -25,6 +25,9 @@ class GameTab extends StatefulWidget {
 }
 
 class _GameTabState extends State<GameTab> {
+  int? _myGamesCount;
+  int? _recentGamesCount;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -36,13 +39,26 @@ class _GameTabState extends State<GameTab> {
         ),
         SectionHeader(
           title: widget.selectedSubTab == 0 ? "My Games" : "Recent Games",
-          count: widget.selectedSubTab == 0 ? 6 : 12,
+          count: widget.selectedSubTab == 0 ? _myGamesCount : _recentGamesCount,
           showSort: true,
           sort: widget.sort,
           onSortTap: widget.onSortTap,
         ),
         Expanded(
-          child: _GameList(mine: widget.selectedSubTab == 0, sort: widget.sort),
+          child: _GameList(
+            mine: widget.selectedSubTab == 0,
+            sort: widget.sort,
+            onCountChanged: (count) {
+              if (mounted) {
+                if (widget.selectedSubTab == 0 && _myGamesCount != count) {
+                  setState(() => _myGamesCount = count);
+                } else if (widget.selectedSubTab == 1 &&
+                    _recentGamesCount != count) {
+                  setState(() => _recentGamesCount = count);
+                }
+              }
+            },
+          ),
         ),
       ],
     );
@@ -52,7 +68,12 @@ class _GameTabState extends State<GameTab> {
 class _GameList extends StatefulWidget {
   final bool mine;
   final SortOption sort;
-  const _GameList({required this.mine, required this.sort});
+  final Function(int) onCountChanged;
+  const _GameList({
+    required this.mine,
+    required this.sort,
+    required this.onCountChanged,
+  });
 
   @override
   State<_GameList> createState() => _GameListState();
@@ -90,6 +111,7 @@ class _GameListState extends State<_GameList> {
             _soloPlays = [];
             _isLoading = false;
           });
+          widget.onCountChanged(_sessions.length);
         }
       } else {
         final results = await Future.wait([
@@ -102,6 +124,7 @@ class _GameListState extends State<_GameList> {
             _sessions = results[1] as List<GameSession>;
             _isLoading = false;
           });
+          widget.onCountChanged(_soloPlays.length + _sessions.length);
         }
       }
     } catch (e) {
@@ -110,6 +133,7 @@ class _GameListState extends State<_GameList> {
         setState(() {
           _isLoading = false;
         });
+        widget.onCountChanged(0);
       }
     }
   }

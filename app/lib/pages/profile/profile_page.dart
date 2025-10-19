@@ -4,7 +4,6 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "dart:convert";
-import "../../services/api_service.dart";
 import "../../utils/image_helper.dart";
 
 class ProfilePage extends StatefulWidget {
@@ -17,7 +16,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _username;
   String? _fullName;
   String? _avatarUrl;
@@ -27,17 +26,31 @@ class _ProfilePageState extends State<ProfilePage>
   List<dynamic> _sessions = [];
   List<dynamic> _posts = [];
 
+  void _debugPrintSession(String context) {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null) {
+      debugPrint('=== SESSION DEBUG ($context) ===');
+      debugPrint('Access Token: ${session.accessToken}');
+      debugPrint('Refresh Token: ${session.refreshToken}');
+      debugPrint('User ID: ${session.user.id}');
+      debugPrint('Email: ${session.user.email}');
+      debugPrint('User Metadata: ${session.user.userMetadata}');
+      debugPrint('Full Name: ${session.user.userMetadata?['full_name']}');
+      debugPrint('Name: ${session.user.userMetadata?['name']}');
+      debugPrint('Avatar URL: ${session.user.userMetadata?['avatar_url']}');
+      debugPrint('Picture: ${session.user.userMetadata?['picture']}');
+      debugPrint('Expires At: ${session.expiresAt}');
+      debugPrint('Is Expired: ${session.isExpired}');
+      debugPrint('===============================');
+    } else {
+      debugPrint('=== NO ACTIVE SESSION ($context) ===');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadProfile();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Refresh profile when dependencies change (e.g., navigation)
     _loadProfile();
   }
 
@@ -49,6 +62,14 @@ class _ProfilePageState extends State<ProfilePage>
 
   Future<void> _loadProfile() async {
     debugPrint('[PROFILE] Loading profile...');
+
+    if (_isLoading) {
+      debugPrint('[PROFILE] Already loading, skipping...');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
       debugPrint('[PROFILE] No session found');
@@ -61,67 +82,127 @@ class _ProfilePageState extends State<ProfilePage>
     try {
       final token = session.accessToken;
       final serverUrl = dotenv.env["SERVER_URL"]!;
-      final userId = session.user.id;
+
+      // Debug session before profile call
+      _debugPrintSession('BEFORE PROFILE CALL');
+
       debugPrint('[PROFILE] Fetching from: $serverUrl/api/user/profile');
 
-      final results = await Future.wait([
-        http.get(
-          Uri.parse("$serverUrl/api/user/profile"),
-          headers: {"Authorization": "Bearer $token"},
-        ),
-        ApiService.getUserQuizzes(userId),
-        ApiService.getPlayedSessions(userId),
-        ApiService.getUserPosts(userId),
-      ]);
-
-      final profileResponse = results[0] as http.Response;
+      final profileResponse = await http
+          .get(
+            Uri.parse("$serverUrl/api/user/profile"),
+            headers: {"Authorization": "Bearer $token"},
+          )
+          .timeout(const Duration(seconds: 10));
 
       debugPrint('[PROFILE] Response status: ${profileResponse.statusCode}');
       debugPrint('[PROFILE] Response body: ${profileResponse.body}');
 
       if (profileResponse.statusCode == 200) {
         final profileData = json.decode(profileResponse.body);
-        final quizzes = results[1] as List<dynamic>;
-        final sessions = results[2] as List<dynamic>;
-        final posts = results[3] as List<dynamic>;
-
-        final stats = {
-          "quizzes": quizzes.length,
-          "sessions": sessions.length,
-          "posts": posts.length,
-          "followers": profileData["followersCount"] ?? 0,
-          "following": profileData["followingCount"] ?? 0,
-        };
 
         if (mounted) {
           setState(() {
             _username = profileData["username"];
             _fullName = profileData["fullName"];
             _avatarUrl = profileData["profilePictureUrl"];
-            _stats = stats;
             _bio = {"bio": profileData["bio"] ?? ""};
-            _quizzes = quizzes;
-            _sessions = sessions;
-            _posts = posts;
-            _isLoading = false;
           });
           debugPrint(
             '[PROFILE] Loaded: username=$_username, fullName=$_fullName, avatarUrl=$_avatarUrl',
           );
+
+          // Fetch quizzes, sessions, and posts in parallel
+          _loadUserData(token, serverUrl, profileData);
+        }
+      } else if (profileResponse.statusCode == 404) {
+        debugPrint('[PROFILE] User not found in database, signing out...');
+        await Supabase.instance.client.auth.signOut();
+        if (mounted) {
+          context.go("/get-started");
         }
       } else {
         debugPrint(
           '[PROFILE] Failed to load profile: ${profileResponse.statusCode}',
         );
+      }
+    } catch (e) {
+      debugPrint('[PROFILE] Error loading profile: $e');
+    } finally {
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadUserData(
+    String token,
+    String serverUrl,
+    Map<String, dynamic> profileData,
+  ) async {
+    try {
+      // Fetch quizzes, sessions, and posts in parallel
+      final results = await Future.wait([
+        http.get(
+          Uri.parse("$serverUrl/api/user/quizzes"),
+          headers: {"Authorization": "Bearer $token"},
+        ),
+        http.get(
+          Uri.parse("$serverUrl/api/user/sessions"),
+          headers: {"Authorization": "Bearer $token"},
+        ),
+        http.get(
+          Uri.parse("$serverUrl/api/user/posts"),
+          headers: {"Authorization": "Bearer $token"},
+        ),
+      ]);
+
+      final quizzesResponse = results[0];
+      final sessionsResponse = results[1];
+      final postsResponse = results[2];
+
+      if (mounted) {
+        setState(() {
+          if (quizzesResponse.statusCode == 200) {
+            _quizzes = json.decode(quizzesResponse.body) as List<dynamic>;
+          }
+          if (sessionsResponse.statusCode == 200) {
+            _sessions = json.decode(sessionsResponse.body) as List<dynamic>;
+          }
+          if (postsResponse.statusCode == 200) {
+            _posts = json.decode(postsResponse.body) as List<dynamic>;
+          }
+
+          _stats = {
+            "quizzes": _quizzes.length,
+            "sessions": _sessions.length,
+            "posts": _posts.length,
+            "followers": profileData["followersCount"] ?? 0,
+            "following": profileData["followingCount"] ?? 0,
+          };
+          _isLoading = false;
+        });
+
+        debugPrint(
+          '[PROFILE] Loaded data: ${_quizzes.length} quizzes, ${_sessions.length} sessions, ${_posts.length} posts',
+        );
+      }
     } catch (e) {
-      debugPrint('[PROFILE] Error loading profile: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      debugPrint('[PROFILE] Error loading user data: $e');
+      if (mounted) {
+        setState(() {
+          _stats = {
+            "quizzes": 0,
+            "sessions": 0,
+            "posts": 0,
+            "followers": profileData["followersCount"] ?? 0,
+            "following": profileData["followingCount"] ?? 0,
+          };
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -404,9 +485,6 @@ class _ProfilePageState extends State<ProfilePage>
       itemCount: _sessions.length,
       itemBuilder: (context, index) {
         final session = _sessions[index];
-        final participant = session["participant"] as Map<String, dynamic>?;
-        final score = participant?["score"] ?? 0;
-        final rank = participant?["rank"] ?? 0;
         final totalPlayers = session["joinedCount"] ?? 0;
         final startedAt = session["startedAt"];
 
@@ -419,8 +497,8 @@ class _ProfilePageState extends State<ProfilePage>
         return _SessionCard(
           title: session["title"] ?? "Untitled Session",
           date: date,
-          score: "$score",
-          rank: "$rank",
+          score: "-",
+          rank: "-",
           totalPlayers: "$totalPlayers",
         );
       },
