@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "../widgets/game_sub_tabs.dart";
 import "../widgets/section_header.dart";
 import "../widgets/quiz_play_card.dart";
@@ -193,6 +194,7 @@ class _GameListState extends State<_GameList> {
           questions: quiz.questions,
           plays: quiz.plays,
           gradient: quiz.gradient,
+          onTap: () => context.push("/quiz/${quiz.id}"),
         );
       },
     );

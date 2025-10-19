@@ -700,8 +700,10 @@ class _QuestionCard extends StatelessWidget {
     int? correctIndex;
 
     if (type == "multiple_choice" && data["options"] != null) {
-      options = (data["options"] as List).cast<String>();
-      correctIndex = data["correctIndex"] as int?;
+      final optionsList = data["options"] as List;
+      options = optionsList.map((opt) => opt["text"] as String).toList();
+      correctIndex = optionsList.indexWhere((opt) => opt["isCorrect"] == true);
+      if (correctIndex == -1) correctIndex = null;
     } else if (type == "true_false") {
       options = ["True", "False"];
       final correctAnswer = data["correctAnswer"] as bool?;

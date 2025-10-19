@@ -131,7 +131,7 @@ class _FavoritesListState extends State<_FavoritesList> {
           questions: quiz.questions,
           plays: quiz.plays,
           gradient: quiz.gradient,
-          onTap: () => context.push("/quiz/${i % 2 == 0 ? '2' : '3'}"),
+          onTap: () => context.push("/quiz/${quiz.id}"),
         );
       },
     );
