@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '@/middleware/auth'
-import type { AuthContext } from '@/middleware/auth'
-import { db } from '@/db'
-import { questions, quizzes } from '@/db/schema'
+import { authMiddleware, type AuthContext } from '../middleware/auth'
+import { db } from '../db/index'
+import { questions, quizzes } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
+import { WebSocketService } from '../services/websocket-service'
 
 type Variables = {
   user: AuthContext

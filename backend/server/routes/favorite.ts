@@ -170,19 +170,19 @@ favoriteRoutes.get('/', authMiddleware, async (c) => {
       .select({
         id: savedQuizzes.id,
         savedAt: savedQuizzes.savedAt,
-        snapshot: {
-          id: quizSnapshots.id,
-          quizId: quizSnapshots.quizId,
+        quiz: {
+          id: quizSnapshots.quizId,
           title: quizSnapshots.title,
           description: quizSnapshots.description,
           category: quizSnapshots.category,
           questionCount: quizSnapshots.questionCount,
-          version: quizSnapshots.version,
+          playCount: quizzes.playCount,
           createdAt: quizSnapshots.createdAt,
         },
       })
       .from(savedQuizzes)
       .leftJoin(quizSnapshots, eq(savedQuizzes.quizSnapshotId, quizSnapshots.id))
+      .leftJoin(quizzes, eq(quizSnapshots.quizId, quizzes.id))
       .where(eq(savedQuizzes.userId, userId))
       .orderBy(desc(savedQuizzes.savedAt))
 

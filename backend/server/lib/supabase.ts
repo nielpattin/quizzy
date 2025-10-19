@@ -13,8 +13,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export const supabaseAdmin = supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+        autoRefreshToken: true,
+        persistSession: true,
       },
     })
   : null

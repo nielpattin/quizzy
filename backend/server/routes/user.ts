@@ -1,9 +1,8 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '@/middleware/auth'
-import type { AuthContext } from '@/middleware/auth'
-import { db } from '@/db'
-import { users } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { db } from '../db/index'
+import { users, quizzes, gameSessions, posts, follows } from '../db/schema'
+import { eq, and, desc, sql } from 'drizzle-orm'
+import { authMiddleware, type AuthContext } from '../middleware/auth'
 
 type Variables = {
   user: AuthContext
@@ -11,35 +10,52 @@ type Variables = {
 
 const userRoutes = new Hono<{ Variables: Variables }>()
 
+// Profile endpoint with auth
 userRoutes.get('/profile', authMiddleware, async (c) => {
   const { userId, email, userMetadata } = c.get('user') as AuthContext
 
   try {
-    let [user] = await db.select().from(users).where(eq(users.id, userId))
+    console.log(`[BACKEND] Profile endpoint called for user: ${userId}`)
+    console.log(`[BACKEND] Email: ${email}`)
+    console.log(`[BACKEND] User Metadata:`, JSON.stringify(userMetadata, null, 2))
+    
+    let [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        username: users.username,
+        dob: users.dob,
+        bio: users.bio,
+        profilePictureUrl: users.profilePictureUrl,
+        accountType: users.accountType,
+        isSetupComplete: users.isSetupComplete,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
 
     if (!user) {
-      const fullName = userMetadata?.full_name || userMetadata?.name || ''
-      const avatarUrl = userMetadata?.avatar_url || userMetadata?.picture || null
-      
-      console.log(`[BACKEND] User ${userId} not found, creating new user with email ${email}`)
-      console.log(`[BACKEND] OAuth metadata - fullName: "${fullName}", avatarUrl: "${avatarUrl}"`)
-      
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          id: userId,
-          email: email,
-          fullName: fullName,
-          profilePictureUrl: avatarUrl,
-          isSetupComplete: false,
-        })
-        .returning()
-      
-      user = newUser
-      console.log(`[BACKEND] Created new user: ${userId}, isSetupComplete: ${user.isSetupComplete}`)
+      console.log(`[BACKEND] User ${userId} not found in database`)
+      return c.json({ 
+        error: 'User not found in database', 
+        code: 'USER_NOT_FOUND' 
+      }, 404)
     }
 
     console.log(`[BACKEND] Returning user profile: ${userId}, isSetupComplete: ${user.isSetupComplete}`)
+
+    // Get follower/following counts
+    const [followerCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(follows)
+      .where(eq(follows.followingId, userId))
+
+    const [followingCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(follows)
+      .where(eq(follows.followerId, userId))
 
     return c.json({
       id: user.id,
@@ -51,6 +67,8 @@ userRoutes.get('/profile', authMiddleware, async (c) => {
       profilePictureUrl: user.profilePictureUrl,
       accountType: user.accountType,
       isSetupComplete: user.isSetupComplete,
+      followersCount: followerCount?.count || 0,
+      followingCount: followingCount?.count || 0,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     })
@@ -60,90 +78,83 @@ userRoutes.get('/profile', authMiddleware, async (c) => {
   }
 })
 
-userRoutes.put('/profile', authMiddleware, async (c) => {
-  const { userId } = c.get('user') as AuthContext
-  const body = await c.req.json()
-
-  try {
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        fullName: body.fullName,
-        username: body.username,
-        dob: body.dob,
-        bio: body.bio,
-        profilePictureUrl: body.profilePictureUrl,
-        accountType: body.accountType,
-        isSetupComplete: body.isSetupComplete,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning()
-
-    if (!updatedUser) {
-      return c.json({ error: 'User not found' }, 404)
-    }
-
-    return c.json({
-      id: updatedUser.id,
-      email: updatedUser.email,
-      fullName: updatedUser.fullName,
-      username: updatedUser.username,
-      dob: updatedUser.dob,
-      bio: updatedUser.bio,
-      profilePictureUrl: updatedUser.profilePictureUrl,
-      accountType: updatedUser.accountType,
-      isSetupComplete: updatedUser.isSetupComplete,
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt,
-    })
-  } catch (error) {
-    console.error('Error updating user profile:', error)
-    return c.json({ error: 'Failed to update user profile' }, 500)
-  }
-})
-
+// Setup endpoint with auth
 userRoutes.post('/setup', authMiddleware, async (c) => {
-  const { userId } = c.get('user') as AuthContext
+  const { userId, email, userMetadata } = c.get('user') as AuthContext
   const body = await c.req.json()
 
-  console.log(`[BACKEND] Setup request for user ${userId}:`, body)
-
   try {
-    if (!body.username || !body.fullName || !body.dob) {
-      console.log(`[BACKEND] Setup validation failed: missing fields`)
-      return c.json({ error: 'Username, full name, and date of birth are required' }, 400)
+    console.log(`[BACKEND] Setup endpoint called for user: ${userId}`)
+    console.log(`[BACKEND] Request body:`, body)
+
+    const { username, fullName, dob, accountType } = body
+
+    // Validate required fields
+    if (!username || !fullName || !dob) {
+      return c.json({ error: 'Missing required fields: username, fullName, dob' }, 400)
     }
 
+    // Check if username is already taken
     const [existingUser] = await db
       .select()
       .from(users)
-      .where(eq(users.username, body.username))
+      .where(eq(users.username, username))
 
     if (existingUser && existingUser.id !== userId) {
-      console.log(`[BACKEND] Setup failed: username ${body.username} already taken`)
-      return c.json({ error: 'Username already taken' }, 409)
+      return c.json({ error: 'Username is already taken' }, 400)
     }
 
-    console.log(`[BACKEND] Updating user ${userId} with setup data`)
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        username: body.username,
-        fullName: body.fullName,
-        dob: body.dob,
-        isSetupComplete: true,
-        updatedAt: new Date(),
-      })
+    // Check if user exists
+    const [user] = await db
+      .select()
+      .from(users)
       .where(eq(users.id, userId))
-      .returning()
 
-    if (!updatedUser) {
-      console.log(`[BACKEND] Setup failed: user ${userId} not found`)
-      return c.json({ error: 'User not found' }, 404)
+    let updatedUser
+
+    if (!user) {
+      // Create new user with setup information
+      const avatarUrl = userMetadata?.avatar_url || userMetadata?.picture || null
+      
+      console.log(`[BACKEND] User ${userId} not found, creating with setup data`)
+      console.log(`[BACKEND] Avatar URL: ${avatarUrl}`)
+      
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          id: userId,
+          email: email,
+          fullName: fullName,
+          username: username,
+          dob: dob,
+          profilePictureUrl: avatarUrl,
+          accountType: accountType || 'student',
+          isSetupComplete: true,
+        })
+        .returning()
+      
+      updatedUser = newUser
+      console.log(`[BACKEND] Created new user: ${userId}`)
+    } else {
+      // Update existing user with setup information
+      const [updated] = await db
+        .update(users)
+        .set({
+          username,
+          fullName,
+          dob: dob,
+          accountType: accountType || user.accountType,
+          isSetupComplete: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning()
+      
+      updatedUser = updated
+      console.log(`[BACKEND] Updated existing user: ${userId}`)
     }
 
-    console.log(`[BACKEND] Setup complete for user ${userId}, isSetupComplete: ${updatedUser.isSetupComplete}`)
+    console.log(`[BACKEND] User setup completed: ${userId}`)
 
     return c.json({
       id: updatedUser.id,
@@ -161,6 +172,87 @@ userRoutes.post('/setup', authMiddleware, async (c) => {
   } catch (error) {
     console.error('[BACKEND] Error completing user setup:', error)
     return c.json({ error: 'Failed to complete setup' }, 500)
+  }
+})
+
+// Get user's quizzes
+userRoutes.get('/quizzes', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+
+  try {
+    const userQuizzes = await db
+      .select({
+        id: quizzes.id,
+        title: quizzes.title,
+        description: quizzes.description,
+        category: quizzes.category,
+        questionCount: quizzes.questionCount,
+        playCount: quizzes.playCount,
+        favoriteCount: quizzes.favoriteCount,
+        shareCount: quizzes.shareCount,
+        isPublic: quizzes.isPublic,
+        createdAt: quizzes.createdAt,
+      })
+      .from(quizzes)
+      .where(and(eq(quizzes.userId, userId), eq(quizzes.isDeleted, false)))
+      .orderBy(desc(quizzes.createdAt))
+
+    return c.json(userQuizzes)
+  } catch (error) {
+    console.error('[BACKEND] Error fetching user quizzes:', error)
+    return c.json({ error: 'Failed to fetch quizzes' }, 500)
+  }
+})
+
+// Get user's game sessions
+userRoutes.get('/sessions', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+
+  try {
+    const userSessions = await db
+      .select({
+        id: gameSessions.id,
+        title: gameSessions.title,
+        estimatedMinutes: gameSessions.estimatedMinutes,
+        isLive: gameSessions.isLive,
+        joinedCount: gameSessions.joinedCount,
+        code: gameSessions.code,
+        startedAt: gameSessions.startedAt,
+        endedAt: gameSessions.endedAt,
+        createdAt: gameSessions.createdAt,
+      })
+      .from(gameSessions)
+      .where(eq(gameSessions.hostId, userId))
+      .orderBy(desc(gameSessions.createdAt))
+
+    return c.json(userSessions)
+  } catch (error) {
+    console.error('[BACKEND] Error fetching user sessions:', error)
+    return c.json({ error: 'Failed to fetch sessions' }, 500)
+  }
+})
+
+// Get user's posts
+userRoutes.get('/posts', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+
+  try {
+    const userPosts = await db
+      .select({
+        id: posts.id,
+        text: posts.text,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        createdAt: posts.createdAt,
+      })
+      .from(posts)
+      .where(eq(posts.userId, userId))
+      .orderBy(desc(posts.createdAt))
+
+    return c.json(userPosts)
+  } catch (error) {
+    console.error('[BACKEND] Error fetching user posts:', error)
+    return c.json({ error: 'Failed to fetch posts' }, 500)
   }
 })
 

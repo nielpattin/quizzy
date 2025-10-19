@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 
 export type AuthContext = {
   userId: string
@@ -22,21 +23,30 @@ export const authMiddleware = async (c: Context, next: Next) => {
   const token = authHeader.replace('Bearer ', '')
 
   try {
-    const { data, error } = await supabase.auth.getUser(token)
+    // Create Supabase client for server-side auth
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_ANON_KEY!
+    )
 
-    if (error || !data.user) {
+    // Verify token using Supabase's built-in method
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+
+    if (error || !user) {
+      console.error('[BACKEND] Auth error:', error)
       return c.json({ error: 'Invalid or expired token' }, 401)
     }
 
-    c.set('user', {
-      userId: data.user.id,
-      email: data.user.email!,
-      userMetadata: data.user.user_metadata,
-    } as AuthContext)
+    const context: AuthContext = {
+      userId: user.id,
+      email: user.email || '',
+      userMetadata: user.user_metadata || {},
+    }
 
+    c.set('user', context)
     await next()
   } catch (error) {
-    console.error('Auth middleware error:', error)
-    return c.json({ error: 'Authentication failed' }, 401)
+    console.error('[BACKEND] Auth middleware error:', error)
+    return c.json({ error: 'Authentication failed' }, 500)
   }
 }

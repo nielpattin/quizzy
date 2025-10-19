@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '@/middleware/auth'
-import type { AuthContext } from '@/middleware/auth'
-import { db } from '@/db'
-import { posts, postLikes, comments, commentLikes, users } from '@/db/schema'
+import { authMiddleware } from '../middleware/auth'
+import type { AuthContext } from '../middleware/auth'
+import { db } from '../db/index'
+import { posts, postLikes, comments, commentLikes, users } from '../db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 
 type Variables = {
