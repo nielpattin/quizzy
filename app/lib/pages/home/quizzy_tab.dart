@@ -58,10 +58,9 @@ class _QuizzyTabState extends State<QuizzyTab> {
 
   Future<void> _loadData() async {
     try {
+      final featured = await ApiService.getFeaturedQuizzes();
       final trending = await ApiService.getTrendingQuizzes();
       final userId = Supabase.instance.client.auth.currentUser?.id;
-
-      final featured = trending.isNotEmpty ? [trending[0]] : [];
 
       List<dynamic> continuePlaying = [];
       if (userId != null) {

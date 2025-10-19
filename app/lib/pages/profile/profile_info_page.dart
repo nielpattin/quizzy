@@ -104,7 +104,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                       Icons.arrow_back,
                       color: Theme.of(context).colorScheme.onSurface,
                     ),
-                    onPressed: () => context.go("/username"),
+                    onPressed: () => context.go("/setup-account"),
                   ),
                   SizedBox(width: 8),
                   Expanded(

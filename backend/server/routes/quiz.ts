@@ -40,6 +40,48 @@ quizRoutes.post('/', authMiddleware, async (c) => {
   }
 })
 
+quizRoutes.get('/featured', async (c) => {
+  try {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+    const featuredQuizzes = await db
+      .select({
+        id: quizzes.id,
+        title: quizzes.title,
+        description: quizzes.description,
+        category: quizzes.category,
+        questionCount: quizzes.questionCount,
+        playCount: quizzes.playCount,
+        favoriteCount: quizzes.favoriteCount,
+        createdAt: quizzes.createdAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+      })
+      .from(quizzes)
+      .leftJoin(users, eq(quizzes.userId, users.id))
+      .where(and(
+        eq(quizzes.isPublic, true),
+        eq(quizzes.isDeleted, false),
+        sql`${quizzes.questionCount} >= 5`,
+        sql`${quizzes.createdAt} >= ${sevenDaysAgo.toISOString()}`
+      ))
+      .orderBy(
+        desc(sql`(${quizzes.playCount} * 0.5 + ${quizzes.favoriteCount} * 0.3 + ${quizzes.questionCount} * 0.2)`)
+      )
+      .limit(10)
+
+    return c.json(featuredQuizzes)
+  } catch (error) {
+    console.error('Error fetching featured quizzes:', error)
+    return c.json({ error: 'Failed to fetch featured quizzes' }, 500)
+  }
+})
+
 quizRoutes.get('/trending', async (c) => {
   try {
     const trendingQuizzes = await db

@@ -54,6 +54,16 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>> getFeaturedQuizzes() async {
+    return _handleRequest(() async {
+      final headers = await _getHeaders();
+      return http.get(
+        Uri.parse("$_baseUrl/api/quiz/featured"),
+        headers: headers,
+      );
+    });
+  }
+
   static Future<List<dynamic>> getTrendingQuizzes() async {
     return _handleRequest(() async {
       final headers = await _getHeaders();

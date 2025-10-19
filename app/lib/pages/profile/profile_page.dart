@@ -119,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage>
         debugPrint('[PROFILE] User not found in database, signing out...');
         await Supabase.instance.client.auth.signOut();
         if (mounted) {
-          context.go("/get-started");
+          context.go("/login");
         }
       } else {
         debugPrint(

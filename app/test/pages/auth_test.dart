@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quizzy/pages/auth/login_page.dart';
 import 'package:quizzy/pages/auth/signup_page.dart';
 import 'package:quizzy/pages/auth/welcome_page.dart';
-import 'package:quizzy/pages/auth/get_started_page.dart';
 import 'package:quizzy/pages/auth/forgot_password_page.dart';
 import '../helpers/test_helpers.dart';
 
@@ -18,17 +17,6 @@ void main() {
       expect(find.text('Create and play quizzes with friends'), findsOneWidget);
       expect(find.text('Get Started'), findsOneWidget);
       expect(find.text('Log In'), findsOneWidget);
-    });
-
-    testWidgets('GetStartedPage should render account type options', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(MaterialApp(home: GetStartedPage()));
-
-      expect(find.text('Choose Account Type'), findsOneWidget);
-      expect(find.text('Personal'), findsOneWidget);
-      expect(find.text('Educator'), findsOneWidget);
-      expect(find.text('Continue'), findsOneWidget);
     });
 
     testWidgets('LoginPage should have email and password fields', (
@@ -127,17 +115,6 @@ void main() {
     });
 
     group('Auth Navigation Tests', () {
-      testWidgets('WelcomePage should navigate to GetStartedPage', (
-        WidgetTester tester,
-      ) async {
-        await tester.pumpWidget(createTestApp(WelcomePage()));
-
-        await tester.tap(find.text('Get Started'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Choose Account Type'), findsOneWidget);
-      });
-
       testWidgets('WelcomePage should navigate to LoginPage', (
         WidgetTester tester,
       ) async {
