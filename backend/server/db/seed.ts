@@ -1,11 +1,12 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { reset } from 'drizzle-seed';
-import { inArray } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from './schema';
 import { EXCLUDE_USERS, calculateDerivedCounts } from './config-seed';
 import { seedExcludedUsers } from './user-seed';
 import { seedRegularUsers } from './other-seed';
+import { seedFixedUsers, seedFixedUsersData } from './fixed-users';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
@@ -37,6 +38,9 @@ const main = async () => {
 	const client = postgres(DATABASE_URL);
 	const db = drizzle(client);
 
+	// Suppress NOTICE messages
+	await db.execute(sql`SET client_min_messages TO WARNING;`);
+
 	// Calculate derived counts for excluded users
 	let excludedUserIds: string[] = [];
 	let excludedDerivedCounts = {
@@ -53,7 +57,7 @@ const main = async () => {
 
 	if (EXCLUDE_USERS.length > 0) {
 		const excludedUsers = await db
-			.select({ id: schema.users.id, email: schema.users.email })
+			.select()
 			.from(schema.users)
 			.where(inArray(schema.users.email, EXCLUDE_USERS));
 
@@ -61,21 +65,61 @@ const main = async () => {
 			console.log(`🔒 Found ${excludedUsers.length} protected user(s)`);
 			excludedUserIds = excludedUsers.map((u) => u.id);
 			
+			// Backup all data for excluded users
+			console.log('💾 Backing up protected user data...');
+			const excludedCollections = await db.select().from(schema.collections).where(inArray(schema.collections.userId, excludedUserIds));
+			const excludedQuizzes = await db.select().from(schema.quizzes).where(inArray(schema.quizzes.userId, excludedUserIds));
+			const excludedQuizIds = excludedQuizzes.map(q => q.id);
+			const excludedQuestions = excludedQuizIds.length > 0 ? await db.select().from(schema.questions).where(inArray(schema.questions.quizId, excludedQuizIds)) : [];
+			const excludedSnapshots = excludedQuizIds.length > 0 ? await db.select().from(schema.quizSnapshots).where(inArray(schema.quizSnapshots.quizId, excludedQuizIds)) : [];
+			const excludedSnapshotIds = excludedSnapshots.map(s => s.id);
+			const excludedSnapshotQuestions = excludedSnapshotIds.length > 0 ? await db.select().from(schema.questionsSnapshots).where(inArray(schema.questionsSnapshots.snapshotId, excludedSnapshotIds)) : [];
+			const excludedSessions = await db.select().from(schema.gameSessions).where(inArray(schema.gameSessions.hostId, excludedUserIds));
+			const excludedSessionIds = excludedSessions.map(s => s.id);
+			const excludedParticipants = excludedSessionIds.length > 0 ? await db.select().from(schema.gameSessionParticipants).where(inArray(schema.gameSessionParticipants.sessionId, excludedSessionIds)) : [];
+			const excludedSavedQuizzes = await db.select().from(schema.savedQuizzes).where(inArray(schema.savedQuizzes.userId, excludedUserIds));
+			const excludedPosts = await db.select().from(schema.posts).where(inArray(schema.posts.userId, excludedUserIds));
+			const excludedPostIds = excludedPosts.map(p => p.id);
+			const excludedPostLikes = excludedPostIds.length > 0 ? await db.select().from(schema.postLikes).where(inArray(schema.postLikes.postId, excludedPostIds)) : [];
+			const excludedComments = excludedPostIds.length > 0 ? await db.select().from(schema.comments).where(inArray(schema.comments.postId, excludedPostIds)) : [];
+			const excludedCommentIds = excludedComments.map(c => c.id);
+			const excludedCommentLikes = excludedCommentIds.length > 0 ? await db.select().from(schema.commentLikes).where(inArray(schema.commentLikes.commentId, excludedCommentIds)) : [];
+			const excludedFollows = await db.select().from(schema.follows).where(inArray(schema.follows.followerId, excludedUserIds));
+			const excludedNotifications = await db.select().from(schema.notifications).where(inArray(schema.notifications.userId, excludedUserIds));
+			
 			// Calculate derived counts for excluded users
-			excludedDerivedCounts = calculateDerivedCounts(excludedUserIds);
+			excludedDerivedCounts = {
+				collections: excludedCollections.length,
+				quizzes: excludedQuizzes.length,
+				questions: excludedQuestions.length,
+				gameSessions: excludedSessions.length,
+				gameParticipants: excludedParticipants.length,
+				savedQuizzes: excludedSavedQuizzes.length,
+				posts: excludedPosts.length,
+				follows: excludedFollows.length,
+				notifications: excludedNotifications.length,
+			};
 
 			console.log('🧹 Resetting database (preserving protected users)...');
-			
-			// Use a simpler approach: delete everything, then re-insert excluded user data
 			await reset(db, seedSchema);
 			
-			// Re-insert excluded users (they were deleted by reset)
-			for (const user of excludedUsers) {
-				await db.insert(schema.users).values({
-					id: user.id,
-					email: user.email,
-				}).onConflictDoNothing();
-			}
+			// Restore all excluded user data
+			console.log('♻️  Restoring protected user data...');
+			if (excludedUsers.length > 0) await db.insert(schema.users).values(excludedUsers).onConflictDoNothing();
+			if (excludedCollections.length > 0) await db.insert(schema.collections).values(excludedCollections).onConflictDoNothing();
+			if (excludedQuizzes.length > 0) await db.insert(schema.quizzes).values(excludedQuizzes).onConflictDoNothing();
+			if (excludedQuestions.length > 0) await db.insert(schema.questions).values(excludedQuestions).onConflictDoNothing();
+			if (excludedSnapshots.length > 0) await db.insert(schema.quizSnapshots).values(excludedSnapshots).onConflictDoNothing();
+			if (excludedSnapshotQuestions.length > 0) await db.insert(schema.questionsSnapshots).values(excludedSnapshotQuestions).onConflictDoNothing();
+			if (excludedSessions.length > 0) await db.insert(schema.gameSessions).values(excludedSessions).onConflictDoNothing();
+			if (excludedParticipants.length > 0) await db.insert(schema.gameSessionParticipants).values(excludedParticipants).onConflictDoNothing();
+			if (excludedSavedQuizzes.length > 0) await db.insert(schema.savedQuizzes).values(excludedSavedQuizzes).onConflictDoNothing();
+			if (excludedPosts.length > 0) await db.insert(schema.posts).values(excludedPosts).onConflictDoNothing();
+			if (excludedPostLikes.length > 0) await db.insert(schema.postLikes).values(excludedPostLikes).onConflictDoNothing();
+			if (excludedComments.length > 0) await db.insert(schema.comments).values(excludedComments).onConflictDoNothing();
+			if (excludedCommentLikes.length > 0) await db.insert(schema.commentLikes).values(excludedCommentLikes).onConflictDoNothing();
+			if (excludedFollows.length > 0) await db.insert(schema.follows).values(excludedFollows).onConflictDoNothing();
+			if (excludedNotifications.length > 0) await db.insert(schema.notifications).values(excludedNotifications).onConflictDoNothing();
 		} else {
 			console.log('⚠️  No protected users found, resetting everything...');
 			await reset(db, seedSchema);
@@ -110,13 +154,19 @@ const main = async () => {
 	console.log(`\n📊 Seeding ${totalRegularUsers} users (${excludedUserIds.length > 0 ? excludedUserIds.length + ' excluded' : 'all regular'})...`);
 	console.log('\n🚀 Starting seeding process...\n');
 
-	// Generate data for regular users first
+	// Seed deterministic fixed users
+	await seedFixedUsers(db);
+
+	// Generate data for random users
 	await seedRegularUsers(db);
 
 	// Generate guaranteed data for excluded users
 	if (excludedUserIds.length > 0) {
 		await seedExcludedUsers(db, excludedUserIds);
 	}
+
+	// Seed collections and saved quizzes for fixed users (after quizzes exist)
+	await seedFixedUsersData(db);
 
 	const endTime = Date.now();
 	const duration = ((endTime - startTime) / 1000).toFixed(2);

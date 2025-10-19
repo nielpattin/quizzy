@@ -1,9 +1,10 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '@/middleware/auth'
-import type { AuthContext } from '@/middleware/auth'
-import { db } from '@/db'
-import { gameSessions, gameSessionParticipants, quizSnapshots, questionsSnapshots, quizzes, questions, users } from '@/db/schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { authMiddleware } from '../middleware/auth'
+import type { AuthContext } from '../middleware/auth'
+import { db } from '../db/index'
+import { gameSessions, gameSessionParticipants, quizSnapshots, questionsSnapshots, quizzes, questions, users, userQuestionTimings } from '../db/schema'
+import { eq, and, desc, ilike, sql } from 'drizzle-orm'
+import { WebSocketService } from '../services/websocket-service'
 
 type Variables = {
   user: AuthContext
@@ -223,6 +224,9 @@ sessionRoutes.post('/:id/join', authMiddleware, async (c) => {
       })
       .where(eq(gameSessions.id, sessionId))
 
+    // Broadcast participant joined event
+    await WebSocketService.broadcastParticipantJoined(sessionId, userId)
+
     return c.json(newParticipant, 201)
   } catch (error) {
     console.error('Error joining session:', error)
@@ -361,6 +365,128 @@ sessionRoutes.get('/:id/questions', async (c) => {
   }
 })
 
+sessionRoutes.get('/:id/question/:index', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const sessionId = c.req.param('id')
+  const questionIndex = parseInt(c.req.param('index'))
+
+  try {
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+
+    const sessionQuestions = await db
+      .select()
+      .from(questionsSnapshots)
+      .where(eq(questionsSnapshots.snapshotId, session.quizSnapshotId))
+      .orderBy(questionsSnapshots.orderIndex)
+
+    if (questionIndex < 0 || questionIndex >= sessionQuestions.length) {
+      return c.json({ error: 'Question index out of range' }, 400)
+    }
+
+    const question = sessionQuestions[questionIndex]
+    const timeLimit = question.data?.timeLimit || 30
+
+    // Create timing record
+    const [timingRecord] = await db
+      .insert(userQuestionTimings)
+      .values({
+        userId,
+        questionId: question.id,
+        sessionId,
+        serverStartTime: new Date(),
+        deadlineTime: new Date(Date.now() + timeLimit * 1000),
+      })
+      .returning()
+
+    return c.json({
+      question,
+      timing: {
+        id: timingRecord.id,
+        timeLimit,
+        serverStartTime: timingRecord.serverStartTime.toISOString(),
+        deadlineTime: timingRecord.deadlineTime.toISOString(),
+      },
+    })
+  } catch (error) {
+    console.error('Error fetching question with timing:', error)
+    return c.json({ error: 'Failed to fetch question with timing' }, 500)
+  }
+})
+
+sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const sessionId = c.req.param('id')
+  const body = await c.req.json()
+
+  try {
+    if (!body.questionId || !body.answer) {
+      return c.json({ error: 'questionId and answer are required' }, 400)
+    }
+
+    // Get timing record
+    const [timing] = await db
+      .select()
+      .from(userQuestionTimings)
+      .where(and(
+        eq(userQuestionTimings.userId, userId),
+        eq(userQuestionTimings.questionId, body.questionId),
+        eq(userQuestionTimings.sessionId, sessionId)
+      ))
+      .limit(1)
+
+    if (!timing) {
+      return c.json({ error: 'Question timing not found' }, 404)
+    }
+
+    // Check if time expired
+    const now = new Date()
+    if (now > timing.deadlineTime) {
+      return c.json({
+        error: 'time_expired',
+        message: 'Time limit exceeded',
+        correctAnswer: body.questionId, // In real implementation, fetch actual correct answer
+      }, 400)
+    }
+
+    // Process answer (simplified - in real implementation, validate against correct answer)
+    const isCorrect = Math.random() > 0.5 // Placeholder logic
+    const score = isCorrect ? 100 : 0
+
+    // Update timing record
+    await db
+      .update(userQuestionTimings)
+      .set({ submittedAt: now })
+      .where(eq(userQuestionTimings.id, timing.id))
+
+    // Update participant score
+    await db
+      .update(gameSessionParticipants)
+      .set({
+        score: sql`${gameSessionParticipants.score} + ${score}`,
+      })
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, userId)
+      ))
+
+    return c.json({
+      isCorrect,
+      score,
+      message: isCorrect ? 'Correct answer!' : 'Incorrect answer',
+    })
+  } catch (error) {
+    console.error('Error submitting answer:', error)
+    return c.json({ error: 'Failed to submit answer' }, 500)
+  }
+})
+
 sessionRoutes.get('/user/:userId/hosted', async (c) => {
   const targetUserId = c.req.param('userId')
 
@@ -385,6 +511,106 @@ sessionRoutes.get('/user/:userId/hosted', async (c) => {
   } catch (error) {
     console.error('Error fetching hosted sessions:', error)
     return c.json({ error: 'Failed to fetch hosted sessions' }, 500)
+  }
+})
+
+sessionRoutes.post('/:id/leave', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const sessionId = c.req.param('id')
+
+  try {
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+
+    const [existingParticipant] = await db
+      .select()
+      .from(gameSessionParticipants)
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, userId)
+      ))
+
+    if (!existingParticipant) {
+      return c.json({ error: 'Not a participant in this session' }, 400)
+    }
+
+    await db
+      .delete(gameSessionParticipants)
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, userId)
+      ))
+
+    await db
+      .update(gameSessions)
+      .set({
+        joinedCount: Math.max(0, session.joinedCount - 1),
+      })
+      .where(eq(gameSessions.id, sessionId))
+
+    // Broadcast participant left event
+    await WebSocketService.broadcastParticipantLeft(sessionId, userId)
+
+    return c.json({ message: 'Left session successfully' })
+  } catch (error) {
+    console.error('Error leaving session:', error)
+    return c.json({ error: 'Failed to leave session' }, 500)
+  }
+})
+
+sessionRoutes.post('/:id/score', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const sessionId = c.req.param('id')
+  const body = await c.req.json()
+
+  try {
+    if (!body.score || body.score < 0) {
+      return c.json({ error: 'Valid score is required' }, 400)
+    }
+
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+
+    const [existingParticipant] = await db
+      .select()
+      .from(gameSessionParticipants)
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, userId)
+      ))
+
+    if (!existingParticipant) {
+      return c.json({ error: 'Not a participant in this session' }, 400)
+    }
+
+    const [updatedParticipant] = await db
+      .update(gameSessionParticipants)
+      .set({
+        score: body.score,
+        rank: body.rank, // Optional rank update
+      })
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, userId)
+      ))
+      .returning()
+
+    return c.json(updatedParticipant)
+  } catch (error) {
+    console.error('Error updating score:', error)
+    return c.json({ error: 'Failed to update score' }, 500)
   }
 })
 

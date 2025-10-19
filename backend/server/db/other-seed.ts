@@ -1,4 +1,5 @@
 import { seed } from 'drizzle-seed';
+import { eq } from 'drizzle-orm';
 import * as schema from './schema';
 import {
 	SEED_USERS_COUNT,
@@ -21,6 +22,10 @@ import {
 	accountTypes,
 	bios,
 	notificationTypes,
+	generateQuizTitle,
+	generateQuizDescription,
+	generateQuestionText,
+	generateQuestionData,
 } from './config-seed';
 
 const seedSchema = {
@@ -42,7 +47,7 @@ const seedSchema = {
 };
 
 export const seedRegularUsers = async (db: any) => {
-	await seed(db, seedSchema, { count: 10 }).refine((f) => ({
+	const seeded = await seed(db, seedSchema, { count: 10 }).refine((f) => ({
 		users: {
 			count: SEED_USERS_COUNT,
 			columns: {
@@ -60,8 +65,8 @@ export const seedRegularUsers = async (db: any) => {
 		collections: {
 			count: SEED_COLLECTIONS_COUNT,
 			columns: {
-				title: f.loremIpsum({ sentencesCount: 1 }),
-				description: f.loremIpsum({ sentencesCount: 3 }),
+				title: f.valuesFromArray({ values: categories.map((c) => `${c} Study Pack`) }),
+				description: f.valuesFromArray({ values: categories.map((c) => `Curated ${c} materials and practice sets`) }),
 				quizCount: f.int({ minValue: 0, maxValue: 20 }),
 				isPublic: f.boolean(),
 			},
@@ -69,10 +74,11 @@ export const seedRegularUsers = async (db: any) => {
 		quizzes: {
 			count: SEED_QUIZZES_COUNT,
 			columns: {
+				// placeholders; will be replaced in post-processing with category-aware values
 				title: f.loremIpsum({ sentencesCount: 1 }),
 				description: f.loremIpsum({ sentencesCount: 2 }),
 				category: f.valuesFromArray({ values: categories }),
-				questionCount: f.int({ minValue: 5, maxValue: 50 }),
+				questionCount: f.int({ minValue: 5, maxValue: 30 }),
 				playCount: f.int({ minValue: 0, maxValue: 5000 }),
 				favoriteCount: f.int({ minValue: 0, maxValue: 500 }),
 				shareCount: f.int({ minValue: 0, maxValue: 200 }),
@@ -86,6 +92,7 @@ export const seedRegularUsers = async (db: any) => {
 			count: SEED_QUESTIONS_COUNT,
 			columns: {
 				type: f.valuesFromArray({ values: questionTypes }),
+				// placeholders; will be updated in post-processing
 				questionText: f.loremIpsum({ sentencesCount: 1 }),
 				data: f.json(),
 				orderIndex: f.int({ minValue: 0, maxValue: 49 }),
@@ -95,6 +102,7 @@ export const seedRegularUsers = async (db: any) => {
 			count: SEED_QUIZ_SNAPSHOTS_COUNT,
 			columns: {
 				version: f.int({ minValue: 1, maxValue: 5 }),
+				// placeholders; will be updated post
 				title: f.loremIpsum({ sentencesCount: 1 }),
 				description: f.loremIpsum({ sentencesCount: 2 }),
 				category: f.valuesFromArray({ values: categories }),
@@ -105,6 +113,7 @@ export const seedRegularUsers = async (db: any) => {
 			count: SEED_QUESTIONS_SNAPSHOTS_COUNT,
 			columns: {
 				type: f.valuesFromArray({ values: questionTypes }),
+				// placeholders; will be updated post
 				questionText: f.loremIpsum({ sentencesCount: 1 }),
 				data: f.json(),
 				orderIndex: f.int({ minValue: 0, maxValue: 49 }),
@@ -134,7 +143,7 @@ export const seedRegularUsers = async (db: any) => {
 		posts: {
 			count: SEED_POSTS_COUNT,
 			columns: {
-				text: f.loremIpsum({ sentencesCount: 3 }),
+				text: f.valuesFromArray({ values: categories.map((c) => `Sharing a new ${c} quiz – feedback welcome!`) }),
 				likesCount: f.int({ minValue: 0, maxValue: 500 }),
 				commentsCount: f.int({ minValue: 0, maxValue: 100 }),
 			},
@@ -159,12 +168,68 @@ export const seedRegularUsers = async (db: any) => {
 			count: SEED_NOTIFICATIONS_COUNT,
 			columns: {
 				type: f.valuesFromArray({ values: notificationTypes }),
-				title: f.loremIpsum({ sentencesCount: 1 }),
-				subtitle: f.loremIpsum({ sentencesCount: 1 }),
 				isUnread: f.boolean(),
 			},
 		},
 	}));
+
+	// Post-process: enrich quizzes and questions with category-aware titles and texts
+	// Fetch quizzes just inserted and update title/description if missing
+	const quizzes = await db.select().from(schema.quizzes);
+	for (const q of quizzes) {
+		const title = generateQuizTitle(q.category ?? 'General');
+		const description = generateQuizDescription(q.category ?? 'General');
+		await db.update(schema.quizzes)
+			.set({ title, description })
+			.where(eq(schema.quizzes.id, q.id));
+	}
+
+	// Populate questions with questionText and data based on their quiz category and type
+	const questions = await db.select({
+		id: schema.questions.id,
+		quizId: schema.questions.quizId,
+		type: schema.questions.type,
+		orderIndex: schema.questions.orderIndex,
+	}).from(schema.questions);
+
+	// Map quizId -> category
+	const quizMap = new Map<string, { category: string | null }>();
+	for (const q of quizzes) quizMap.set(q.id, { category: q.category ?? null });
+
+	for (const qs of questions) {
+		const meta = quizMap.get(qs.quizId);
+		const questionText = generateQuestionText(meta?.category ?? null, qs.type as any, qs.orderIndex);
+		const data = generateQuestionData(qs.type as any);
+		await db.update(schema.questions)
+			.set({ questionText, data })
+			.where(eq(schema.questions.id, qs.id));
+	}
+
+	// Do similar for quizSnapshots and questionsSnapshots
+	const quizSnapshots = await db.select().from(schema.quizSnapshots);
+	for (const s of quizSnapshots) {
+		const title = generateQuizTitle(s.category ?? 'General');
+		const description = generateQuizDescription(s.category ?? 'General');
+		await db.update(schema.quizSnapshots)
+			.set({ title, description })
+			.where(eq(schema.quizSnapshots.id, s.id));
+	}
+	const questionSnapshots = await db.select({
+		id: schema.questionsSnapshots.id,
+		snapshotId: schema.questionsSnapshots.snapshotId,
+		type: schema.questionsSnapshots.type,
+		orderIndex: schema.questionsSnapshots.orderIndex,
+	}).from(schema.questionsSnapshots);
+	const snapMap = new Map<string, { category: string | null }>();
+	for (const s of quizSnapshots) snapMap.set(s.id, { category: s.category ?? null });
+	for (const qs of questionSnapshots) {
+		const meta = snapMap.get(qs.snapshotId);
+		const questionText = generateQuestionText(meta?.category ?? null, qs.type as any, qs.orderIndex);
+		const data = generateQuestionData(qs.type as any);
+		await db.update(schema.questionsSnapshots)
+			.set({ questionText, data })
+			.where(eq(schema.questionsSnapshots.id, qs.id));
+	}
 
 	console.log('✅ Regular user data generation completed');
 };

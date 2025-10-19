@@ -241,44 +241,46 @@ export const notifications = pgTable('notifications', {
   index('notifications_created_at_idx').on(table.createdAt),
 ]);
 
-export const usersRelations = relations(users, ({ many }) => ({
-  quizzes: many(quizzes),
-  collections: many(collections),
-  hostedSessions: many(gameSessions),
-  savedQuizzes: many(savedQuizzes),
-  posts: many(posts),
-  followers: many(follows, { relationName: 'following' }),
-  following: many(follows, { relationName: 'follower' }),
-  notifications: many(notifications),
-}));
+// export const usersRelations = relations(users, ({ many }) => ({
+//   quizzes: many(quizzes),
+//   collections: many(collections),
+//   hostedSessions: many(gameSessions),
+//   savedQuizzes: many(savedQuizzes),
+//   posts: many(posts),
+//   followers: many(follows, { relationName: 'following' }),
+//   following: many(follows, { relationName: 'follower' }),
+//   notifications: many(notifications),
+//   userQuestionTimings: many(userQuestionTimings),
+// }));
 
-export const collectionsRelations = relations(collections, ({ one, many }) => ({
-  user: one(users, {
-    fields: [collections.userId],
-    references: [users.id],
-  }),
-  quizzes: many(quizzes),
-}));
+// export const collectionsRelations = relations(collections, ({ one, many }) => ({
+//   user: one(users, {
+//     fields: [collections.userId],
+//     references: [users.id],
+//   }),
+//   quizzes: many(quizzes),
+// }));
 
-export const quizzesRelations = relations(quizzes, ({ one, many }) => ({
-   user: one(users, {
-     fields: [quizzes.userId],
-     references: [users.id],
-   }),
-   collection: one(collections, {
-     fields: [quizzes.collectionId],
-     references: [collections.id],
-   }),
-   questions: many(questions),
-   snapshots: many(quizSnapshots),
- }));
+// export const quizzesRelations = relations(quizzes, ({ one, many }) => ({
+//    user: one(users, {
+//      fields: [quizzes.userId],
+//      references: [users.id],
+//    }),
+//    collection: one(collections, {
+//      fields: [quizzes.collectionId],
+//      references: [collections.id],
+//    }),
+//    questions: many(questions),
+//    snapshots: many(quizSnapshots),
+//  }));
 
-export const questionsRelations = relations(questions, ({ one }) => ({
-  quiz: one(quizzes, {
-    fields: [questions.quizId],
-    references: [quizzes.id],
-  }),
-}));
+// export const questionsRelations = relations(questions, ({ one, many }) => ({
+//   quiz: one(quizzes, {
+//     fields: [questions.quizId],
+//     references: [quizzes.id],
+//   }),
+//   userQuestionTimings: many(userQuestionTimings),
+// }));
 
 export const quizSnapshotsRelations = relations(quizSnapshots, ({ one, many }) => ({
    quiz: one(quizzes, {
@@ -307,6 +309,7 @@ export const gameSessionsRelations = relations(gameSessions, ({ one, many }) => 
     references: [quizSnapshots.id],
   }),
   participants: many(gameSessionParticipants),
+  userQuestionTimings: many(userQuestionTimings),
 }));
 
 export const gameSessionParticipantsRelations = relations(gameSessionParticipants, ({ one }) => ({
@@ -340,33 +343,33 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
    comments: many(comments),
  }));
 
-export const followsRelations = relations(follows, ({ one }) => ({
-  follower: one(users, {
-    fields: [follows.followerId],
-    references: [users.id],
-    relationName: 'follower',
-  }),
-  following: one(users, {
-    fields: [follows.followingId],
-    references: [users.id],
-    relationName: 'following',
-  }),
-}));
+// export const followsRelations = relations(follows, ({ one }) => ({
+//   follower: one(users, {
+//     fields: [follows.followerId],
+//     references: [users.id],
+//     relationName: 'follower',
+//   }),
+//   following: one(users, {
+//     fields: [follows.followingId],
+//     references: [users.id],
+//     relationName: 'following',
+//   }),
+// }));
 
-export const notificationsRelations = relations(notifications, ({ one }) => ({
-   user: one(users, {
-     fields: [notifications.userId],
-     references: [users.id],
-   }),
-   relatedUser: one(users, {
-     fields: [notifications.relatedUserId],
-     references: [users.id],
-   }),
-   relatedPost: one(posts, {
-     fields: [notifications.relatedPostId],
-     references: [posts.id],
-   }),
- }));
+// export const notificationsRelations = relations(notifications, ({ one }) => ({
+//    user: one(users, {
+//      fields: [notifications.userId],
+//      references: [users.id],
+//    }),
+//    relatedUser: one(users, {
+//      fields: [notifications.relatedUserId],
+//      references: [users.id],
+//    }),
+//    relatedPost: one(posts, {
+//      fields: [notifications.relatedPostId],
+//      references: [posts.id],
+//    }),
+//  }));
 
 export const postLikesRelations = relations(postLikes, ({ one }) => ({
    user: one(users, {
@@ -378,6 +381,35 @@ export const postLikesRelations = relations(postLikes, ({ one }) => ({
      references: [posts.id],
    }),
  }));
+
+export const userQuestionTimings = pgTable('user_question_timings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
+  sessionId: uuid('session_id').notNull().references(() => gameSessions.id, { onDelete: 'cascade' }),
+  serverStartTime: timestamp('server_start_time', { withTimezone: true }).notNull(),
+  deadlineTime: timestamp('deadline_time', { withTimezone: true }).notNull(),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('user_question_timings_user_session_idx').on(table.userId, table.sessionId),
+  index('user_question_timings_deadline_idx').on(table.deadlineTime),
+]);
+
+export const userQuestionTimingsRelations = relations(userQuestionTimings, ({ one }) => ({
+  user: one(users, {
+    fields: [userQuestionTimings.userId],
+    references: [users.id],
+  }),
+  question: one(questions, {
+    fields: [userQuestionTimings.questionId],
+    references: [questions.id],
+  }),
+  session: one(gameSessions, {
+    fields: [userQuestionTimings.sessionId],
+    references: [gameSessions.id],
+  }),
+}));
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({
    post: one(posts, {

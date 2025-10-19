@@ -73,8 +73,9 @@ export const notificationTypes = ['like', 'comment', 'follow', 'quiz_share', 'ga
 // Helper functions for generating specific data
 export const generateQuestionData = (type: string) => {
 	const baseData = {
-		timeLimit: 30,
-		points: 100,
+		// randomize time limit and points within sensible bounds
+		timeLimit: 15 + Math.floor(Math.random() * 46), // 15-60 seconds
+		points: [50, 100, 150][Math.floor(Math.random() * 3)],
 		explanation: 'This question tests your understanding of the topic.',
 	};
 	
@@ -122,6 +123,47 @@ export const generateQuestionData = (type: string) => {
 			};
 		default:
 			return baseData;
+	}
+};
+
+export const generateQuizTitle = (category: string) => {
+	const templates = [
+		`${category} Essentials`,
+		`Mastering ${category}`,
+		`${category} Fundamentals`,
+		`${category} Challenge`,
+		`Intro to ${category}`,
+	];
+	return templates[Math.floor(Math.random() * templates.length)];
+};
+
+export const generateQuizDescription = (category: string) => {
+	const templates = [
+		`Test your core knowledge of ${category} with balanced difficulty questions.`,
+		`A curated set of ${category} questions to help you practice effectively.`,
+		`Explore key concepts in ${category} with clear, focused questions.`,
+		`Sharpen your ${category} skills with this engaging quiz.`,
+	];
+	return templates[Math.floor(Math.random() * templates.length)];
+};
+
+export const generateQuestionText = (category: string | null, type: string, index: number) => {
+	const base = category ?? 'General Knowledge';
+	switch (type) {
+		case 'multiple_choice':
+			return `(${index + 1}) Which statement about ${base} is correct?`;
+		case 'true_false':
+			return `(${index + 1}) True or False: A common fact in ${base}.`;
+		case 'single_answer':
+			return `(${index + 1}) Briefly answer this ${base} question.`;
+		case 'reorder':
+			return `(${index + 1}) Arrange these ${base} steps in order.`;
+		case 'type_answer':
+			return `(${index + 1}) Type the correct term from ${base}.`;
+		case 'drop_pin':
+			return `(${index + 1}) Locate the relevant place related to ${base}.`;
+		default:
+			return `(${index + 1}) Question about ${base}.`;
 	}
 };
 
