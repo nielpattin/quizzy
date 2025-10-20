@@ -15,8 +15,8 @@ export const SEED_GAME_PARTICIPANTS_COUNT = Number(process.env.SEED_GAME_PARTICI
 export const SEED_SAVED_QUIZZES_COUNT = Number(process.env.SEED_SAVED_QUIZZES_COUNT) || 300;
 export const SEED_POSTS_COUNT = Number(process.env.SEED_POSTS_COUNT) || 200;
 export const SEED_POST_LIKES_COUNT = Number(process.env.SEED_POST_LIKES_COUNT) || 500;
-export const SEED_COMMENTS_COUNT = Number(process.env.SEED_COMMENTS_COUNT) || 400;
-export const SEED_COMMENT_LIKES_COUNT = Number(process.env.SEED_COMMENT_LIKES_COUNT) || 300;
+export const SEED_COMMENTS_COUNT = Number(process.env.SEED_COMMENTS_COUNT) || 0;
+export const SEED_COMMENT_LIKES_COUNT = Number(process.env.SEED_COMMENT_LIKES_COUNT) || 0;
 export const SEED_FOLLOWS_COUNT = Number(process.env.SEED_FOLLOWS_COUNT) || 500;
 export const SEED_NOTIFICATIONS_COUNT = Number(process.env.SEED_NOTIFICATIONS_COUNT) || 1000;
 

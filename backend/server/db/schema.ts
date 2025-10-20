@@ -10,6 +10,8 @@ export const questionTypeEnum = pgEnum('question_type', [
   'drop_pin',
 ]);
 
+export const postTypeEnum = pgEnum('post_type', ['text', 'image', 'quiz']);
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
@@ -165,6 +167,19 @@ export const postLikes = pgTable('post_likes', {
    index('post_likes_user_id_post_id_idx').on(table.userId, table.postId),
  ]);
 
+export const postAnswers = pgTable('post_answers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  answer: jsonb('answer').notNull(),
+  isCorrect: boolean('is_correct').notNull(),
+  answeredAt: timestamp('answered_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('post_answers_post_id_idx').on(table.postId),
+  index('post_answers_user_id_idx').on(table.userId),
+  index('post_answers_post_id_user_id_idx').on(table.postId, table.userId),
+]);
+
 export const comments = pgTable('comments', {
    id: uuid('id').primaryKey().defaultRandom(),
    postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
@@ -205,6 +220,12 @@ export const posts = pgTable('posts', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   text: text('text').notNull(),
+  postType: postTypeEnum('post_type').notNull().default('text'),
+  imageUrl: text('image_url'),
+  questionType: questionTypeEnum('question_type'),
+  questionText: text('question_text'),
+  questionData: jsonb('question_data').$type<{ options: string[], correctAnswer: number | number[] }>(),
+  answersCount: integer('answers_count').notNull().default(0),
   likesCount: integer('likes_count').notNull().default(0),
   commentsCount: integer('comments_count').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -212,6 +233,7 @@ export const posts = pgTable('posts', {
 }, (table) => [
   index('posts_user_id_idx').on(table.userId),
   index('posts_created_at_idx').on(table.createdAt),
+  index('posts_post_type_idx').on(table.postType),
 ]);
 
 export const follows = pgTable('follows', {

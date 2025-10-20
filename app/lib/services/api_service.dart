@@ -353,13 +353,38 @@ class ApiService {
     });
   }
 
-  static Future<dynamic> createPost(String text) async {
+  static Future<dynamic> createPost(
+    String text, {
+    String postType = 'text',
+    String? imageUrl,
+    String? questionType,
+    String? questionText,
+    Map<String, dynamic>? questionData,
+  }) async {
+    return _handleRequest(() async {
+      final headers = await _getHeaders();
+      final body = <String, dynamic>{'text': text, 'postType': postType};
+
+      if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (questionType != null) body['questionType'] = questionType;
+      if (questionText != null) body['questionText'] = questionText;
+      if (questionData != null) body['questionData'] = questionData;
+
+      return http.post(
+        Uri.parse("$_baseUrl/api/social/posts"),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+    });
+  }
+
+  static Future<dynamic> submitPostAnswer(String postId, dynamic answer) async {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/social/post"),
+        Uri.parse("$_baseUrl/api/social/posts/$postId/answer"),
         headers: headers,
-        body: jsonEncode({"text": text}),
+        body: jsonEncode({"answer": answer}),
       );
     });
   }
@@ -368,7 +393,7 @@ class ApiService {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/social/post/$postId"),
+        Uri.parse("$_baseUrl/api/social/posts/$postId"),
         headers: headers,
       );
     });
@@ -378,7 +403,7 @@ class ApiService {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/social/post/$postId/like"),
+        Uri.parse("$_baseUrl/api/social/posts/$postId/like"),
         headers: headers,
       );
     });
@@ -388,7 +413,7 @@ class ApiService {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/social/post/$postId/like"),
+        Uri.parse("$_baseUrl/api/social/posts/$postId/like"),
         headers: headers,
       );
     });
@@ -398,7 +423,7 @@ class ApiService {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/social/post/$postId/comments"),
+        Uri.parse("$_baseUrl/api/social/posts/$postId/comments"),
         headers: headers,
       );
     });
@@ -408,7 +433,7 @@ class ApiService {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/social/post/$postId/comment"),
+        Uri.parse("$_baseUrl/api/social/posts/$postId/comments"),
         headers: headers,
         body: jsonEncode({"content": content}),
       );
@@ -419,7 +444,17 @@ class ApiService {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/social/comment/$commentId"),
+        Uri.parse("$_baseUrl/api/social/comments/$commentId"),
+        headers: headers,
+      );
+    });
+  }
+
+  static Future<dynamic> getPost(String postId) async {
+    return _handleRequest(() async {
+      final headers = await _getHeaders();
+      return http.get(
+        Uri.parse("$_baseUrl/api/social/posts/$postId"),
         headers: headers,
       );
     });
@@ -429,7 +464,7 @@ class ApiService {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/social/comment/$commentId/like"),
+        Uri.parse("$_baseUrl/api/social/comments/$commentId/like"),
         headers: headers,
       );
     });
@@ -439,7 +474,7 @@ class ApiService {
     return _handleRequest(() async {
       final headers = await _getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/social/comment/$commentId/like"),
+        Uri.parse("$_baseUrl/api/social/comments/$commentId/like"),
         headers: headers,
       );
     });

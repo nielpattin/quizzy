@@ -181,12 +181,34 @@ export const seedExcludedUsers = async (db: any, excludedUserIds: string[]) => {
 		
 		// Generate posts for excluded user
 		for (let i = 0; i < SEED_EXCLUDED_POSTS_PER_USER; i++) {
+			const postTypeRand = Math.random();
+			let postType: 'text' | 'image' | 'quiz' = 'text';
+			let questionType = null;
+			let questionText = null;
+			let questionData = null;
+			
+			if (postTypeRand < 0.3) {
+				postType = 'quiz';
+				const qTypes = ['multiple_choice', 'true_false', 'single_answer'];
+				questionType = qTypes[Math.floor(Math.random() * qTypes.length)] as any;
+				questionText = `Quick quiz: ${generatePostContent(categories[i % categories.length])}`;
+				questionData = generateQuestionData(questionType);
+			} else if (postTypeRand < 0.5) {
+				postType = 'image';
+			}
+			
 			const postData = {
 				userId,
 				text: generatePostContent(categories[i % categories.length]),
+				postType,
+				imageUrl: postType === 'image' ? null : null,
+				questionType,
+				questionText,
+				questionData,
+				answersCount: postType === 'quiz' ? Math.floor(Math.random() * 50) : 0,
 				likesCount: Math.floor(Math.random() * 100),
-				commentsCount: Math.floor(Math.random() * 20),
-				createdAt: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000), // Random within last 60 days
+				commentsCount: 0,
+				createdAt: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000),
 			};
 			await db.insert(schema.posts).values(postData);
 		}

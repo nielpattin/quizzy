@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth'
 import type { AuthContext } from '../middleware/auth'
 import { db } from '../db/index'
-import { posts, postLikes, comments, commentLikes, users } from '../db/schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { posts, postLikes, comments, commentLikes, users, postAnswers } from '../db/schema'
+import { eq, and, desc, inArray, sql } from 'drizzle-orm'
 
 type Variables = {
   user: AuthContext
@@ -20,11 +20,32 @@ socialRoutes.post('/posts', authMiddleware, async (c) => {
       return c.json({ error: 'Post text is required' }, 400)
     }
 
+    const postType = body.postType || 'text'
+    
+    if (postType === 'quiz') {
+      if (!body.questionType || !body.questionText || !body.questionData) {
+        return c.json({ error: 'Quiz posts require questionType, questionText, and questionData' }, 400)
+      }
+      
+      if (!body.questionData.options || !Array.isArray(body.questionData.options) || body.questionData.options.length < 2) {
+        return c.json({ error: 'questionData must have at least 2 options' }, 400)
+      }
+      
+      if (body.questionData.correctAnswer === undefined) {
+        return c.json({ error: 'questionData must have correctAnswer' }, 400)
+      }
+    }
+
     const [newPost] = await db
       .insert(posts)
       .values({
         userId,
         text: body.text,
+        postType: postType,
+        imageUrl: body.imageUrl || null,
+        questionType: body.questionType || null,
+        questionText: body.questionText || null,
+        questionData: body.questionData || null,
       })
       .returning()
 
@@ -35,15 +56,23 @@ socialRoutes.post('/posts', authMiddleware, async (c) => {
   }
 })
 
-socialRoutes.get('/posts', async (c) => {
+socialRoutes.get('/posts', optionalAuthMiddleware, async (c) => {
   const limit = parseInt(c.req.query('limit') || '20')
   const offset = parseInt(c.req.query('offset') || '0')
+  const user = c.get('user') as AuthContext | undefined
+  const userId = user?.userId
 
   try {
     const feedPosts = await db
       .select({
         id: posts.id,
         text: posts.text,
+        postType: posts.postType,
+        imageUrl: posts.imageUrl,
+        questionType: posts.questionType,
+        questionText: posts.questionText,
+        questionData: posts.questionData,
+        answersCount: posts.answersCount,
         likesCount: posts.likesCount,
         commentsCount: posts.commentsCount,
         createdAt: posts.createdAt,
@@ -61,21 +90,91 @@ socialRoutes.get('/posts', async (c) => {
       .limit(limit)
       .offset(offset)
 
-    return c.json(feedPosts)
+    if (userId && feedPosts.length > 0) {
+      const postIds = feedPosts.map(p => p.id)
+      
+      const likes = await db
+        .select({ postId: postLikes.postId })
+        .from(postLikes)
+        .where(and(
+          eq(postLikes.userId, userId),
+          inArray(postLikes.postId, postIds)
+        ))
+      
+      const answers = await db
+        .select({ 
+          postId: postAnswers.postId,
+          isCorrect: postAnswers.isCorrect 
+        })
+        .from(postAnswers)
+        .where(and(
+          eq(postAnswers.userId, userId),
+          inArray(postAnswers.postId, postIds)
+        ))
+      
+      const correctAnswersCount = await db
+        .select({
+          postId: postAnswers.postId,
+          count: sql<number>`count(*)::int`.as('count')
+        })
+        .from(postAnswers)
+        .where(and(
+          inArray(postAnswers.postId, postIds),
+          eq(postAnswers.isCorrect, true)
+        ))
+        .groupBy(postAnswers.postId)
+      
+      const likedPostIds = new Set(likes.map(l => l.postId))
+      const answeredPostsMap = new Map(answers.map(a => [a.postId, a.isCorrect]))
+      const correctCountMap = new Map(correctAnswersCount.map(c => [c.postId, c.count]))
+      
+      const postsWithData = feedPosts.map(post => {
+        const hasAnswered = answeredPostsMap.has(post.id)
+        const userIsCorrect = answeredPostsMap.get(post.id) || false
+        const correctCount = correctCountMap.get(post.id) || 0
+        const correctPercentage = post.answersCount > 0 ? (correctCount / post.answersCount) * 100 : 0
+        
+        return {
+          ...post,
+          isLiked: likedPostIds.has(post.id),
+          hasAnswered,
+          userIsCorrect,
+          correctPercentage
+        }
+      })
+      
+      return c.json(postsWithData)
+    }
+
+    return c.json(feedPosts.map(post => ({ 
+      ...post, 
+      isLiked: false,
+      hasAnswered: false,
+      userIsCorrect: false,
+      correctPercentage: 0
+    })))
   } catch (error) {
     console.error('Error fetching posts:', error)
     return c.json({ error: 'Failed to fetch posts' }, 500)
   }
 })
 
-socialRoutes.get('/posts/:id', async (c) => {
+socialRoutes.get('/posts/:id', optionalAuthMiddleware, async (c) => {
   const postId = c.req.param('id')
+  const user = c.get('user') as AuthContext | undefined
+  const userId = user?.userId
 
   try {
     const [post] = await db
       .select({
         id: posts.id,
         text: posts.text,
+        postType: posts.postType,
+        imageUrl: posts.imageUrl,
+        questionType: posts.questionType,
+        questionText: posts.questionText,
+        questionData: posts.questionData,
+        answersCount: posts.answersCount,
         likesCount: posts.likesCount,
         commentsCount: posts.commentsCount,
         createdAt: posts.createdAt,
@@ -95,7 +194,51 @@ socialRoutes.get('/posts/:id', async (c) => {
       return c.json({ error: 'Post not found' }, 404)
     }
 
-    return c.json(post)
+    if (userId) {
+      const [like] = await db
+        .select()
+        .from(postLikes)
+        .where(and(
+          eq(postLikes.userId, userId),
+          eq(postLikes.postId, postId)
+        ))
+      
+      const [answer] = await db
+        .select({ isCorrect: postAnswers.isCorrect })
+        .from(postAnswers)
+        .where(and(
+          eq(postAnswers.userId, userId),
+          eq(postAnswers.postId, postId)
+        ))
+      
+      const [correctCount] = await db
+        .select({
+          count: sql<number>`count(*)::int`.as('count')
+        })
+        .from(postAnswers)
+        .where(and(
+          eq(postAnswers.postId, postId),
+          eq(postAnswers.isCorrect, true)
+        ))
+      
+      const correctPercentage = post.answersCount > 0 ? ((correctCount?.count || 0) / post.answersCount) * 100 : 0
+      
+      return c.json({ 
+        ...post, 
+        isLiked: !!like,
+        hasAnswered: !!answer,
+        userIsCorrect: answer?.isCorrect || false,
+        correctPercentage
+      })
+    }
+
+    return c.json({ 
+      ...post, 
+      isLiked: false,
+      hasAnswered: false,
+      userIsCorrect: false,
+      correctPercentage: 0
+    })
   } catch (error) {
     console.error('Error fetching post:', error)
     return c.json({ error: 'Failed to fetch post' }, 500)
@@ -305,8 +448,10 @@ socialRoutes.post('/posts/:id/comments', authMiddleware, async (c) => {
   }
 })
 
-socialRoutes.get('/posts/:id/comments', async (c) => {
+socialRoutes.get('/posts/:id/comments', optionalAuthMiddleware, async (c) => {
   const postId = c.req.param('id')
+  const user = c.get('user') as AuthContext | undefined
+  const userId = user?.userId
 
   try {
     const postComments = await db
@@ -328,7 +473,27 @@ socialRoutes.get('/posts/:id/comments', async (c) => {
       .where(eq(comments.postId, postId))
       .orderBy(desc(comments.createdAt))
 
-    return c.json(postComments)
+    if (userId && postComments.length > 0) {
+      const commentIds = postComments.map(c => c.id)
+      const likes = await db
+        .select({ commentId: commentLikes.commentId })
+        .from(commentLikes)
+        .where(and(
+          eq(commentLikes.userId, userId),
+          inArray(commentLikes.commentId, commentIds)
+        ))
+      
+      const likedCommentIds = new Set(likes.map(l => l.commentId))
+      
+      const commentsWithLikes = postComments.map(comment => ({
+        ...comment,
+        isLiked: likedCommentIds.has(comment.id)
+      }))
+      
+      return c.json(commentsWithLikes)
+    }
+
+    return c.json(postComments.map(comment => ({ ...comment, isLiked: false })))
   } catch (error) {
     console.error('Error fetching comments:', error)
     return c.json({ error: 'Failed to fetch comments' }, 500)
@@ -479,6 +644,12 @@ socialRoutes.get('/user/:userId/posts', async (c) => {
       .select({
         id: posts.id,
         text: posts.text,
+        postType: posts.postType,
+        imageUrl: posts.imageUrl,
+        questionType: posts.questionType,
+        questionText: posts.questionText,
+        questionData: posts.questionData,
+        answersCount: posts.answersCount,
         likesCount: posts.likesCount,
         commentsCount: posts.commentsCount,
         createdAt: posts.createdAt,
@@ -492,6 +663,91 @@ socialRoutes.get('/user/:userId/posts', async (c) => {
   } catch (error) {
     console.error('Error fetching user posts:', error)
     return c.json({ error: 'Failed to fetch user posts' }, 500)
+  }
+})
+
+socialRoutes.post('/posts/:id/answer', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const postId = c.req.param('id')
+  const body = await c.req.json()
+
+  try {
+    const [post] = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+
+    if (!post) {
+      return c.json({ error: 'Post not found' }, 404)
+    }
+
+    if (post.postType !== 'quiz') {
+      return c.json({ error: 'This post is not a quiz' }, 400)
+    }
+
+    const [existingAnswer] = await db
+      .select()
+      .from(postAnswers)
+      .where(and(
+        eq(postAnswers.postId, postId),
+        eq(postAnswers.userId, userId)
+      ))
+
+    if (existingAnswer) {
+      return c.json({ error: 'You have already answered this quiz' }, 400)
+    }
+
+    if (body.answer === undefined) {
+      return c.json({ error: 'answer is required' }, 400)
+    }
+
+    const questionData = post.questionData as { options: string[], correctAnswer: number | number[] }
+    let isCorrect = false
+
+    if (Array.isArray(questionData.correctAnswer)) {
+      const userAnswer = Array.isArray(body.answer) ? body.answer.sort() : [body.answer]
+      const correctAnswer = [...questionData.correctAnswer].sort()
+      isCorrect = JSON.stringify(userAnswer) === JSON.stringify(correctAnswer)
+    } else {
+      isCorrect = body.answer === questionData.correctAnswer
+    }
+
+    await db.insert(postAnswers).values({
+      postId,
+      userId,
+      answer: body.answer,
+      isCorrect,
+    })
+
+    await db
+      .update(posts)
+      .set({
+        answersCount: post.answersCount + 1,
+      })
+      .where(eq(posts.id, postId))
+
+    const [correctCount] = await db
+      .select({
+        count: sql<number>`count(*)::int`.as('count')
+      })
+      .from(postAnswers)
+      .where(and(
+        eq(postAnswers.postId, postId),
+        eq(postAnswers.isCorrect, true)
+      ))
+
+    const totalAnswers = post.answersCount + 1
+    const correctPercentage = ((correctCount?.count || 0) / totalAnswers) * 100
+
+    return c.json({
+      isCorrect,
+      correctAnswer: questionData.correctAnswer,
+      answersCount: totalAnswers,
+      correctPercentage
+    }, 201)
+  } catch (error) {
+    console.error('Error submitting answer:', error)
+    return c.json({ error: 'Failed to submit answer' }, 500)
   }
 })
 

@@ -40,8 +40,6 @@ const seedSchema = {
 	savedQuizzes: schema.savedQuizzes,
 	posts: schema.posts,
 	postLikes: schema.postLikes,
-	comments: schema.comments,
-	commentLikes: schema.commentLikes,
 	follows: schema.follows,
 	notifications: schema.notifications,
 };
@@ -145,21 +143,11 @@ export const seedRegularUsers = async (db: any) => {
 			columns: {
 				text: f.valuesFromArray({ values: categories.map((c) => `Sharing a new ${c} quiz – feedback welcome!`) }),
 				likesCount: f.int({ minValue: 0, maxValue: 500 }),
-				commentsCount: f.int({ minValue: 0, maxValue: 100 }),
+				commentsCount: f.int({ minValue: 0, maxValue: 0 }),
 			},
 		},
 		postLikes: {
 			count: SEED_POST_LIKES_COUNT,
-		},
-		comments: {
-			count: SEED_COMMENTS_COUNT,
-			columns: {
-				content: f.loremIpsum({ sentencesCount: 2 }),
-				likesCount: f.int({ minValue: 0, maxValue: 50 }),
-			},
-		},
-		commentLikes: {
-			count: SEED_COMMENT_LIKES_COUNT,
 		},
 		follows: {
 			count: SEED_FOLLOWS_COUNT,
@@ -229,6 +217,31 @@ export const seedRegularUsers = async (db: any) => {
 		await db.update(schema.questionsSnapshots)
 			.set({ questionText, data })
 			.where(eq(schema.questionsSnapshots.id, qs.id));
+	}
+
+	// Create 0-10 random comments per post and update commentsCount
+	const posts = await db.select().from(schema.posts);
+	const users = await db.select({ id: schema.users.id }).from(schema.users);
+	
+	for (const post of posts) {
+		const commentCount = Math.floor(Math.random() * 11); // 0-10 comments
+		
+		for (let i = 0; i < commentCount; i++) {
+			const randomUser = users[Math.floor(Math.random() * users.length)];
+			await db.insert(schema.comments).values({
+				postId: post.id,
+				userId: randomUser.id,
+				content: `Comment ${i + 1} on this post`,
+				likesCount: Math.floor(Math.random() * 10),
+			});
+		}
+		
+		// Update the post's commentsCount
+		if (commentCount > 0) {
+			await db.update(schema.posts)
+				.set({ commentsCount: commentCount })
+				.where(eq(schema.posts.id, post.id));
+		}
 	}
 
 	console.log('✅ Regular user data generation completed');

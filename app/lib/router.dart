@@ -15,6 +15,7 @@ import "pages/profile/profile_page.dart";
 import "pages/profile/settings_page.dart";
 import "pages/profile/edit_profile_page.dart";
 import "pages/social/search_page.dart";
+import "pages/social/post_details_page.dart";
 import "pages/quiz/quiz_detail_page.dart";
 import "pages/quiz/category_page.dart";
 import "pages/quiz/trending_page.dart";
@@ -109,6 +110,28 @@ final router = GoRouter(
           );
         },
       ),
+    ),
+    GoRoute(
+      path: "/post/details",
+      pageBuilder: (context, state) {
+        final postId = state.extra as String;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: PostDetailsPage(postId: postId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
     ),
     GoRoute(
       path: "/notification",

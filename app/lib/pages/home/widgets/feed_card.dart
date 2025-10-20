@@ -1,25 +1,40 @@
 import "package:flutter/material.dart";
+import "../../../models/post.dart";
 
 class FeedCard extends StatelessWidget {
   final String postId;
   final String author;
   final String text;
+  final PostType postType;
+  final String? questionText;
+  final bool hasAnswered;
   final int likes;
   final int comments;
   final bool isLiked;
+  final bool isOwner;
   final VoidCallback onLike;
   final VoidCallback? onTap;
+  final VoidCallback? onComment;
+  final VoidCallback? onDelete;
+  final VoidCallback? onQuizTap;
 
   const FeedCard({
     super.key,
     required this.postId,
     required this.author,
     required this.text,
+    this.postType = PostType.text,
+    this.questionText,
+    this.hasAnswered = false,
     required this.likes,
     required this.comments,
     required this.isLiked,
+    this.isOwner = false,
     required this.onLike,
     this.onTap,
+    this.onComment,
+    this.onDelete,
+    this.onQuizTap,
   });
 
   @override
@@ -59,6 +74,35 @@ class FeedCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (isOwner && onDelete != null)
+                    PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'delete') {
+                          onDelete!();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, color: Colors.red, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      icon: Icon(
+                        Icons.more_vert,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -73,6 +117,95 @@ class FeedCard extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            if (postType == PostType.image)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.image_outlined,
+                      size: 48,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.3),
+                    ),
+                  ),
+                ),
+              ),
+            if (postType == PostType.quiz)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: InkWell(
+                  onTap: onQuizTap,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.quiz,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                questionText ?? "Quiz Question",
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                hasAnswered ? "Answered ✓" : "Tap to answer",
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer
+                                      .withValues(alpha: 0.7),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -112,26 +245,37 @@ class FeedCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 24),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.comment_outlined,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
-                        size: 20,
+                  InkWell(
+                    onTap: onComment,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        "$comments",
-                        style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.comment_outlined,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.7),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            "$comments",
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),

@@ -99,57 +99,79 @@ class _SplashPageState extends State<SplashPage>
           '[SPLASH] Fetching user profile from: $serverUrl/api/user/profile',
         );
 
-        final response = await http.get(
-          Uri.parse("$serverUrl/api/user/profile"),
-          headers: {"Authorization": "Bearer $token"},
-        );
+        try {
+          final response = await http.get(
+            Uri.parse("$serverUrl/api/user/profile"),
+            headers: {"Authorization": "Bearer $token"},
+          );
 
-        debugPrint('[SPLASH] Profile response status: ${response.statusCode}');
-        debugPrint('[SPLASH] Profile response body: ${response.body}');
+          debugPrint(
+            '[SPLASH] Profile response status: ${response.statusCode}',
+          );
+          debugPrint('[SPLASH] Profile response body: ${response.body}');
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          debugPrint('[SPLASH] Parsed data: $data');
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            debugPrint('[SPLASH] Parsed data: $data');
 
-          final isSetupComplete = data["isSetupComplete"] ?? false;
-          final email = data["email"];
-          final fullName = data["fullName"];
-          final username = data["username"];
+            final isSetupComplete = data["isSetupComplete"] ?? false;
+            final email = data["email"];
+            final fullName = data["fullName"];
+            final username = data["username"];
 
-          debugPrint('[SPLASH] User details:');
-          debugPrint('   - Email: $email');
-          debugPrint('   - Full Name: $fullName');
-          debugPrint('   - Username: $username');
-          debugPrint('   - isSetupComplete: $isSetupComplete');
+            debugPrint('[SPLASH] User details:');
+            debugPrint('   - Email: $email');
+            debugPrint('   - Full Name: $fullName');
+            debugPrint('   - Username: $username');
+            debugPrint('   - isSetupComplete: $isSetupComplete');
 
-          await _ensureMinimumDelay(startTime);
+            await _ensureMinimumDelay(startTime);
 
-          if (mounted) {
-            if (!isSetupComplete) {
-              debugPrint(
-                '[SPLASH] Setup NOT complete, redirecting to /setup-account',
-              );
-              context.go("/setup-account");
-            } else {
-              debugPrint('[SPLASH] Setup complete, redirecting to /home');
-              context.go("/home");
+            if (mounted) {
+              if (!isSetupComplete) {
+                debugPrint(
+                  '[SPLASH] Setup NOT complete, redirecting to /setup-account',
+                );
+                context.go("/setup-account");
+              } else {
+                debugPrint('[SPLASH] Setup complete, redirecting to /home');
+                context.go("/home");
+              }
             }
+            return;
+          } else if (response.statusCode == 401) {
+            debugPrint(
+              '[SPLASH] Token expired or invalid (401), signing out...',
+            );
+            await Supabase.instance.client.auth.signOut();
+            await _ensureMinimumDelay(startTime);
+            if (mounted) {
+              context.go("/welcome");
+            }
+            return;
+          } else if (response.statusCode == 404) {
+            debugPrint(
+              '[SPLASH] User profile not found (404), this should not happen anymore!',
+            );
+            debugPrint('[SPLASH] Response body: ${response.body}');
+            await _ensureMinimumDelay(startTime);
+            if (mounted) {
+              context.go("/setup-account");
+            }
+            return;
+          } else {
+            debugPrint(
+              '[SPLASH] Unexpected response: ${response.statusCode} - ${response.body}',
+            );
           }
-          return;
-        } else if (response.statusCode == 404) {
-          debugPrint(
-            '[SPLASH] User profile not found (404), this should not happen anymore!',
-          );
-          debugPrint('[SPLASH] Response body: ${response.body}');
+        } catch (httpError) {
+          debugPrint('[SPLASH] HTTP request error: $httpError');
+          await Supabase.instance.client.auth.signOut();
           await _ensureMinimumDelay(startTime);
           if (mounted) {
-            context.go("/setup-account");
+            context.go("/welcome");
           }
           return;
-        } else {
-          debugPrint(
-            '[SPLASH] Unexpected response: ${response.statusCode} - ${response.body}',
-          );
         }
       } else {
         debugPrint('[SPLASH] No session found');
@@ -157,6 +179,11 @@ class _SplashPageState extends State<SplashPage>
     } catch (e, stackTrace) {
       debugPrint('[SPLASH] Error checking user status: $e');
       debugPrint('[SPLASH] Stack trace: $stackTrace');
+      try {
+        await Supabase.instance.client.auth.signOut();
+      } catch (signOutError) {
+        debugPrint('[SPLASH] Error during sign out: $signOutError');
+      }
     }
 
     await _ensureMinimumDelay(startTime);

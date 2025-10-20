@@ -1,6 +1,11 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
+import "package:supabase_flutter/supabase_flutter.dart";
 import "../../services/api_service.dart";
+import "../../models/post.dart";
 import "widgets/feed_card.dart";
+import "widgets/create_post_dialog.dart";
+import "widgets/quick_question_modal.dart";
 
 class FeedyTab extends StatefulWidget {
   const FeedyTab({super.key});
@@ -92,7 +97,37 @@ class _FeedyTabState extends State<FeedyTab> {
 
   Future<void> _refreshFeed() async {
     debugPrint("[FeedyTab] Refreshing feed...");
-    await _loadFeed(refresh: true);
+    _currentPage = 0;
+    setState(() {
+      _feedItems = [];
+      _isLoading = true;
+    });
+
+    try {
+      final data = await ApiService.getFeedPosts(limit: _pageSize, offset: 0);
+      if (mounted) {
+        setState(() {
+          _feedItems = data;
+          _currentPage = 1;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("[FeedyTab] Error refreshing feed: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showCreatePostDialog() {
+    showDialog(
+      context: context,
+      builder: (context) =>
+          CreatePostDialog(onPostCreated: () => _refreshFeed()),
+    );
   }
 
   Future<void> _toggleLike(String postId, bool isLiked) async {
@@ -110,6 +145,52 @@ class _FeedyTabState extends State<FeedyTab> {
       });
     } catch (e) {
       debugPrint("[FeedyTab] Error toggling like: $e");
+    }
+  }
+
+  Future<void> _deletePost(String postId) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text(
+                'Delete Post',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () => Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ApiService.deletePost(postId);
+        setState(() {
+          _feedItems.removeWhere((p) => p["id"] == postId);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post deleted successfully')),
+          );
+        }
+      } catch (e) {
+        debugPrint("[FeedyTab] Error deleting post: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to delete post: $e')));
+        }
+      }
     }
   }
 
@@ -157,36 +238,75 @@ class _FeedyTabState extends State<FeedyTab> {
 
     return RefreshIndicator(
       onRefresh: _refreshFeed,
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _feedItems.length + (_isLoading ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _feedItems.length) {
-            return const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
+      child: Stack(
+        children: [
+          ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: _feedItems.length + (_isLoading ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == _feedItems.length) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
 
-          final item = _feedItems[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: FeedCard(
-              postId: item["id"],
-              author: item["user"]?["fullName"] ?? "Unknown",
-              text: item["text"] ?? "",
-              likes: item["likesCount"] ?? 0,
-              comments: item["commentsCount"] ?? 0,
-              isLiked: item["isLiked"] ?? false,
-              onLike: () => _toggleLike(item["id"], item["isLiked"] ?? false),
-              onTap: () {
-                // Navigate to post details or user profile
-                debugPrint("Tapped post: ${item["id"]}");
-              },
+              final item = _feedItems[index];
+              final currentUserId =
+                  Supabase.instance.client.auth.currentUser?.id;
+              final postOwnerId = item["user"]?["id"];
+              final isOwner =
+                  currentUserId != null && currentUserId == postOwnerId;
+
+              final post = Post.fromJson(item);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: FeedCard(
+                  postId: post.id,
+                  author: post.user.fullName ?? "Unknown",
+                  text: post.text,
+                  postType: post.postType,
+                  questionText: post.questionText,
+                  hasAnswered: post.hasAnswered,
+                  likes: post.likesCount,
+                  comments: post.commentsCount,
+                  isLiked: post.isLiked,
+                  isOwner: isOwner,
+                  onLike: () => _toggleLike(post.id, post.isLiked),
+                  onComment: () {
+                    context.push("/post/details", extra: post.id);
+                  },
+                  onTap: () {
+                    debugPrint("Tapped post: ${post.id}");
+                  },
+                  onDelete: isOwner ? () => _deletePost(post.id) : null,
+                  onQuizTap: post.postType == PostType.quiz && !post.hasAnswered
+                      ? () async {
+                          await showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (context) => QuickQuestionModal(
+                              post: post,
+                              onAnswered: _refreshFeed,
+                            ),
+                          );
+                        }
+                      : null,
+                ),
+              );
+            },
+          ),
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton(
+              onPressed: _showCreatePostDialog,
+              child: const Icon(Icons.add),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
