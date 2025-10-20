@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -281,7 +282,7 @@ class WebSocketService {
     } catch (e) {
       _updateConnectionStatus(ConnectionStatus.error);
       _scheduleReconnect();
-      print('WebSocket connection error: $e');
+      debugPrint('WebSocket connection error: $e');
     }
   }
 
@@ -409,27 +410,27 @@ class WebSocketService {
           break;
 
         case WebSocketMessageType.error:
-          print('WebSocket error: ${message.message}');
+          debugPrint('WebSocket error: ${message.message}');
           break;
 
         default:
-          print('Unknown WebSocket message type: ${message.type}');
+          debugPrint('Unknown WebSocket message type: ${message.type}');
       }
     } catch (e) {
-      print('Error handling WebSocket message: $e');
+      debugPrint('Error handling WebSocket message: $e');
     }
   }
 
   void _handleError(Object error) {
     if (_isDisposed) return;
-    print('WebSocket error: $error');
+    debugPrint('WebSocket error: $error');
     _updateConnectionStatus(ConnectionStatus.error);
     _scheduleReconnect();
   }
 
   void _handleDisconnect() {
     if (_isDisposed) return;
-    print('WebSocket disconnected');
+    debugPrint('WebSocket disconnected');
     _updateConnectionStatus(ConnectionStatus.disconnected);
     _scheduleReconnect();
   }

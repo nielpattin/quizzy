@@ -61,15 +61,23 @@ class _CreatedTabState extends State<CreatedTab> {
               ? _QuizzesList(
                   sort: widget.sort,
                   onCountChanged: (count) {
-                    if (mounted && _quizzesCount != count) {
-                      setState(() => _quizzesCount = count);
+                    if (mounted) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && _quizzesCount != count) {
+                          setState(() => _quizzesCount = count);
+                        }
+                      });
                     }
                   },
                 )
               : _CollectionsList(
                   onCountChanged: (count) {
-                    if (mounted && _collectionsCount != count) {
-                      setState(() => _collectionsCount = count);
+                    if (mounted) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && _collectionsCount != count) {
+                          setState(() => _collectionsCount = count);
+                        }
+                      });
                     }
                   },
                 ),
@@ -88,67 +96,96 @@ class _QuizzesList extends StatefulWidget {
   State<_QuizzesList> createState() => _QuizzesListState();
 }
 
-class _QuizzesListState extends State<_QuizzesList> {
-  bool _isLoading = true;
-  List<Quiz> _quizzes = [];
+class _QuizzesListState extends State<_QuizzesList>
+    with AutomaticKeepAliveClientMixin {
+  Future<List<Quiz>>? _quizzesFuture;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _loadQuizzes();
+    _quizzesFuture = LibraryService.fetchCreatedQuizzes(widget.sort);
   }
 
   @override
   void didUpdateWidget(_QuizzesList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sort != widget.sort) {
-      _loadQuizzes();
-    }
-  }
-
-  Future<void> _loadQuizzes() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      final quizzes = await LibraryService.fetchCreatedQuizzes(widget.sort);
-      if (mounted) {
-        setState(() {
-          _quizzes = quizzes;
-          _isLoading = false;
-        });
-        widget.onCountChanged(_quizzes.length);
-      }
-    } catch (e) {
-      debugPrint("[CreatedTab] Error loading quizzes: $e");
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        widget.onCountChanged(0);
-      }
+      setState(() {
+        _quizzesFuture = LibraryService.fetchCreatedQuizzes(widget.sort);
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
+    super.build(context);
+    return FutureBuilder<List<Quiz>>(
+      future: _quizzesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingSkeleton();
+        }
 
-    if (_quizzes.isEmpty) {
-      return Center(
-        child: Text(
-          "No quizzes yet",
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
+        if (snapshot.hasError) {
+          debugPrint("[CreatedTab] Error loading quizzes: ${snapshot.error}");
+          widget.onCountChanged(0);
+          return Center(
+            child: Text(
+              "Error loading quizzes",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          );
+        }
+
+        final quizzes = snapshot.data ?? [];
+        widget.onCountChanged(quizzes.length);
+
+        if (quizzes.isEmpty) {
+          return Center(
+            child: Text(
+              "No quizzes yet",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          );
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.65,
           ),
-        ),
-      );
-    }
+          itemCount: quizzes.length,
+          itemBuilder: (context, i) {
+            final quiz = quizzes[i];
+            return QuizPlayCard(
+              title: quiz.title,
+              timeAgo: quiz.timeAgo,
+              questions: quiz.questions,
+              plays: quiz.plays,
+              gradient: quiz.gradient,
+              onTap: () => context.push("/quiz/${quiz.id}"),
+            );
+          },
+        );
+      },
+    );
+  }
 
+  Widget _buildLoadingSkeleton() {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -157,16 +194,15 @@ class _QuizzesListState extends State<_QuizzesList> {
         mainAxisSpacing: 12,
         childAspectRatio: 0.65,
       ),
-      itemCount: _quizzes.length,
+      itemCount: 6,
       itemBuilder: (context, i) {
-        final quiz = _quizzes[i];
-        return QuizPlayCard(
-          title: quiz.title,
-          timeAgo: quiz.timeAgo,
-          questions: quiz.questions,
-          plays: quiz.plays,
-          gradient: quiz.gradient,
-          onTap: () => context.push("/quiz/${quiz.id}"),
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
         );
       },
     );
@@ -181,59 +217,85 @@ class _CollectionsList extends StatefulWidget {
   State<_CollectionsList> createState() => _CollectionsListState();
 }
 
-class _CollectionsListState extends State<_CollectionsList> {
-  bool _isLoading = true;
-  List<Collection> _collections = [];
+class _CollectionsListState extends State<_CollectionsList>
+    with AutomaticKeepAliveClientMixin {
+  Future<List<Collection>>? _collectionsFuture;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _loadCollections();
-  }
-
-  Future<void> _loadCollections() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      final collections = await LibraryService.fetchCollections();
-      if (mounted) {
-        setState(() {
-          _collections = collections;
-          _isLoading = false;
-        });
-        widget.onCountChanged(_collections.length);
-      }
-    } catch (e) {
-      debugPrint("[CreatedTab] Error loading collections: $e");
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        widget.onCountChanged(0);
-      }
-    }
+    _collectionsFuture = LibraryService.fetchCollections();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
+    super.build(context);
+    return FutureBuilder<List<Collection>>(
+      future: _collectionsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingSkeleton();
+        }
 
-    if (_collections.isEmpty) {
-      return Center(
-        child: Text(
-          "No collections yet",
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
+        if (snapshot.hasError) {
+          debugPrint(
+            "[CreatedTab] Error loading collections: ${snapshot.error}",
+          );
+          widget.onCountChanged(0);
+          return Center(
+            child: Text(
+              "Error loading collections",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          );
+        }
+
+        final collections = snapshot.data ?? [];
+        widget.onCountChanged(collections.length);
+
+        if (collections.isEmpty) {
+          return Center(
+            child: Text(
+              "No collections yet",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          );
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.85,
           ),
-        ),
-      );
-    }
+          itemCount: collections.length,
+          itemBuilder: (context, i) {
+            final collection = collections[i];
+            return CollectionCard(
+              title: collection.title,
+              quizCount: collection.quizCount,
+              gradient: collection.gradient,
+            );
+          },
+        );
+      },
+    );
+  }
 
+  Widget _buildLoadingSkeleton() {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -242,13 +304,15 @@ class _CollectionsListState extends State<_CollectionsList> {
         mainAxisSpacing: 12,
         childAspectRatio: 0.85,
       ),
-      itemCount: _collections.length,
+      itemCount: 6,
       itemBuilder: (context, i) {
-        final collection = _collections[i];
-        return CollectionCard(
-          title: collection.title,
-          quizCount: collection.quizCount,
-          gradient: collection.gradient,
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
         );
       },
     );

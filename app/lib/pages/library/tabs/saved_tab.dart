@@ -33,8 +33,12 @@ class _SavedTabState extends State<SavedTab> {
           child: _FavoritesList(
             sort: widget.sort,
             onCountChanged: (count) {
-              if (mounted && _savedCount != count) {
-                setState(() => _savedCount = count);
+              if (mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _savedCount != count) {
+                    setState(() => _savedCount = count);
+                  }
+                });
               }
             },
           ),
@@ -53,67 +57,98 @@ class _FavoritesList extends StatefulWidget {
   State<_FavoritesList> createState() => _FavoritesListState();
 }
 
-class _FavoritesListState extends State<_FavoritesList> {
-  bool _isLoading = true;
-  List<Quiz> _quizzes = [];
+class _FavoritesListState extends State<_FavoritesList>
+    with AutomaticKeepAliveClientMixin {
+  Future<List<Quiz>>? _quizzesFuture;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _loadQuizzes();
+    _quizzesFuture = LibraryService.fetchSavedQuizzes(widget.sort);
   }
 
   @override
   void didUpdateWidget(_FavoritesList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sort != widget.sort) {
-      _loadQuizzes();
-    }
-  }
-
-  Future<void> _loadQuizzes() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      final quizzes = await LibraryService.fetchSavedQuizzes(widget.sort);
-      if (mounted) {
-        setState(() {
-          _quizzes = quizzes;
-          _isLoading = false;
-        });
-        widget.onCountChanged(_quizzes.length);
-      }
-    } catch (e) {
-      debugPrint("[SavedTab] Error loading saved quizzes: $e");
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        widget.onCountChanged(0);
-      }
+      setState(() {
+        _quizzesFuture = LibraryService.fetchSavedQuizzes(widget.sort);
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
+    super.build(context);
+    return FutureBuilder<List<Quiz>>(
+      future: _quizzesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingSkeleton();
+        }
 
-    if (_quizzes.isEmpty) {
-      return Center(
-        child: Text(
-          "No saved quizzes yet",
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
+        if (snapshot.hasError) {
+          debugPrint(
+            "[SavedTab] Error loading saved quizzes: ${snapshot.error}",
+          );
+          widget.onCountChanged(0);
+          return Center(
+            child: Text(
+              "Error loading saved quizzes",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          );
+        }
+
+        final quizzes = snapshot.data ?? [];
+        widget.onCountChanged(quizzes.length);
+
+        if (quizzes.isEmpty) {
+          return Center(
+            child: Text(
+              "No saved quizzes yet",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          );
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.65,
           ),
-        ),
-      );
-    }
+          itemCount: quizzes.length,
+          itemBuilder: (context, i) {
+            final quiz = quizzes[i];
+            return QuizPlayCard(
+              title: quiz.title,
+              timeAgo: quiz.timeAgo,
+              questions: quiz.questions,
+              plays: quiz.plays,
+              gradient: quiz.gradient,
+              onTap: () => context.push("/quiz/${quiz.id}"),
+            );
+          },
+        );
+      },
+    );
+  }
 
+  Widget _buildLoadingSkeleton() {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -122,16 +157,15 @@ class _FavoritesListState extends State<_FavoritesList> {
         mainAxisSpacing: 12,
         childAspectRatio: 0.65,
       ),
-      itemCount: _quizzes.length,
+      itemCount: 6,
       itemBuilder: (context, i) {
-        final quiz = _quizzes[i];
-        return QuizPlayCard(
-          title: quiz.title,
-          timeAgo: quiz.timeAgo,
-          questions: quiz.questions,
-          plays: quiz.plays,
-          gradient: quiz.gradient,
-          onTap: () => context.push("/quiz/${quiz.id}"),
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
         );
       },
     );

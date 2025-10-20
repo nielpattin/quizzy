@@ -135,7 +135,7 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
         _handleWebSocketMessage(message);
       });
     } catch (e) {
-      print('Failed to initialize real-time features: $e');
+      debugPrint('Failed to initialize real-time features: $e');
       // Silently fail - quiz will work without real-time features
     }
   }

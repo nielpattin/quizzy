@@ -51,12 +51,16 @@ class _GameTabState extends State<GameTab> {
             sort: widget.sort,
             onCountChanged: (count) {
               if (mounted) {
-                if (widget.selectedSubTab == 0 && _myGamesCount != count) {
-                  setState(() => _myGamesCount = count);
-                } else if (widget.selectedSubTab == 1 &&
-                    _recentGamesCount != count) {
-                  setState(() => _recentGamesCount = count);
-                }
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    if (widget.selectedSubTab == 0 && _myGamesCount != count) {
+                      setState(() => _myGamesCount = count);
+                    } else if (widget.selectedSubTab == 1 &&
+                        _recentGamesCount != count) {
+                      setState(() => _recentGamesCount = count);
+                    }
+                  }
+                });
               }
             },
           ),
@@ -80,92 +84,136 @@ class _GameList extends StatefulWidget {
   State<_GameList> createState() => _GameListState();
 }
 
-class _GameListState extends State<_GameList> {
-  bool _isLoading = true;
-  List<Quiz> _soloPlays = [];
-  List<GameSession> _sessions = [];
+class _GameListState extends State<_GameList>
+    with AutomaticKeepAliveClientMixin {
+  Future<Map<String, dynamic>>? _dataFuture;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _dataFuture = _loadData();
   }
 
   @override
   void didUpdateWidget(_GameList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sort != widget.sort || oldWidget.mine != widget.mine) {
-      _loadData();
+      setState(() {
+        _dataFuture = _loadData();
+      });
     }
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      if (widget.mine) {
-        final sessions = await LibraryService.fetchMySessions(widget.sort);
-        if (mounted) {
-          setState(() {
-            _sessions = sessions;
-            _soloPlays = [];
-            _isLoading = false;
-          });
-          widget.onCountChanged(_sessions.length);
-        }
-      } else {
-        final results = await Future.wait([
-          LibraryService.fetchSoloPlays(),
-          LibraryService.fetchRecentSessions(widget.sort),
-        ]);
-        if (mounted) {
-          setState(() {
-            _soloPlays = results[0] as List<Quiz>;
-            _sessions = results[1] as List<GameSession>;
-            _isLoading = false;
-          });
-          widget.onCountChanged(_soloPlays.length + _sessions.length);
-        }
-      }
-    } catch (e) {
-      debugPrint("[GameTab] Error loading data: $e");
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        widget.onCountChanged(0);
-      }
+  Future<Map<String, dynamic>> _loadData() async {
+    if (widget.mine) {
+      final sessions = await LibraryService.fetchMySessions(widget.sort);
+      return {'sessions': sessions, 'soloPlays': <Quiz>[]};
+    } else {
+      final results = await Future.wait([
+        LibraryService.fetchSoloPlays(),
+        LibraryService.fetchRecentSessions(widget.sort),
+      ]);
+      return {
+        'soloPlays': results[0] as List<Quiz>,
+        'sessions': results[1] as List<GameSession>,
+      };
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
+    super.build(context);
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _dataFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingSkeleton();
+        }
 
-    final data = <dynamic>[];
-    if (widget.mine) {
-      data.addAll(_sessions);
-    } else {
-      data.addAll(_soloPlays);
-      data.addAll(_sessions);
-    }
+        if (snapshot.hasError) {
+          debugPrint("[GameTab] Error loading data: ${snapshot.error}");
+          widget.onCountChanged(0);
+          return Center(
+            child: Text(
+              "Error loading games",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          );
+        }
 
-    if (data.isEmpty) {
-      return Center(
-        child: Text(
-          widget.mine ? "No games yet" : "No recent games",
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
+        final gameData = snapshot.data ?? {};
+        final soloPlays = gameData['soloPlays'] as List<Quiz>? ?? [];
+        final sessions = gameData['sessions'] as List<GameSession>? ?? [];
+        widget.onCountChanged(
+          widget.mine ? sessions.length : soloPlays.length + sessions.length,
+        );
+
+        final data = <dynamic>[];
+        if (widget.mine) {
+          data.addAll(sessions);
+        } else {
+          data.addAll(soloPlays);
+          data.addAll(sessions);
+        }
+
+        if (data.isEmpty) {
+          return Center(
+            child: Text(
+              widget.mine ? "No games yet" : "No recent games",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          );
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.65,
           ),
-        ),
-      );
-    }
+          itemCount: data.length,
+          itemBuilder: (context, i) {
+            final item = data[i];
+            if (item is GameSession) {
+              return GameSessionCard(
+                title: item.title,
+                length: item.length,
+                date: item.date,
+                isLive: item.isLive,
+                joined: item.joined,
+                gradient: item.gradient,
+                onTap: () => context.push('/quiz/session/live/${item.id}'),
+              );
+            }
+            final quiz = item as Quiz;
+            return QuizPlayCard(
+              title: quiz.title,
+              timeAgo: quiz.timeAgo,
+              questions: quiz.questions,
+              plays: quiz.plays,
+              gradient: quiz.gradient,
+              onTap: () => context.push("/quiz/${quiz.id}"),
+            );
+          },
+        );
+      },
+    );
+  }
 
+  Widget _buildLoadingSkeleton() {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -174,28 +222,15 @@ class _GameListState extends State<_GameList> {
         mainAxisSpacing: 12,
         childAspectRatio: 0.65,
       ),
-      itemCount: data.length,
+      itemCount: 6,
       itemBuilder: (context, i) {
-        final item = data[i];
-        if (item is GameSession) {
-          return GameSessionCard(
-            title: item.title,
-            length: item.length,
-            date: item.date,
-            isLive: item.isLive,
-            joined: item.joined,
-            gradient: item.gradient,
-            onTap: () => context.push('/quiz/session/live/${item.id}'),
-          );
-        }
-        final quiz = item as Quiz;
-        return QuizPlayCard(
-          title: quiz.title,
-          timeAgo: quiz.timeAgo,
-          questions: quiz.questions,
-          plays: quiz.plays,
-          gradient: quiz.gradient,
-          onTap: () => context.push("/quiz/${quiz.id}"),
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
         );
       },
     );
