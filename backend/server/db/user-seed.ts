@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import * as schema from './schema';
 import {
 	SEED_EXCLUDED_COLLECTIONS_PER_USER,
@@ -91,17 +91,35 @@ export const seedExcludedUsers = async (db: any, excludedUserIds: string[]) => {
 			};
 			const [snapshot] = await db.insert(schema.quizSnapshots).values(snapshotData).returning();
 			
+			// Copy questions from quiz to snapshot
+			const quizQuestions = await db
+				.select()
+				.from(schema.questions)
+				.where(eq(schema.questions.quizId, randomQuiz.id))
+				.orderBy(schema.questions.orderIndex);
+			
+			if (quizQuestions.length > 0) {
+				const snapshotQuestions = quizQuestions.map((q: any) => ({
+					snapshotId: snapshot.id,
+					type: q.type,
+					questionText: q.questionText,
+					data: q.data,
+					orderIndex: q.orderIndex,
+				}));
+				await db.insert(schema.questionsSnapshots).values(snapshotQuestions);
+			}
+			
 			const sessionData = {
 				hostId: userId,
 				quizSnapshotId: snapshot.id,
 				title: `${randomQuiz.title} - Game Session ${i + 1}`,
 				estimatedMinutes: randomQuiz.questionCount * 2,
-				isLive: Math.random() > 0.7,
-				joinedCount: Math.floor(Math.random() * SEED_EXCLUDED_PARTICIPANTS_PER_SESSION),
+				isLive: false,
+				joinedCount: 0,
 				code: `GAME${userId.slice(-4).toUpperCase()}${i + 1}`,
 				quizVersion: randomQuiz.version,
-				startedAt: Math.random() > 0.5 ? new Date() : null,
-				endedAt: Math.random() > 0.7 ? new Date() : null,
+				startedAt: null,
+				endedAt: null,
 			};
 			const [session] = await db.insert(schema.gameSessions).values(sessionData).returning();
 			
@@ -134,6 +152,24 @@ export const seedExcludedUsers = async (db: any, excludedUserIds: string[]) => {
 				questionCount: randomQuiz.questionCount,
 			};
 			const [snapshot] = await db.insert(schema.quizSnapshots).values(snapshotData).returning();
+			
+			// Copy questions from quiz to snapshot
+			const quizQuestions = await db
+				.select()
+				.from(schema.questions)
+				.where(eq(schema.questions.quizId, randomQuiz.id))
+				.orderBy(schema.questions.orderIndex);
+			
+			if (quizQuestions.length > 0) {
+				const snapshotQuestions = quizQuestions.map((q: any) => ({
+					snapshotId: snapshot.id,
+					type: q.type,
+					questionText: q.questionText,
+					data: q.data,
+					orderIndex: q.orderIndex,
+				}));
+				await db.insert(schema.questionsSnapshots).values(snapshotQuestions);
+			}
 			
 			const savedQuizData = {
 				userId,

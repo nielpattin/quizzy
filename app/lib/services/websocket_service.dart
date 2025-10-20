@@ -226,6 +226,7 @@ class WebSocketService {
   String? _currentSessionId;
   Timer? _pingTimer;
   Timer? _reconnectTimer;
+  bool _isDisposed = false;
 
   // Stream controllers
   final _connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -254,6 +255,7 @@ class WebSocketService {
       return;
     }
 
+    _isDisposed = false; // Reset disposal flag when reconnecting
     _updateConnectionStatus(ConnectionStatus.connecting);
 
     try {
@@ -263,14 +265,10 @@ class WebSocketService {
       }
 
       final serverUrl = dotenv.env['SERVER_URL'] ?? 'http://localhost:8000';
-      final wsUrl = '${serverUrl.replaceFirst('http', 'ws')}/ws';
+      final wsUrl =
+          '${serverUrl.replaceFirst('http', 'ws')}/ws?token=${session.accessToken}';
 
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-
-      // Send authorization after connection
-      _channel!.sink.add(
-        jsonEncode({'type': 'auth', 'token': session.accessToken}),
-      );
 
       _channel!.stream.listen(
         _handleMessage,
@@ -423,19 +421,23 @@ class WebSocketService {
   }
 
   void _handleError(Object error) {
+    if (_isDisposed) return;
     print('WebSocket error: $error');
     _updateConnectionStatus(ConnectionStatus.error);
     _scheduleReconnect();
   }
 
   void _handleDisconnect() {
+    if (_isDisposed) return;
     print('WebSocket disconnected');
     _updateConnectionStatus(ConnectionStatus.disconnected);
     _scheduleReconnect();
   }
 
   void _updateConnectionStatus(ConnectionStatus status) {
-    _connectionStatusController.add(status);
+    if (!_isDisposed && !_connectionStatusController.isClosed) {
+      _connectionStatusController.add(status);
+    }
   }
 
   void _startPingTimer() {
@@ -460,13 +462,13 @@ class WebSocketService {
   }
 
   void dispose() {
+    _isDisposed = true;
     _pingTimer?.cancel();
     _reconnectTimer?.cancel();
     _channel?.sink.close();
-    _connectionStatusController.close();
-    _messageController.close();
-    _sessionController.close();
-    _participantsController.close();
-    _leaderboardController.close();
+    _channel = null;
+    _currentSessionId = null;
+    _updateConnectionStatus(ConnectionStatus.disconnected);
+    // Don't close stream controllers - this is a singleton that gets reused
   }
 }

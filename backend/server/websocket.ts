@@ -135,14 +135,21 @@ export function removeConnectionFromAllSessions(ws: any) {
 // Authentication during WebSocket upgrade
 export async function authenticateWebSocket(request: Request): Promise<WebSocketContext | null> {
   try {
-    // Get authorization header from the upgrade request
-    const authHeader = request.headers.get('Authorization')
+    // Try to get token from query parameter first
+    const url = new URL(request.url)
+    let token = url.searchParams.get('token')
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Fall back to Authorization header
+    if (!token) {
+      const authHeader = request.headers.get('Authorization')
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.replace('Bearer ', '')
+      }
+    }
+    
+    if (!token) {
       return null
     }
-
-    const token = authHeader.replace('Bearer ', '')
 
     // Verify token with Supabase
     const { data, error } = await supabase.auth.getUser(token)

@@ -185,6 +185,7 @@ class _GameListState extends State<_GameList> {
             isLive: item.isLive,
             joined: item.joined,
             gradient: item.gradient,
+            onTap: () => context.push('/quiz/session/live/${item.id}'),
           );
         }
         final quiz = item as Quiz;

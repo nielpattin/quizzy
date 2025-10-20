@@ -23,7 +23,7 @@ import "pages/quiz/create_quiz_page.dart";
 import "pages/quiz/add_questions_page.dart";
 import "pages/quiz/play_quiz_page.dart";
 import "pages/quiz/create_question_page.dart";
-import "pages/quiz/live_quiz_session_page.dart";
+import "pages/session/live_quiz_session_page.dart";
 import "utils/route_observer.dart";
 
 final router = GoRouter(

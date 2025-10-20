@@ -10,6 +10,13 @@ import followRoutes from './routes/follow'
 import notificationRoutes from './routes/notification'
 import questionRoutes from './routes/question'
 import searchRoutes from './routes/search'
+import { 
+  authenticateWebSocket, 
+  handleWebSocketMessage, 
+  handleWebSocketClose, 
+  handleWebSocketError,
+  activeConnections
+} from './websocket'
 
 const app = new Hono()
 
@@ -44,5 +51,48 @@ console.log(`🚀 Quizzy API server running on http://localhost:${port}`)
 
 export default {
   port,
-  fetch: app.fetch,
+  websocket: {
+    async open(ws: any) {
+      const context = ws.data
+      if (context) {
+        activeConnections.set(ws, context)
+        console.log(`✅ WebSocket opened for user ${context.userId} (${context.email})`)
+      }
+    },
+    async message(ws: any, message: string | Buffer) {
+      const context = activeConnections.get(ws)
+      if (context) {
+        await handleWebSocketMessage(ws, message.toString(), context)
+      }
+    },
+    async close(ws: any) {
+      handleWebSocketClose(ws)
+    },
+    error(ws: any, error: Error) {
+      handleWebSocketError(ws, error)
+    },
+  },
+  async fetch(request: Request, server: any) {
+    const url = new URL(request.url)
+    
+    // Handle WebSocket upgrade
+    if (url.pathname === '/ws') {
+      const context = await authenticateWebSocket(request)
+      if (!context) {
+        console.log('❌ WebSocket upgrade failed: Unauthorized')
+        return new Response('Unauthorized', { status: 401 })
+      }
+      
+      console.log(`🔌 Upgrading WebSocket for user ${context.userId} (${context.email})`)
+      
+      if (server.upgrade(request, { data: context })) {
+        return undefined
+      }
+      
+      return new Response('WebSocket upgrade failed', { status: 400 })
+    }
+    
+    // Handle regular HTTP requests with Hono
+    return app.fetch(request, server)
+  },
 }
