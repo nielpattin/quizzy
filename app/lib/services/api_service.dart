@@ -1,123 +1,20 @@
 import "dart:convert";
 import "package:http/http.dart" as http;
-import "package:flutter_dotenv/flutter_dotenv.dart";
-import "package:supabase_flutter/supabase_flutter.dart";
-import "api_exception.dart";
+import "http_client.dart";
+import "social_service.dart";
+import "quiz_service.dart";
+
+export "http_client.dart";
+export "upload_service.dart";
+export "quiz_service.dart";
+export "social_service.dart";
 
 class ApiService {
-  static final String _baseUrl = dotenv.env["SERVER_URL"]!;
-
-  static Future<Map<String, String>> _getHeaders() async {
-    final session = Supabase.instance.client.auth.currentSession;
-    return {
-      "Content-Type": "application/json",
-      if (session != null) "Authorization": "Bearer ${session.accessToken}",
-    };
-  }
-
-  static Future<T> _handleRequest<T>(
-    Future<http.Response> Function() request,
-  ) async {
-    try {
-      final response = await request();
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (response.body.isEmpty) {
-          return null as T;
-        }
-        return jsonDecode(response.body) as T;
-      } else if (response.statusCode == 401) {
-        throw ApiException(
-          "Unauthorized - please log in again",
-          statusCode: 401,
-        );
-      } else if (response.statusCode == 404) {
-        throw ApiException("Resource not found", statusCode: 404);
-      } else {
-        try {
-          final error = jsonDecode(response.body);
-          throw ApiException(
-            error["error"] ?? "An error occurred",
-            statusCode: response.statusCode,
-          );
-        } catch (_) {
-          throw ApiException(
-            "Server error: ${response.statusCode}",
-            statusCode: response.statusCode,
-          );
-        }
-      }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException("Network error: ${e.toString()}");
-    }
-  }
-
-  static Future<List<dynamic>> getFeaturedQuizzes() async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/quiz/featured"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<List<dynamic>> getTrendingQuizzes() async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/quiz/trending"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<List<dynamic>> getCategoryQuizzes(String category) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/quiz/category/$category"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<List<dynamic>> getUserQuizzes(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/quiz/user/$userId"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<dynamic> getQuiz(String quizId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/quiz/$quizId"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<void> deleteQuiz(String quizId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.delete(
-        Uri.parse("$_baseUrl/api/quiz/$quizId"),
-        headers: headers,
-      );
-    });
-  }
-
   static Future<void> favoriteQuiz(String quizId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/favorite"),
+        Uri.parse("${HttpClient.baseUrl}/api/favorite"),
         headers: headers,
         body: jsonEncode({"quizId": quizId}),
       );
@@ -125,27 +22,30 @@ class ApiService {
   }
 
   static Future<void> unfavoriteQuiz(String quizId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/favorite/$quizId"),
+        Uri.parse("${HttpClient.baseUrl}/api/favorite/$quizId"),
         headers: headers,
       );
     });
   }
 
   static Future<List<dynamic>> getFavorites() async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(Uri.parse("$_baseUrl/api/favorite"), headers: headers);
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/favorite"),
+        headers: headers,
+      );
     });
   }
 
   static Future<bool> isFavorited(String quizId) async {
-    final dynamic result = await _handleRequest(() async {
-      final headers = await _getHeaders();
+    final dynamic result = await HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/favorite/check/$quizId"),
+        Uri.parse("${HttpClient.baseUrl}/api/favorite/check/$quizId"),
         headers: headers,
       );
     });
@@ -153,10 +53,10 @@ class ApiService {
   }
 
   static Future<void> followUser(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/follow"),
+        Uri.parse("${HttpClient.baseUrl}/api/follow"),
         headers: headers,
         body: jsonEncode({"followingId": userId}),
       );
@@ -164,20 +64,20 @@ class ApiService {
   }
 
   static Future<void> unfollowUser(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/follow/$userId"),
+        Uri.parse("${HttpClient.baseUrl}/api/follow/$userId"),
         headers: headers,
       );
     });
   }
 
   static Future<bool> isFollowing(String userId) async {
-    final dynamic result = await _handleRequest(() async {
-      final headers = await _getHeaders();
+    final dynamic result = await HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/follow/check/$userId"),
+        Uri.parse("${HttpClient.baseUrl}/api/follow/check/$userId"),
         headers: headers,
       );
     });
@@ -185,40 +85,40 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getFollowers(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/follow/followers/$userId"),
+        Uri.parse("${HttpClient.baseUrl}/api/follow/followers/$userId"),
         headers: headers,
       );
     });
   }
 
   static Future<List<dynamic>> getFollowing(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/follow/following/$userId"),
+        Uri.parse("${HttpClient.baseUrl}/api/follow/following/$userId"),
         headers: headers,
       );
     });
   }
 
   static Future<List<dynamic>> getUserCollections(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/collection/user/$userId"),
+        Uri.parse("${HttpClient.baseUrl}/api/collection/user/$userId"),
         headers: headers,
       );
     });
   }
 
   static Future<dynamic> getCollection(String collectionId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/collection/$collectionId"),
+        Uri.parse("${HttpClient.baseUrl}/api/collection/$collectionId"),
         headers: headers,
       );
     });
@@ -229,10 +129,10 @@ class ApiService {
     String? description,
     bool isPublic,
   ) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/collection"),
+        Uri.parse("${HttpClient.baseUrl}/api/collection"),
         headers: headers,
         body: jsonEncode({
           "title": title,
@@ -247,10 +147,10 @@ class ApiService {
     String collectionId,
     String quizId,
   ) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/collection/$collectionId/quiz"),
+        Uri.parse("${HttpClient.baseUrl}/api/collection/$collectionId/quiz"),
         headers: headers,
         body: jsonEncode({"quizId": quizId}),
       );
@@ -261,20 +161,22 @@ class ApiService {
     String collectionId,
     String quizId,
   ) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/collection/$collectionId/quiz/$quizId"),
+        Uri.parse(
+          "${HttpClient.baseUrl}/api/collection/$collectionId/quiz/$quizId",
+        ),
         headers: headers,
       );
     });
   }
 
   static Future<void> deleteCollection(String collectionId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/collection/$collectionId"),
+        Uri.parse("${HttpClient.baseUrl}/api/collection/$collectionId"),
         headers: headers,
       );
     });
@@ -285,10 +187,10 @@ class ApiService {
     String? title,
     int? estimatedMinutes,
   }) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/session"),
+        Uri.parse("${HttpClient.baseUrl}/api/session"),
         headers: headers,
         body: jsonEncode({
           "quizId": quizId,
@@ -300,190 +202,112 @@ class ApiService {
   }
 
   static Future<dynamic> getSessionByCode(String code) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/session/code/$code"),
+        Uri.parse("${HttpClient.baseUrl}/api/session/code/$code"),
         headers: headers,
       );
     });
   }
 
   static Future<List<dynamic>> getHostedSessions(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/session/user/$userId/hosted"),
+        Uri.parse("${HttpClient.baseUrl}/api/session/user/$userId/hosted"),
         headers: headers,
       );
     });
   }
 
   static Future<List<dynamic>> getPlayedSessions(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/session/user/$userId/played"),
+        Uri.parse("${HttpClient.baseUrl}/api/session/user/$userId/played"),
         headers: headers,
       );
     });
   }
 
-  static Future<List<dynamic>> getFeedPosts({
-    int limit = 20,
-    int offset = 0,
+  static Future<dynamic> getUserProfile(String userId) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/user/profile/$userId"),
+        headers: headers,
+      );
+    });
+  }
+
+  static Future<dynamic> getCurrentUserProfile() async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/user/profile"),
+        headers: headers,
+      );
+    });
+  }
+
+  static Future<List<dynamic>> getCurrentUserQuizzes() async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/user/quizzes"),
+        headers: headers,
+      );
+    });
+  }
+
+  static Future<List<dynamic>> getUserSessions() async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/user/sessions"),
+        headers: headers,
+      );
+    });
+  }
+
+  static Future<List<dynamic>> getUserPostsForProfile() async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/user/posts"),
+        headers: headers,
+      );
+    });
+  }
+
+  static Future<void> updateProfile({
+    String? fullName,
+    String? username,
+    String? bio,
   }) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/social/posts?limit=$limit&offset=$offset"),
-        headers: headers,
-      );
-    });
-  }
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      final body = <String, dynamic>{};
+      if (fullName != null) body['fullName'] = fullName;
+      if (username != null) body['username'] = username;
+      if (bio != null) body['bio'] = bio;
 
-  static Future<List<dynamic>> getUserPosts(String userId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/social/user/$userId/posts"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<dynamic> createPost(
-    String text, {
-    String postType = 'text',
-    String? imageUrl,
-    String? questionType,
-    String? questionText,
-    Map<String, dynamic>? questionData,
-  }) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      final body = <String, dynamic>{'text': text, 'postType': postType};
-
-      if (imageUrl != null) body['imageUrl'] = imageUrl;
-      if (questionType != null) body['questionType'] = questionType;
-      if (questionText != null) body['questionText'] = questionText;
-      if (questionData != null) body['questionData'] = questionData;
-
-      return http.post(
-        Uri.parse("$_baseUrl/api/social/posts"),
+      return http.put(
+        Uri.parse("${HttpClient.baseUrl}/api/user/profile"),
         headers: headers,
         body: jsonEncode(body),
       );
     });
   }
 
-  static Future<dynamic> submitPostAnswer(String postId, dynamic answer) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.post(
-        Uri.parse("$_baseUrl/api/social/posts/$postId/answer"),
-        headers: headers,
-        body: jsonEncode({"answer": answer}),
-      );
-    });
-  }
-
-  static Future<void> deletePost(String postId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.delete(
-        Uri.parse("$_baseUrl/api/social/posts/$postId"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<void> likePost(String postId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.post(
-        Uri.parse("$_baseUrl/api/social/posts/$postId/like"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<void> unlikePost(String postId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.delete(
-        Uri.parse("$_baseUrl/api/social/posts/$postId/like"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<List<dynamic>> getPostComments(String postId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/social/posts/$postId/comments"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<void> addComment(String postId, String content) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.post(
-        Uri.parse("$_baseUrl/api/social/posts/$postId/comments"),
-        headers: headers,
-        body: jsonEncode({"content": content}),
-      );
-    });
-  }
-
-  static Future<void> deleteComment(String commentId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.delete(
-        Uri.parse("$_baseUrl/api/social/comments/$commentId"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<dynamic> getPost(String postId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.get(
-        Uri.parse("$_baseUrl/api/social/posts/$postId"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<void> likeComment(String commentId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.post(
-        Uri.parse("$_baseUrl/api/social/comments/$commentId/like"),
-        headers: headers,
-      );
-    });
-  }
-
-  static Future<void> unlikeComment(String commentId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
-      return http.delete(
-        Uri.parse("$_baseUrl/api/social/comments/$commentId/like"),
-        headers: headers,
-      );
-    });
-  }
-
   static Future<Map<String, dynamic>> search(String query) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/search?q=${Uri.encodeComponent(query)}"),
+        Uri.parse(
+          "${HttpClient.baseUrl}/api/search?q=${Uri.encodeComponent(query)}",
+        ),
         headers: headers,
       );
     });
@@ -493,14 +317,14 @@ class ApiService {
     String query, {
     String? category,
   }) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       final categoryParam = category != null
           ? "&category=${Uri.encodeComponent(category)}"
           : "";
       return http.get(
         Uri.parse(
-          "$_baseUrl/api/search/quizzes?q=${Uri.encodeComponent(query)}$categoryParam",
+          "${HttpClient.baseUrl}/api/search/quizzes?q=${Uri.encodeComponent(query)}$categoryParam",
         ),
         headers: headers,
       );
@@ -508,10 +332,12 @@ class ApiService {
   }
 
   static Future<List<dynamic>> searchUsers(String query) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/search/users?q=${Uri.encodeComponent(query)}"),
+        Uri.parse(
+          "${HttpClient.baseUrl}/api/search/users?q=${Uri.encodeComponent(query)}",
+        ),
         headers: headers,
       );
     });
@@ -520,21 +346,21 @@ class ApiService {
   static Future<List<dynamic>> getNotifications({
     bool unreadOnly = false,
   }) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       final unreadParam = unreadOnly ? "?unread=true" : "";
       return http.get(
-        Uri.parse("$_baseUrl/api/notification$unreadParam"),
+        Uri.parse("${HttpClient.baseUrl}/api/notification$unreadParam"),
         headers: headers,
       );
     });
   }
 
   static Future<int> getUnreadCount() async {
-    final dynamic result = await _handleRequest(() async {
-      final headers = await _getHeaders();
+    final dynamic result = await HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/notification/unread/count"),
+        Uri.parse("${HttpClient.baseUrl}/api/notification/unread/count"),
         headers: headers,
       );
     });
@@ -542,30 +368,32 @@ class ApiService {
   }
 
   static Future<void> markAsRead(String notificationId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.patch(
-        Uri.parse("$_baseUrl/api/notification/$notificationId/read"),
+        Uri.parse(
+          "${HttpClient.baseUrl}/api/notification/$notificationId/read",
+        ),
         headers: headers,
       );
     });
   }
 
   static Future<void> markAllAsRead() async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.patch(
-        Uri.parse("$_baseUrl/api/notification/read-all"),
+        Uri.parse("${HttpClient.baseUrl}/api/notification/read-all"),
         headers: headers,
       );
     });
   }
 
   static Future<void> deleteNotification(String notificationId) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.delete(
-        Uri.parse("$_baseUrl/api/notification/$notificationId"),
+        Uri.parse("${HttpClient.baseUrl}/api/notification/$notificationId"),
         headers: headers,
       );
     });
@@ -575,10 +403,12 @@ class ApiService {
     String sessionId,
     int questionIndex,
   ) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("$_baseUrl/api/session/$sessionId/question/$questionIndex"),
+        Uri.parse(
+          "${HttpClient.baseUrl}/api/session/$sessionId/question/$questionIndex",
+        ),
         headers: headers,
       );
     });
@@ -589,13 +419,106 @@ class ApiService {
     String questionId,
     String answer,
   ) async {
-    return _handleRequest(() async {
-      final headers = await _getHeaders();
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
       return http.post(
-        Uri.parse("$_baseUrl/api/session/$sessionId/answer"),
+        Uri.parse("${HttpClient.baseUrl}/api/session/$sessionId/answer"),
         headers: headers,
         body: jsonEncode({"questionId": questionId, "answer": answer}),
       );
     });
+  }
+
+  static Future<List<dynamic>> getFeedPosts({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    return SocialService.getFeedPosts(limit: limit, offset: offset);
+  }
+
+  static Future<List<dynamic>> getUserPosts(String userId) async {
+    return SocialService.getUserPosts(userId);
+  }
+
+  static Future<dynamic> createPost(
+    String text, {
+    String postType = 'text',
+    String? imageUrl,
+    String? questionType,
+    String? questionText,
+    Map<String, dynamic>? questionData,
+  }) async {
+    return SocialService.createPost(
+      text,
+      postType: postType,
+      imageUrl: imageUrl,
+      questionType: questionType,
+      questionText: questionText,
+      questionData: questionData,
+    );
+  }
+
+  static Future<dynamic> submitPostAnswer(String postId, dynamic answer) async {
+    return SocialService.submitPostAnswer(postId, answer);
+  }
+
+  static Future<void> deletePost(String postId) async {
+    return SocialService.deletePost(postId);
+  }
+
+  static Future<void> likePost(String postId) async {
+    return SocialService.likePost(postId);
+  }
+
+  static Future<void> unlikePost(String postId) async {
+    return SocialService.unlikePost(postId);
+  }
+
+  static Future<List<dynamic>> getPostComments(String postId) async {
+    return SocialService.getPostComments(postId);
+  }
+
+  static Future<void> addComment(String postId, String content) async {
+    return SocialService.addComment(postId, content);
+  }
+
+  static Future<void> deleteComment(String commentId) async {
+    return SocialService.deleteComment(commentId);
+  }
+
+  static Future<dynamic> getPost(String postId) async {
+    return SocialService.getPost(postId);
+  }
+
+  static Future<void> likeComment(String commentId) async {
+    return SocialService.likeComment(commentId);
+  }
+
+  static Future<void> unlikeComment(String commentId) async {
+    return SocialService.unlikeComment(commentId);
+  }
+
+  static Future<List<dynamic>> getFeaturedQuizzes() async {
+    return QuizService.getFeaturedQuizzes();
+  }
+
+  static Future<List<dynamic>> getTrendingQuizzes() async {
+    return QuizService.getTrendingQuizzes();
+  }
+
+  static Future<List<dynamic>> getCategoryQuizzes(String category) async {
+    return QuizService.getCategoryQuizzes(category);
+  }
+
+  static Future<List<dynamic>> getUserQuizzes(String userId) async {
+    return QuizService.getUserQuizzes(userId);
+  }
+
+  static Future<dynamic> getQuiz(String quizId) async {
+    return QuizService.getQuiz(quizId);
+  }
+
+  static Future<void> deleteQuiz(String quizId) async {
+    return QuizService.deleteQuiz(quizId);
   }
 }
