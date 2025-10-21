@@ -4,8 +4,8 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "../../services/api_service.dart";
 import "../../models/post.dart";
 import "widgets/feed_card.dart";
-import "widgets/create_post_dialog.dart";
 import "widgets/quick_question_modal.dart";
+import "../social/widgets/post_type_selector_modal.dart";
 
 class FeedyTab extends StatefulWidget {
   const FeedyTab({super.key});
@@ -20,10 +20,12 @@ class _FeedyTabState extends State<FeedyTab> {
   int _currentPage = 0;
   final int _pageSize = 20;
   final ScrollController _scrollController = ScrollController();
+  Map<String, dynamic>? _currentUserProfile;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUserProfile();
     _loadFeed();
     _scrollController.addListener(_onScroll);
   }
@@ -38,6 +40,19 @@ class _FeedyTabState extends State<FeedyTab> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       _loadMore();
+    }
+  }
+
+  Future<void> _loadCurrentUserProfile() async {
+    try {
+      final profile = await ApiService.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _currentUserProfile = profile;
+        });
+      }
+    } catch (e) {
+      debugPrint("[FeedyTab] Error loading current user profile: $e");
     }
   }
 
@@ -122,12 +137,100 @@ class _FeedyTabState extends State<FeedyTab> {
     }
   }
 
-  void _showCreatePostDialog() {
-    showDialog(
+  Future<void> _createPostOptimistically(Map<String, dynamic> postData) async {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser == null || _currentUserProfile == null) return;
+
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final timestamp = DateTime.now().toIso8601String();
+
+    final optimisticPost = {
+      'id': tempId,
+      'text': postData['text'],
+      'postType': postData['postType'],
+      'imageUrl': postData['imageUrl'],
+      'questionType': postData['questionType'],
+      'questionText': postData['questionText'],
+      'questionData': postData['questionData'],
+      'user': {
+        'id': currentUser.id,
+        'fullName': _currentUserProfile!['fullName'],
+        'username': _currentUserProfile!['username'],
+        'profilePictureUrl': _currentUserProfile!['profilePictureUrl'],
+      },
+      'likesCount': 0,
+      'commentsCount': 0,
+      'answersCount': 0,
+      'isLiked': false,
+      'hasAnswered': false,
+      'userIsCorrect': false,
+      'correctPercentage': 0.0,
+      'createdAt': timestamp,
+      'updatedAt': timestamp,
+      '_isOptimistic': true,
+    };
+
+    setState(() {
+      _feedItems.insert(0, optimisticPost);
+    });
+
+    try {
+      final realPost = await ApiService.createPost(
+        postData['text'],
+        postType: postData['postType'],
+        imageUrl: postData['imageUrl'],
+        questionType: postData['questionType'],
+        questionText: postData['questionText'],
+        questionData: postData['questionData'],
+      );
+
+      if (mounted) {
+        setState(() {
+          final index = _feedItems.indexWhere((p) => p['id'] == tempId);
+          if (index != -1) {
+            _feedItems[index] = realPost;
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Post created successfully"),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("[FeedyTab] Error creating post: $e");
+      if (mounted) {
+        setState(() {
+          _feedItems.removeWhere((p) => p['id'] == tempId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to create post: $e"),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _navigateToCreatePost() async {
+    final postType = await showModalBottomSheet<PostTypeChoice>(
       context: context,
-      builder: (context) =>
-          CreatePostDialog(onPostCreated: () => _refreshFeed()),
+      builder: (context) => const PostTypeSelectorModal(),
     );
+
+    if (postType == null) return;
+
+    final route = postType == PostTypeChoice.quiz
+        ? "/create-post/quiz"
+        : "/create-post";
+
+    final postData = await context.push<Map<String, dynamic>>(route);
+    if (postData != null) {
+      _createPostOptimistically(postData);
+    }
   }
 
   Future<void> _toggleLike(String postId, bool isLiked) async {
@@ -268,6 +371,7 @@ class _FeedyTabState extends State<FeedyTab> {
                   author: post.user.fullName ?? "Unknown",
                   text: post.text,
                   postType: post.postType,
+                  imageUrl: post.imageUrl,
                   questionText: post.questionText,
                   hasAnswered: post.hasAnswered,
                   likes: post.likesCount,
@@ -289,7 +393,16 @@ class _FeedyTabState extends State<FeedyTab> {
                             isScrollControlled: true,
                             builder: (context) => QuickQuestionModal(
                               post: post,
-                              onAnswered: _refreshFeed,
+                              onAnswered: () {
+                                setState(() {
+                                  final index = _feedItems.indexWhere(
+                                    (p) => p["id"] == post.id,
+                                  );
+                                  if (index != -1) {
+                                    _feedItems[index]["hasAnswered"] = true;
+                                  }
+                                });
+                              },
                             ),
                           );
                         }
@@ -302,7 +415,7 @@ class _FeedyTabState extends State<FeedyTab> {
             right: 16,
             bottom: 16,
             child: FloatingActionButton(
-              onPressed: _showCreatePostDialog,
+              onPressed: _navigateToCreatePost,
               child: const Icon(Icons.add),
             ),
           ),

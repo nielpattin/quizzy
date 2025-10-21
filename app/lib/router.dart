@@ -16,6 +16,8 @@ import "pages/profile/settings_page.dart";
 import "pages/profile/edit_profile_page.dart";
 import "pages/social/search_page.dart";
 import "pages/social/post_details_page.dart";
+import "pages/social/create_post_page.dart";
+import "pages/social/create_quiz_post_page.dart";
 import "pages/quiz/quiz_detail_page.dart";
 import "pages/quiz/category_page.dart";
 import "pages/quiz/trending_page.dart";
@@ -110,6 +112,43 @@ final router = GoRouter(
           );
         },
       ),
+    ),
+    GoRoute(
+      path: "/create-post",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const CreatePostPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                ),
+            child: child,
+          );
+        },
+      ),
+    ),
+    GoRoute(
+      path: "/create-post/quiz",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const CreateQuizPostPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
     ),
     GoRoute(
       path: "/post/details",
