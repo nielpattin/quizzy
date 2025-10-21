@@ -21,7 +21,7 @@ class LibraryService {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return [];
 
-    final data = await ApiService.getUserQuizzes(userId);
+    final data = await QuizService.getUserQuizzes(userId);
 
     final quizzes = data
         .asMap()

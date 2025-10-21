@@ -52,6 +52,29 @@ class _SplashPageState extends State<SplashPage>
     super.dispose();
   }
 
+  Future<Session?> _refreshSessionIfNeeded(Session session) async {
+    try {
+      final expiresAt = session.expiresAt;
+      if (expiresAt == null) return session;
+
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final timeUntilExpiry = expiresAt - now;
+
+      if (timeUntilExpiry < 300) {
+        debugPrint('[SPLASH] Token expires soon, refreshing...');
+        final response = await Supabase.instance.client.auth.refreshSession();
+        if (response.session != null) {
+          debugPrint('[SPLASH] Token refreshed successfully');
+          return response.session;
+        }
+      }
+      return session;
+    } catch (e) {
+      debugPrint('[SPLASH] Token refresh failed: $e');
+      return null;
+    }
+  }
+
   Future<void> _checkUserStatus() async {
     final startTime = DateTime.now();
     debugPrint('[SPLASH] Starting user status check');
@@ -78,7 +101,7 @@ class _SplashPageState extends State<SplashPage>
           }
         });
 
-        final timeout = Future.delayed(Duration(milliseconds: 3000), () {
+        final timeoutTimer = Timer(Duration(milliseconds: 3000), () {
           debugPrint('[SPLASH] Timeout waiting for auth state change');
           if (!completer.isCompleted) {
             completer.complete(null);
@@ -87,11 +110,23 @@ class _SplashPageState extends State<SplashPage>
         });
 
         session = await completer.future;
-        timeout.ignore();
+        timeoutTimer.cancel();
       }
 
       if (session != null) {
-        debugPrint('[SPLASH] Session found! User ID: ${session.user.id}');
+        session = await _refreshSessionIfNeeded(session);
+
+        if (session == null) {
+          debugPrint('[SPLASH] Session refresh failed, signing out...');
+          await Supabase.instance.client.auth.signOut();
+          await _ensureMinimumDelay(startTime);
+          if (mounted) {
+            context.go("/welcome");
+          }
+          return;
+        }
+
+        debugPrint('[SPLASH] Session valid! User ID: ${session.user.id}');
         final token = session.accessToken;
         final serverUrl = dotenv.env["SERVER_URL"]!;
 
@@ -100,10 +135,19 @@ class _SplashPageState extends State<SplashPage>
         );
 
         try {
-          final response = await http.get(
-            Uri.parse("$serverUrl/api/user/profile"),
-            headers: {"Authorization": "Bearer $token"},
-          );
+          final response = await http
+              .get(
+                Uri.parse("$serverUrl/api/user/profile"),
+                headers: {"Authorization": "Bearer $token"},
+              )
+              .timeout(
+                Duration(seconds: 10),
+                onTimeout: () {
+                  throw TimeoutException(
+                    'Profile fetch timed out after 10 seconds',
+                  );
+                },
+              );
 
           debugPrint(
             '[SPLASH] Profile response status: ${response.statusCode}',
@@ -139,9 +183,9 @@ class _SplashPageState extends State<SplashPage>
               }
             }
             return;
-          } else if (response.statusCode == 401) {
+          } else if (response.statusCode == 401 || response.statusCode == 403) {
             debugPrint(
-              '[SPLASH] Token expired or invalid (401), signing out...',
+              '[SPLASH] Auth error (${response.statusCode}), signing out...',
             );
             await Supabase.instance.client.auth.signOut();
             await _ensureMinimumDelay(startTime);
@@ -160,9 +204,14 @@ class _SplashPageState extends State<SplashPage>
             }
             return;
           } else {
-            debugPrint(
-              '[SPLASH] Unexpected response: ${response.statusCode} - ${response.body}',
-            );
+            debugPrint('[SPLASH] Unexpected response: ${response.statusCode}');
+            debugPrint('[SPLASH] Response body: ${response.body}');
+            await Supabase.instance.client.auth.signOut();
+            await _ensureMinimumDelay(startTime);
+            if (mounted) {
+              context.go("/welcome");
+            }
+            return;
           }
         } catch (httpError) {
           debugPrint('[SPLASH] HTTP request error: $httpError');

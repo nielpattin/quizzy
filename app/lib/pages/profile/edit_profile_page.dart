@@ -20,7 +20,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _bioController = TextEditingController();
   bool _isLoading = true;
   bool _isSaving = false;
-  
+
   File? _selectedImage;
   String? _currentProfilePictureUrl;
   bool _isUploadingImage = false;
@@ -80,7 +80,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         maxHeight: 1024,
         imageQuality: 85,
       );
-      
+
       if (pickedFile != null) {
         setState(() {
           _selectedImage = File(pickedFile.path);
@@ -89,26 +89,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error picking image: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error picking image: $e")));
       }
     }
   }
 
   Future<void> _uploadImage() async {
     if (_selectedImage == null) return;
-    
+
     setState(() => _isUploadingImage = true);
-    
+
     try {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
         throw Exception("Not authenticated");
       }
-      
+
       final serverUrl = dotenv.env["SERVER_URL"]!;
-      
+
       final uploadRequest = http.MultipartRequest(
         'POST',
         Uri.parse('$serverUrl/api/upload/image'),
@@ -117,14 +117,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
       uploadRequest.files.add(
         await http.MultipartFile.fromPath('image', _selectedImage!.path),
       );
-      
+
       final uploadResponse = await uploadRequest.send();
       final uploadData = await uploadResponse.stream.bytesToString();
-      
+
       if (uploadResponse.statusCode == 201) {
         final uploadJson = json.decode(uploadData);
         final imageUrl = uploadJson['image']['url'];
-        
+
         final profileResponse = await http.put(
           Uri.parse('$serverUrl/api/user/profile/picture'),
           headers: {
@@ -133,13 +133,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
           },
           body: json.encode({'profilePictureUrl': imageUrl}),
         );
-        
+
         if (profileResponse.statusCode == 200) {
           setState(() {
             _currentProfilePictureUrl = imageUrl;
             _isUploadingImage = false;
           });
-          
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -272,10 +272,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         backgroundImage: _selectedImage != null
                             ? FileImage(_selectedImage!)
                             : _currentProfilePictureUrl != null
-                                ? NetworkImage(_currentProfilePictureUrl!)
-                                : null,
-                        child: _selectedImage == null && _currentProfilePictureUrl == null
-                            ? Icon(Icons.person, size: 60, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))
+                            ? NetworkImage(_currentProfilePictureUrl!)
+                            : null,
+                        child:
+                            _selectedImage == null &&
+                                _currentProfilePictureUrl == null
+                            ? Icon(
+                                Icons.person,
+                                size: 60,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.5),
+                              )
                             : null,
                       ),
                       Positioned(
@@ -284,7 +292,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         child: GestureDetector(
                           onTap: _isUploadingImage ? null : _pickImage,
                           child: CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
                             radius: 20,
                             child: _isUploadingImage
                                 ? SizedBox(
@@ -295,7 +305,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                                : Icon(
+                                    Icons.camera_alt,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
                           ),
                         ),
                       ),
