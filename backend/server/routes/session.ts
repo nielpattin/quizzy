@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import type { AuthContext } from '../middleware/auth'
 import { db } from '../db/index'
-import { gameSessions, gameSessionParticipants, quizSnapshots, questionsSnapshots, quizzes, questions, users, userQuestionTimings } from '../db/schema'
+import { gameSessions, gameSessionParticipants, quizSnapshots, questionsSnapshots, quizzes, questions, users, questionTimings } from '../db/schema'
 import { eq, and, desc, ilike, sql } from 'drizzle-orm'
 import { WebSocketService } from '../services/websocket-service'
 
@@ -395,10 +395,10 @@ sessionRoutes.get('/:id/question/:index', authMiddleware, async (c) => {
 
     // Create timing record
     const [timingRecord] = await db
-      .insert(userQuestionTimings)
+      .insert(questionTimings)
       .values({
-        userId,
-        questionId: question.id,
+        participantId: userId,
+        questionSnapshotId: question.id,
         sessionId,
         serverStartTime: new Date(),
         deadlineTime: new Date(Date.now() + timeLimit * 1000),
@@ -433,11 +433,11 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
     // Get timing record
     const [timing] = await db
       .select()
-      .from(userQuestionTimings)
+      .from(questionTimings)
       .where(and(
-        eq(userQuestionTimings.userId, userId),
-        eq(userQuestionTimings.questionId, body.questionId),
-        eq(userQuestionTimings.sessionId, sessionId)
+        eq(questionTimings.participantId, userId),
+        eq(questionTimings.questionSnapshotId, body.questionId),
+        eq(questionTimings.sessionId, sessionId)
       ))
       .limit(1)
 
@@ -461,9 +461,9 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
 
     // Update timing record
     await db
-      .update(userQuestionTimings)
+      .update(questionTimings)
       .set({ submittedAt: now })
-      .where(eq(userQuestionTimings.id, timing.id))
+      .where(eq(questionTimings.id, timing.id))
 
     // Update participant score
     await db

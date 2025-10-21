@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, varchar, date, integer, jsonb, index, foreignKey, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, boolean, varchar, date, integer, jsonb, index, foreignKey, pgEnum, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const questionTypeEnum = pgEnum('question_type', [
@@ -216,6 +216,25 @@ export const commentLikesRelations = relations(commentLikes, ({ one }) => ({
    }),
  }));
 
+export const images = pgTable('images', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  filename: text('filename').notNull().unique(),
+  originalName: text('original_name').notNull(),
+  mimeType: text('mime_type').notNull(),
+  size: integer('size').notNull(),
+  bucket: text('bucket').notNull().default('quizzy-images'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('images_user_id_idx').on(table.userId),
+  index('images_filename_idx').on(table.filename),
+  index('images_created_at_idx').on(table.createdAt),
+]);
+
+export type Image = typeof images.$inferSelect;
+export type InsertImage = typeof images.$inferInsert;
+
 export const posts = pgTable('posts', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -314,11 +333,12 @@ export const quizSnapshotsRelations = relations(quizSnapshots, ({ one, many }) =
    savedBy: many(savedQuizzes),
  }));
 
-export const questionsSnapshotsRelations = relations(questionsSnapshots, ({ one }) => ({
+export const questionsSnapshotsRelations = relations(questionsSnapshots, ({ one, many }) => ({
   snapshot: one(quizSnapshots, {
     fields: [questionsSnapshots.snapshotId],
     references: [quizSnapshots.id],
   }),
+  questionTimings: many(questionTimings),
 }));
 
 export const gameSessionsRelations = relations(gameSessions, ({ one, many }) => ({
@@ -331,10 +351,10 @@ export const gameSessionsRelations = relations(gameSessions, ({ one, many }) => 
     references: [quizSnapshots.id],
   }),
   participants: many(gameSessionParticipants),
-  userQuestionTimings: many(userQuestionTimings),
+  questionTimings: many(questionTimings),
 }));
 
-export const gameSessionParticipantsRelations = relations(gameSessionParticipants, ({ one }) => ({
+export const gameSessionParticipantsRelations = relations(gameSessionParticipants, ({ one, many }) => ({
   session: one(gameSessions, {
     fields: [gameSessionParticipants.sessionId],
     references: [gameSessions.id],
@@ -343,6 +363,7 @@ export const gameSessionParticipantsRelations = relations(gameSessionParticipant
     fields: [gameSessionParticipants.userId],
     references: [users.id],
   }),
+  questionTimings: many(questionTimings),
 }));
 
 export const savedQuizzesRelations = relations(savedQuizzes, ({ one }) => ({
@@ -404,32 +425,33 @@ export const postLikesRelations = relations(postLikes, ({ one }) => ({
    }),
  }));
 
-export const userQuestionTimings = pgTable('user_question_timings', {
+export const questionTimings = pgTable('question_timings', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
+  participantId: uuid('participant_id').notNull().references(() => gameSessionParticipants.id, { onDelete: 'cascade' }),
   sessionId: uuid('session_id').notNull().references(() => gameSessions.id, { onDelete: 'cascade' }),
+  questionSnapshotId: uuid('question_snapshot_id').notNull().references(() => questionsSnapshots.id, { onDelete: 'cascade' }),
   serverStartTime: timestamp('server_start_time', { withTimezone: true }).notNull(),
   deadlineTime: timestamp('deadline_time', { withTimezone: true }).notNull(),
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  index('user_question_timings_user_session_idx').on(table.userId, table.sessionId),
-  index('user_question_timings_deadline_idx').on(table.deadlineTime),
+  index('question_timings_participant_session_idx').on(table.participantId, table.sessionId),
+  index('question_timings_deadline_idx').on(table.deadlineTime),
+  unique('question_timings_participant_question_unq').on(table.participantId, table.questionSnapshotId),
 ]);
 
-export const userQuestionTimingsRelations = relations(userQuestionTimings, ({ one }) => ({
-  user: one(users, {
-    fields: [userQuestionTimings.userId],
-    references: [users.id],
-  }),
-  question: one(questions, {
-    fields: [userQuestionTimings.questionId],
-    references: [questions.id],
+export const questionTimingsRelations = relations(questionTimings, ({ one }) => ({
+  participant: one(gameSessionParticipants, {
+    fields: [questionTimings.participantId],
+    references: [gameSessionParticipants.id],
   }),
   session: one(gameSessions, {
-    fields: [userQuestionTimings.sessionId],
+    fields: [questionTimings.sessionId],
     references: [gameSessions.id],
+  }),
+  questionSnapshot: one(questionsSnapshots, {
+    fields: [questionTimings.questionSnapshotId],
+    references: [questionsSnapshots.id],
   }),
 }));
 

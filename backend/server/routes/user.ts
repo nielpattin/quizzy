@@ -10,6 +10,88 @@ type Variables = {
 
 const userRoutes = new Hono<{ Variables: Variables }>()
 
+// Update profile endpoint
+userRoutes.put('/profile', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const body = await c.req.json()
+
+  try {
+    const { fullName, username, bio } = body
+
+    // Validate required field
+    if (!fullName || fullName.trim() === '') {
+      return c.json({ error: 'Full name is required' }, 400)
+    }
+
+    // Check if username is already taken by another user
+    if (username) {
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+
+      if (existingUser && existingUser.id !== userId) {
+        return c.json({ error: 'Username is already taken' }, 400)
+      }
+    }
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        fullName: fullName.trim(),
+        username: username?.trim() || null,
+        bio: bio?.trim() || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning()
+
+    return c.json({
+      success: true,
+      user: {
+        id: updatedUser.id,
+        fullName: updatedUser.fullName,
+        username: updatedUser.username,
+        bio: updatedUser.bio,
+      }
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error updating profile:', error)
+    return c.json({ error: 'Failed to update profile' }, 500)
+  }
+})
+
+// Update profile picture endpoint
+userRoutes.put('/profile/picture', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const body = await c.req.json()
+
+  try {
+    const { profilePictureUrl } = body
+
+    if (!profilePictureUrl) {
+      return c.json({ error: 'Profile picture URL is required' }, 400)
+    }
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        profilePictureUrl,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning()
+
+    return c.json({
+      success: true,
+      profilePictureUrl: updatedUser.profilePictureUrl
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error updating profile picture:', error)
+    return c.json({ error: 'Failed to update profile picture' }, 500)
+  }
+})
+
 // Profile endpoint with auth
 userRoutes.get('/profile', authMiddleware, async (c) => {
   const { userId, email, userMetadata } = c.get('user') as AuthContext

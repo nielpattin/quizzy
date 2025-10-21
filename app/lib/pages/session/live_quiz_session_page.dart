@@ -61,7 +61,7 @@ class _LiveQuizSessionPageState extends State<LiveQuizSessionPage> {
   Future<void> _loadSessionData() async {
     try {
       final session = Supabase.instance.client.auth.currentSession;
-      final serverUrl = dotenv.env["SERVER_URL"] ?? "http://localhost:8000";
+      final serverUrl = dotenv.env["SERVER_URL"];
 
       final sessionResponse = await http.get(
         Uri.parse("$serverUrl/api/session/${widget.sessionId}"),

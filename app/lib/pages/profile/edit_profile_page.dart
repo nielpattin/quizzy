@@ -3,7 +3,9 @@ import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "package:http/http.dart" as http;
+import "package:image_picker/image_picker.dart";
 import "dart:convert";
+import "dart:io";
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -18,6 +20,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _bioController = TextEditingController();
   bool _isLoading = true;
   bool _isSaving = false;
+  
+  File? _selectedImage;
+  String? _currentProfilePictureUrl;
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -51,6 +57,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _fullNameController.text = data["fullName"] ?? "";
           _usernameController.text = data["username"] ?? "";
           _bioController.text = data["bio"] ?? "";
+          _currentProfilePictureUrl = data["profilePictureUrl"];
           _isLoading = false;
         });
       }
@@ -60,6 +67,102 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Error loading profile: $e")));
+      }
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+        await _uploadImage();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error picking image: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_selectedImage == null) return;
+    
+    setState(() => _isUploadingImage = true);
+    
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        throw Exception("Not authenticated");
+      }
+      
+      final serverUrl = dotenv.env["SERVER_URL"]!;
+      
+      final uploadRequest = http.MultipartRequest(
+        'POST',
+        Uri.parse('$serverUrl/api/upload/image'),
+      );
+      uploadRequest.headers['Authorization'] = 'Bearer ${session.accessToken}';
+      uploadRequest.files.add(
+        await http.MultipartFile.fromPath('image', _selectedImage!.path),
+      );
+      
+      final uploadResponse = await uploadRequest.send();
+      final uploadData = await uploadResponse.stream.bytesToString();
+      
+      if (uploadResponse.statusCode == 201) {
+        final uploadJson = json.decode(uploadData);
+        final imageUrl = uploadJson['image']['url'];
+        
+        final profileResponse = await http.put(
+          Uri.parse('$serverUrl/api/user/profile/picture'),
+          headers: {
+            'Authorization': 'Bearer ${session.accessToken}',
+            'Content-Type': 'application/json',
+          },
+          body: json.encode({'profilePictureUrl': imageUrl}),
+        );
+        
+        if (profileResponse.statusCode == 200) {
+          setState(() {
+            _currentProfilePictureUrl = imageUrl;
+            _isUploadingImage = false;
+          });
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Profile picture updated!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          throw Exception('Failed to update profile: ${profileResponse.body}');
+        }
+      } else {
+        throw Exception('Failed to upload image: $uploadData');
+      }
+    } catch (e) {
+      setState(() => _isUploadingImage = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -100,7 +203,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               backgroundColor: Colors.green,
             ),
           );
-          context.pop(true); // Pass true to indicate profile was updated
+          context.pop(true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -160,6 +263,46 @@ class _EditProfilePageState extends State<EditProfilePage> {
               padding: const EdgeInsets.all(16.0),
               children: [
                 SizedBox(height: 16),
+                Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        backgroundImage: _selectedImage != null
+                            ? FileImage(_selectedImage!)
+                            : _currentProfilePictureUrl != null
+                                ? NetworkImage(_currentProfilePictureUrl!)
+                                : null,
+                        child: _selectedImage == null && _currentProfilePictureUrl == null
+                            ? Icon(Icons.person, size: 60, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: _isUploadingImage ? null : _pickImage,
+                          child: CircleAvatar(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            radius: 20,
+                            child: _isUploadingImage
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 32),
                 Text(
                   "Full Name",
                   style: TextStyle(

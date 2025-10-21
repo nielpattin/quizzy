@@ -59,7 +59,7 @@ class _AddQuestionsPageState extends State<AddQuestionsPage> {
         throw Exception("Not authenticated");
       }
 
-      final serverUrl = dotenv.env["SERVER_URL"] ?? "http://localhost:8000";
+      final serverUrl = dotenv.env["SERVER_URL"];
       final response = await http.post(
         Uri.parse("$serverUrl/api/question/bulk"),
         headers: {

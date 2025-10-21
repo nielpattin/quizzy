@@ -265,7 +265,7 @@ class WebSocketService {
         throw Exception('No active session');
       }
 
-      final serverUrl = dotenv.env['SERVER_URL'] ?? 'http://localhost:8000';
+      final serverUrl = dotenv.env['SERVER_URL']!;
       final wsUrl =
           '${serverUrl.replaceFirst('http', 'ws')}/ws?token=${session.accessToken}';
 

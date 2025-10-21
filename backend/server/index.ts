@@ -10,6 +10,7 @@ import followRoutes from './routes/follow'
 import notificationRoutes from './routes/notification'
 import questionRoutes from './routes/question'
 import searchRoutes from './routes/search'
+import uploadRoutes from './routes/upload'
 import { 
   authenticateWebSocket, 
   handleWebSocketMessage, 
@@ -45,6 +46,7 @@ app.route('/api/follow', followRoutes)
 app.route('/api/notification', notificationRoutes)
 app.route('/api/question', questionRoutes)
 app.route('/api/search', searchRoutes)
+app.route('/api/upload', uploadRoutes)
 
 const port = 8000
 console.log(`🚀 Quizzy API server running on http://localhost:${port}`)

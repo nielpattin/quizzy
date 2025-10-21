@@ -5,8 +5,7 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "api_exception.dart";
 
 class ApiService {
-  static final String _baseUrl =
-      dotenv.env["SERVER_URL"] ?? "http://localhost:8000";
+  static final String _baseUrl = dotenv.env["SERVER_URL"]!;
 
   static Future<Map<String, String>> _getHeaders() async {
     final session = Supabase.instance.client.auth.currentSession;

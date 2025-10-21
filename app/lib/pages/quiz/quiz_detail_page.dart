@@ -36,7 +36,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
     try {
       final session = Supabase.instance.client.auth.currentSession;
       _currentUserId = session?.user.id;
-      final serverUrl = dotenv.env["SERVER_URL"] ?? "http://localhost:8000";
+      final serverUrl = dotenv.env["SERVER_URL"];
 
       final quizResponse = await http.get(
         Uri.parse("$serverUrl/api/quiz/${widget.quizId}"),

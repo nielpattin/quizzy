@@ -33,7 +33,7 @@ class _ContinuePlayingPageState extends State<ContinuePlayingPage> {
         throw Exception("No active session");
       }
 
-      final serverUrl = dotenv.env["SERVER_URL"] ?? "http://localhost:8000";
+      final serverUrl = dotenv.env["SERVER_URL"];
       final userId = session.user.id;
 
       // Load live sessions (sessions that are active and not ended)
