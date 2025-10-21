@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:cached_network_image/cached_network_image.dart";
 import "../../../models/post.dart";
 
 class FeedCard extends StatelessWidget {
@@ -6,6 +7,7 @@ class FeedCard extends StatelessWidget {
   final String author;
   final String text;
   final PostType postType;
+  final String? imageUrl;
   final String? questionText;
   final bool hasAnswered;
   final int likes;
@@ -24,6 +26,7 @@ class FeedCard extends StatelessWidget {
     required this.author,
     required this.text,
     this.postType = PostType.text,
+    this.imageUrl,
     this.questionText,
     this.hasAnswered = false,
     required this.likes,
@@ -118,30 +121,88 @@ class FeedCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            if (postType == PostType.image)
+            if (postType == PostType.image && imageUrl != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.image_outlined,
-                      size: 48,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 200,
+                      width: double.infinity,
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.3),
+                      ).colorScheme.surfaceContainerHighest,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 200,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          size: 48,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.3),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            if (postType == PostType.quiz)
+            if (postType == PostType.quiz) ...[
+              if (imageUrl != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl!,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        height: 200,
+                        width: double.infinity,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        height: 200,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            size: 48,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (imageUrl != null) const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: InkWell(
@@ -206,6 +267,7 @@ class FeedCard extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.all(16.0),
