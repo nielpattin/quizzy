@@ -137,43 +137,7 @@ class _FeedyTabState extends State<FeedyTab> {
     }
   }
 
-  Future<void> _createPostOptimistically(Map<String, dynamic> postData) async {
-    final currentUser = Supabase.instance.client.auth.currentUser;
-    if (currentUser == null || _currentUserProfile == null) return;
-
-    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-    final timestamp = DateTime.now().toIso8601String();
-
-    final optimisticPost = {
-      'id': tempId,
-      'text': postData['text'],
-      'postType': postData['postType'],
-      'imageUrl': postData['imageUrl'],
-      'questionType': postData['questionType'],
-      'questionText': postData['questionText'],
-      'questionData': postData['questionData'],
-      'user': {
-        'id': currentUser.id,
-        'fullName': _currentUserProfile!['fullName'],
-        'username': _currentUserProfile!['username'],
-        'profilePictureUrl': _currentUserProfile!['profilePictureUrl'],
-      },
-      'likesCount': 0,
-      'commentsCount': 0,
-      'answersCount': 0,
-      'isLiked': false,
-      'hasAnswered': false,
-      'userIsCorrect': false,
-      'correctPercentage': 0.0,
-      'createdAt': timestamp,
-      'updatedAt': timestamp,
-      '_isOptimistic': true,
-    };
-
-    setState(() {
-      _feedItems.insert(0, optimisticPost);
-    });
-
+  Future<void> _createPost(Map<String, dynamic> postData) async {
     try {
       final realPost = await ApiService.createPost(
         postData['text'],
@@ -185,25 +149,22 @@ class _FeedyTabState extends State<FeedyTab> {
       );
 
       if (mounted) {
-        setState(() {
-          final index = _feedItems.indexWhere((p) => p['id'] == tempId);
-          if (index != -1) {
-            _feedItems[index] = realPost;
-          }
-        });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Post created successfully"),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text("Post created"),
+            action: SnackBarAction(
+              label: "View",
+              onPressed: () {
+                context.push("/post/details", extra: realPost['id']);
+              },
+            ),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
     } catch (e) {
       debugPrint("[FeedyTab] Error creating post: $e");
       if (mounted) {
-        setState(() {
-          _feedItems.removeWhere((p) => p['id'] == tempId);
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Failed to create post: $e"),
@@ -229,7 +190,7 @@ class _FeedyTabState extends State<FeedyTab> {
 
     final postData = await context.push<Map<String, dynamic>>(route);
     if (postData != null) {
-      _createPostOptimistically(postData);
+      _createPost(postData);
     }
   }
 
