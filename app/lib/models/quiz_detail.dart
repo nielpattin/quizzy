@@ -3,6 +3,7 @@ class QuizDetail {
   final String title;
   final String collection;
   final String description;
+  final String? imageUrl;
   final String imageGradientStart;
   final String imageGradientEnd;
   final int questionCount;
@@ -21,6 +22,7 @@ class QuizDetail {
     required this.title,
     required this.collection,
     required this.description,
+    this.imageUrl,
     required this.imageGradientStart,
     required this.imageGradientEnd,
     required this.questionCount,

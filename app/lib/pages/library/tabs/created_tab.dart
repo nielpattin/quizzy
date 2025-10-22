@@ -176,6 +176,7 @@ class _QuizzesListState extends State<_QuizzesList>
               timeAgo: quiz.timeAgo,
               questions: quiz.questions,
               plays: quiz.plays,
+              imageUrl: quiz.imageUrl,
               gradient: quiz.gradient,
               onTap: () => context.push("/quiz/${quiz.id}"),
             );

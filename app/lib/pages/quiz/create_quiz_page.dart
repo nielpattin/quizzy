@@ -2,8 +2,11 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "dart:convert";
+import "dart:io";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
+import "package:image_picker/image_picker.dart";
+import "../../services/upload_service.dart";
 
 class CreateQuizPage extends StatefulWidget {
   const CreateQuizPage({super.key});
@@ -20,6 +23,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   bool _isPublic = true;
   bool _questionsVisible = false;
   bool _isLoading = false;
+  File? _selectedImageFile;
 
   final List<String> _categories = [
     "General Knowledge",
@@ -44,6 +48,22 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+
+    if (image == null) return;
+
+    setState(() {
+      _selectedImageFile = File(image.path);
+    });
+  }
+
   Future<void> _createQuiz() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -53,6 +73,12 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
         throw Exception("Not authenticated");
+      }
+
+      String? imageUrl;
+      if (_selectedImageFile != null) {
+        final imageData = await UploadService.uploadImage(_selectedImageFile!);
+        imageUrl = imageData["url"] as String?;
       }
 
       final serverUrl = dotenv.env["SERVER_URL"];
@@ -68,6 +94,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               ? null
               : _descriptionController.text.trim(),
           "category": _selectedCategory,
+          if (imageUrl != null) "imageUrl": imageUrl,
           "isPublic": _isPublic,
           "questionsVisible": _questionsVisible,
         }),
@@ -128,6 +155,46 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                 ),
               ),
               const SizedBox(height: 20),
+              if (_selectedImageFile != null) ...[
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        _selectedImageFile!,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () =>
+                            setState(() => _selectedImageFile = null),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                OutlinedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.add_photo_alternate),
+                  label: const Text("Add Cover Image (Optional)"),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(

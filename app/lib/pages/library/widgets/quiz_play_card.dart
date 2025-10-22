@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:cached_network_image/cached_network_image.dart";
 import "meta_chip.dart";
 
 class QuizPlayCard extends StatelessWidget {
@@ -6,6 +7,7 @@ class QuizPlayCard extends StatelessWidget {
   final String timeAgo;
   final int questions;
   final int? plays;
+  final String? imageUrl;
   final List<Color> gradient;
   final VoidCallback? onTap;
   const QuizPlayCard({
@@ -14,6 +16,7 @@ class QuizPlayCard extends StatelessWidget {
     required this.timeAgo,
     required this.questions,
     required this.plays,
+    this.imageUrl,
     required this.gradient,
     this.onTap,
   });
@@ -43,12 +46,46 @@ class QuizPlayCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(14),
                   ),
-                  gradient: LinearGradient(
-                    colors: gradient,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  gradient: imageUrl == null
+                      ? LinearGradient(
+                          colors: gradient,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
                 ),
+                child: imageUrl != null
+                    ? ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(14),
+                        ),
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: gradient,
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: gradient,
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : null,
               ),
             ),
             Expanded(

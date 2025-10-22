@@ -51,6 +51,7 @@ export const quizzes = pgTable('quizzes', {
   title: text('title').notNull(),
   description: text('description'),
   category: text('category'),
+  imageUrl: text('image_url'),
   questionCount: integer('question_count').notNull().default(0),
   playCount: integer('play_count').notNull().default(0),
   favoriteCount: integer('favorite_count').notNull().default(0),

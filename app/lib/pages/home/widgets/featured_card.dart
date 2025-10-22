@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:cached_network_image/cached_network_image.dart";
 
 class FeaturedCard extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -8,6 +9,8 @@ class FeaturedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = data["imageUrl"] as String?;
+
     return InkWell(
       onTap: () => context.push("/quiz/${data["id"] ?? "1"}"),
       borderRadius: BorderRadius.circular(16),
@@ -22,10 +25,54 @@ class FeaturedCard extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
+                gradient: imageUrl == null
+                    ? LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.grey[700]!, Colors.grey[900]!],
+                      )
+                    : null,
+              ),
+              child: imageUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.grey[700]!, Colors.grey[900]!],
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.grey[700]!, Colors.grey[900]!],
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.grey[700]!, Colors.grey[900]!],
+                  colors: [
+                    Colors.black.withValues(alpha: 0.3),
+                    Colors.black.withValues(alpha: 0.7),
+                  ],
                 ),
               ),
             ),

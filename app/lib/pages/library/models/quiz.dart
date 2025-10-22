@@ -7,6 +7,7 @@ class Quiz {
   final int plays;
   final int questions;
   final bool? isPublic;
+  final String? imageUrl;
   final List<Color> gradient;
 
   Quiz({
@@ -16,6 +17,7 @@ class Quiz {
     required this.plays,
     required this.questions,
     this.isPublic,
+    this.imageUrl,
     required this.gradient,
   });
 
@@ -27,6 +29,7 @@ class Quiz {
       plays: (json["plays"] ?? json["playCount"] ?? 0) as int,
       questions: (json["questions"] ?? json["questionCount"] ?? 0) as int,
       isPublic: json["isPublic"] as bool?,
+      imageUrl: json["imageUrl"] as String?,
       gradient: gradient,
     );
   }
@@ -39,6 +42,7 @@ class Quiz {
       "plays": plays,
       "questions": questions,
       "isPublic": isPublic,
+      "imageUrl": imageUrl,
     };
   }
 }
