@@ -26,6 +26,7 @@ import {
 	generateQuizDescription,
 	generateQuestionText,
 	generateQuestionData,
+	type SeedImageUrls,
 } from './config-seed';
 
 const seedSchema = {
@@ -44,7 +45,7 @@ const seedSchema = {
 	notifications: schema.notifications,
 };
 
-export const seedRegularUsers = async (db: any) => {
+export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) => {
 	const seeded = await seed(db, seedSchema, { count: 10 }).refine((f) => ({
 		users: {
 			count: SEED_USERS_COUNT,
@@ -142,6 +143,7 @@ export const seedRegularUsers = async (db: any) => {
 			count: SEED_POSTS_COUNT,
 			columns: {
 				text: f.valuesFromArray({ values: categories.map((c) => `Sharing a new ${c} quiz – feedback welcome!`) }),
+				postType: f.valuesFromArray({ values: ['text', 'text', 'text', 'image', 'quiz'] }),
 				likesCount: f.int({ minValue: 0, maxValue: 500 }),
 				commentsCount: f.int({ minValue: 0, maxValue: 0 }),
 			},
@@ -242,6 +244,37 @@ export const seedRegularUsers = async (db: any) => {
 				.set({ commentsCount: commentCount })
 				.where(eq(schema.posts.id, post.id));
 		}
+	}
+
+	// Assign real image URLs to posts
+	if (seedImageUrls?.posts && seedImageUrls.posts.length > 0) {
+		const imagePosts = posts.filter(p => p.postType === 'image');
+		console.log(`  🖼️  Assigning URLs to ${imagePosts.length} image posts...`);
+		
+		for (let i = 0; i < imagePosts.length; i++) {
+			const imageUrl = seedImageUrls.posts[i % seedImageUrls.posts.length];
+			await db.update(schema.posts)
+				.set({ imageUrl })
+				.where(eq(schema.posts.id, imagePosts[i].id));
+		}
+	}
+
+	// Assign images to quiz posts (30% of quiz posts get images)
+	if (seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0) {
+		const quizPosts = posts.filter(p => p.postType === 'quiz');
+		console.log(`  🧩 Assigning URLs to quiz posts with images...`);
+		
+		let assignedCount = 0;
+		for (let i = 0; i < quizPosts.length; i++) {
+			if (Math.random() < 0.3) {
+				const imageUrl = seedImageUrls.quizzes[i % seedImageUrls.quizzes.length];
+				await db.update(schema.posts)
+					.set({ imageUrl })
+					.where(eq(schema.posts.id, quizPosts[i].id));
+				assignedCount++;
+			}
+		}
+		console.log(`  ✅ Assigned images to ${assignedCount} quiz posts`);
 	}
 
 	console.log('✅ Regular user data generation completed');

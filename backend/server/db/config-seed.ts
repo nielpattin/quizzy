@@ -47,11 +47,11 @@ export const categories = [
 ];
 
 export const questionTypes: string[] = [
-	'multiple_choice',
+	'single_choice',
+	'checkbox',
 	'true_false',
-	'single_answer',
-	'reorder',
 	'type_answer',
+	'reorder',
 	'drop_pin',
 ];
 
@@ -80,11 +80,21 @@ export const generateQuestionData = (type: string) => {
 	};
 	
 	switch (type) {
-		case 'multiple_choice':
+		case 'single_choice':
 			return {
 				...baseData,
 				options: [
 					{ text: 'Option A', isCorrect: false },
+					{ text: 'Option B', isCorrect: true },
+					{ text: 'Option C', isCorrect: false },
+					{ text: 'Option D', isCorrect: false },
+				],
+			};
+		case 'checkbox':
+			return {
+				...baseData,
+				options: [
+					{ text: 'Option A', isCorrect: true },
 					{ text: 'Option B', isCorrect: true },
 					{ text: 'Option C', isCorrect: false },
 					{ text: 'Option D', isCorrect: false },
@@ -95,10 +105,11 @@ export const generateQuestionData = (type: string) => {
 				...baseData,
 				correctAnswer: Math.random() > 0.5,
 			};
-		case 'single_answer':
+		case 'type_answer':
 			return {
 				...baseData,
-				correctAnswer: 'Sample Answer',
+				correctAnswer: 'type this answer',
+				caseSensitive: false,
 			};
 		case 'reorder':
 			return {
@@ -108,12 +119,6 @@ export const generateQuestionData = (type: string) => {
 					{ id: 2, text: 'Second item', correctOrder: 1 },
 					{ id: 3, text: 'Third item', correctOrder: 2 },
 				],
-			};
-		case 'type_answer':
-			return {
-				...baseData,
-				correctAnswer: 'type this answer',
-				caseSensitive: false,
 			};
 		case 'drop_pin':
 			return {
@@ -150,16 +155,16 @@ export const generateQuizDescription = (category: string) => {
 export const generateQuestionText = (category: string | null, type: string, index: number) => {
 	const base = category ?? 'General Knowledge';
 	switch (type) {
-		case 'multiple_choice':
+		case 'single_choice':
 			return `(${index + 1}) Which statement about ${base} is correct?`;
+		case 'checkbox':
+			return `(${index + 1}) Select all that apply for ${base}.`;
 		case 'true_false':
 			return `(${index + 1}) True or False: A common fact in ${base}.`;
-		case 'single_answer':
-			return `(${index + 1}) Briefly answer this ${base} question.`;
-		case 'reorder':
-			return `(${index + 1}) Arrange these ${base} steps in order.`;
 		case 'type_answer':
 			return `(${index + 1}) Type the correct term from ${base}.`;
+		case 'reorder':
+			return `(${index + 1}) Arrange these ${base} steps in order.`;
 		case 'drop_pin':
 			return `(${index + 1}) Locate the relevant place related to ${base}.`;
 		default:
@@ -227,3 +232,112 @@ export const calculateDerivedCounts = (excludedUserIds: string[]) => {
 	};
 };
 
+import { getS3File, BUCKETS } from '../lib/s3';
+import { images } from './schema';
+import * as path from 'path';
+import * as fs from 'fs/promises';
+
+export interface SeedImageUrls {
+	posts: string[];
+	quizzes: string[];
+}
+
+export const uploadSeedImage = async (
+	db: any,
+	filepath: string,
+	userId: string,
+): Promise<string | null> => {
+	try {
+		const filename = `seed-${Date.now()}-${path.basename(filepath)}`;
+		const file = Bun.file(filepath);
+		const buffer = Buffer.from(await file.arrayBuffer());
+		const mimeType = 'image/jpeg';
+
+		const s3File = getS3File(filename, BUCKETS.DEFAULT);
+		await s3File.write(buffer, { type: mimeType });
+
+		const [image] = await db
+			.insert(images)
+			.values({
+				userId,
+				filename,
+				originalName: path.basename(filepath),
+				mimeType,
+				size: buffer.byteLength,
+				bucket: BUCKETS.DEFAULT,
+			})
+			.returning();
+
+		const url = s3File.presign({ expiresIn: 24 * 60 * 60 });
+		return url;
+	} catch (error) {
+		console.error(`  ❌ Failed to upload ${path.basename(filepath)}:`, error);
+		return null;
+	}
+};
+
+export const uploadAllSeedImages = async (
+	db: any,
+	seedUserId: string,
+): Promise<SeedImageUrls> => {
+	const seedImagesDir = path.join(__dirname, 'seed-images');
+	const postsDir = path.join(seedImagesDir, 'posts');
+	const quizzesDir = path.join(seedImagesDir, 'quizzes');
+
+	const postUrls: string[] = [];
+	const quizUrls: string[] = [];
+
+	console.log('📤 Uploading seed images to MinIO...');
+
+	try {
+		await fs.access(postsDir);
+	} catch {
+		console.warn(
+			'⚠️  Posts directory not found - run "bun run db:image" first',
+		);
+		return { posts: [], quizzes: [] };
+	}
+
+	const postFiles = await fs.readdir(postsDir);
+	const postJpgs = postFiles.filter(
+		(f) => f.endsWith('.jpg') || f.endsWith('.jpeg'),
+	);
+
+	console.log(`  📂 Uploading ${postJpgs.length} post images...`);
+	for (const file of postJpgs) {
+		const url = await uploadSeedImage(db, path.join(postsDir, file), seedUserId);
+		if (url) {
+			postUrls.push(url);
+			console.log(`    ✅ ${file}`);
+		}
+	}
+
+	try {
+		await fs.access(quizzesDir);
+		const quizFiles = await fs.readdir(quizzesDir);
+		const quizJpgs = quizFiles.filter(
+			(f) => f.endsWith('.jpg') || f.endsWith('.jpeg'),
+		);
+
+		console.log(`  📂 Uploading ${quizJpgs.length} quiz images...`);
+		for (const file of quizJpgs) {
+			const url = await uploadSeedImage(
+				db,
+				path.join(quizzesDir, file),
+				seedUserId,
+			);
+			if (url) {
+				quizUrls.push(url);
+				console.log(`    ✅ ${file}`);
+			}
+		}
+	} catch {
+		console.warn('⚠️  Quizzes directory not found');
+	}
+
+	console.log(
+		`✅ Uploaded ${postUrls.length} post images and ${quizUrls.length} quiz images to MinIO\n`,
+	);
+
+	return { posts: postUrls, quizzes: quizUrls };
+};

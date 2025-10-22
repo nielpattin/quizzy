@@ -4,6 +4,7 @@ import "package:cached_network_image/cached_network_image.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "../../services/api_service.dart";
 import "../../models/post.dart";
+import "../../widgets/user_avatar.dart";
 import "../home/widgets/quick_question_modal.dart";
 
 class PostDetailsPage extends StatefulWidget {
@@ -230,11 +231,7 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: const Icon(Icons.person, color: Colors.white, size: 28),
-              ),
+              UserAvatar(imageUrl: post.user.profilePictureUrl, radius: 24),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -356,77 +353,63 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                 ),
               ),
             if (post.imageUrl != null) const SizedBox(height: 12),
-            InkWell(
-              onTap: !post.hasAnswered
-                  ? () async {
-                      await showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (context) => QuickQuestionModal(
-                          post: post,
-                          onAnswered: _loadPostAndComments,
-                        ),
-                      );
-                    }
-                  : null,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.3),
+            if (post.postType == PostType.quiz && !post.hasAnswered)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    await showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) => QuickQuestionModal(
+                        post: post,
+                        onAnswered: _loadPostAndComments,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.quiz),
+                  label: const Text('Tap to Answer Quiz'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.quiz,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 32,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            post.questionText ?? "Quiz Question",
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onPrimaryContainer,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            post.hasAnswered ? "Answered ✓" : "Tap to answer",
-                            style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onPrimaryContainer
-                                  .withValues(alpha: 0.7),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+              ),
+            if (post.postType == PostType.quiz && post.hasAnswered)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green, width: 1.5),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 20,
                       ),
-                    ),
-                    if (!post.hasAnswered)
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 16,
+                      const SizedBox(width: 8),
+                      Text(
+                        post.userIsCorrect
+                            ? 'Answered Correctly ✓'
+                            : 'You answered this quiz',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
           ],
           const SizedBox(height: 16),
           Row(

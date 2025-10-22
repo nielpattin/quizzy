@@ -278,11 +278,14 @@ class _QuickQuestionModalState extends State<QuickQuestionModal> {
     final options = widget.post.questionData?.options ?? [];
 
     String correctAnswerText = "";
-    if (correctAnswer is List) {
+
+    if (widget.post.questionType == QuestionType.trueFalse) {
+      correctAnswerText = correctAnswer == true ? "True" : "False";
+    } else if (correctAnswer is List) {
       correctAnswerText = correctAnswer
           .map((i) => options[i as int])
           .join(", ");
-    } else {
+    } else if (correctAnswer != null && options.isNotEmpty) {
       correctAnswerText = options[correctAnswer as int];
     }
 

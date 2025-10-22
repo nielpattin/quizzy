@@ -2,7 +2,7 @@ import "dart:async";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../services/api_service.dart";
-import "../../utils/image_helper.dart";
+import "../../widgets/user_avatar.dart";
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -403,16 +403,9 @@ class _SearchPageState extends State<SearchPage> {
                         const Spacer(),
                         Row(
                           children: [
-                            CircleAvatar(
+                            UserAvatar(
+                              imageUrl: quiz["user"]?["profilePictureUrl"],
                               radius: 10,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                              child: Icon(
-                                Icons.person,
-                                size: 12,
-                                color: Colors.white,
-                              ),
                             ),
                             SizedBox(width: 6),
                             Expanded(
@@ -476,20 +469,7 @@ class _SearchPageState extends State<SearchPage> {
             onTap: () => context.push("/profile/${user["id"]}"),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  backgroundImage: ImageHelper.createValidNetworkImage(
-                    user["profilePictureUrl"],
-                  ),
-                  child:
-                      ImageHelper.createValidNetworkImage(
-                            user["profilePictureUrl"],
-                          ) ==
-                          null
-                      ? const Icon(Icons.person, color: Colors.white, size: 28)
-                      : null,
-                ),
+                UserAvatar(imageUrl: user["profilePictureUrl"], radius: 28),
                 SizedBox(width: 16),
                 Expanded(
                   child: Column(

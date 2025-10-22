@@ -1,10 +1,12 @@
 import "package:flutter/material.dart";
 import "package:cached_network_image/cached_network_image.dart";
 import "../../../models/post.dart";
+import "../../../widgets/user_avatar.dart";
 
-class FeedCard extends StatelessWidget {
+class FeedCard extends StatefulWidget {
   final String postId;
   final String author;
+  final String? profilePictureUrl;
   final String text;
   final PostType postType;
   final String? imageUrl;
@@ -19,11 +21,13 @@ class FeedCard extends StatelessWidget {
   final VoidCallback? onComment;
   final VoidCallback? onDelete;
   final VoidCallback? onQuizTap;
+  final VoidCallback? onShare;
 
   const FeedCard({
     super.key,
     required this.postId,
     required this.author,
+    this.profilePictureUrl,
     required this.text,
     this.postType = PostType.text,
     this.imageUrl,
@@ -38,12 +42,60 @@ class FeedCard extends StatelessWidget {
     this.onComment,
     this.onDelete,
     this.onQuizTap,
+    this.onShare,
   });
+
+  @override
+  State<FeedCard> createState() => _FeedCardState();
+}
+
+class _FeedCardState extends State<FeedCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _likeAnimationController;
+  late Animation<double> _likeScaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _likeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _likeScaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.3,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.3,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 50,
+      ),
+    ]).animate(_likeAnimationController);
+  }
+
+  @override
+  void dispose() {
+    _likeAnimationController.dispose();
+    super.dispose();
+  }
+
+  void _handleLike() {
+    if (mounted) {
+      _likeAnimationController.forward(from: 0.0);
+      widget.onLike();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
@@ -57,19 +109,11 @@ class FeedCard extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
+                  UserAvatar(imageUrl: widget.profilePictureUrl, radius: 20),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      author,
+                      widget.author,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
@@ -77,11 +121,11 @@ class FeedCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (isOwner && onDelete != null)
+                  if (widget.isOwner && widget.onDelete != null)
                     PopupMenuButton<String>(
                       onSelected: (value) {
                         if (value == 'delete') {
-                          onDelete!();
+                          widget.onDelete!();
                         }
                       },
                       itemBuilder: (context) => [
@@ -112,7 +156,7 @@ class FeedCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
-                text,
+                widget.text,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 16,
@@ -121,13 +165,13 @@ class FeedCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            if (postType == PostType.image && imageUrl != null)
+            if (widget.postType == PostType.image && widget.imageUrl != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: CachedNetworkImage(
-                    imageUrl: imageUrl!,
+                    imageUrl: widget.imageUrl!,
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -161,14 +205,14 @@ class FeedCard extends StatelessWidget {
                   ),
                 ),
               ),
-            if (postType == PostType.quiz) ...[
-              if (imageUrl != null)
+            if (widget.postType == PostType.quiz) ...[
+              if (widget.imageUrl != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: CachedNetworkImage(
-                      imageUrl: imageUrl!,
+                      imageUrl: widget.imageUrl!,
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,
@@ -202,140 +246,169 @@ class FeedCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (imageUrl != null) const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: InkWell(
-                  onTap: onQuizTap,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.3),
+              if (widget.imageUrl != null) const SizedBox(height: 12),
+              if (!widget.hasAnswered)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ElevatedButton.icon(
+                    onPressed: widget.onQuizTap,
+                    icon: const Icon(Icons.quiz, size: 20),
+                    label: const Text('Tap to Answer Quiz'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      minimumSize: const Size(double.infinity, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Row(
+                  ),
+                ),
+              if (widget.hasAnswered)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green, width: 1.5),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.quiz,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 32,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                questionText ?? "Quiz Question",
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimaryContainer,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                hasAnswered ? "Answered ✓" : "Tap to answer",
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimaryContainer
-                                      .withValues(alpha: 0.7),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                        Icon(Icons.check_circle, color: Colors.green, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Answered ✓',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 16,
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
             ],
             const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 children: [
-                  InkWell(
-                    onTap: onLike,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: isLiked
-                                ? Colors.red
-                                : Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.7),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            "$likes",
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.7),
-                              fontSize: 14,
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _handleLike,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Ink(
+                          padding: const EdgeInsets.all(12),
+                          child: AnimatedBuilder(
+                            animation: _likeScaleAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _likeScaleAnimation.value,
+                                child: child,
+                              );
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  widget.isLiked
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: widget.isLiked
+                                      ? Colors.red
+                                      : Theme.of(context).colorScheme.onSurface
+                                            .withValues(alpha: 0.7),
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "${widget.likes}",
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 24),
-                  InkWell(
-                    onTap: onComment,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: widget.onComment,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Ink(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.comment_outlined,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                                size: 24,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                "${widget.comments}",
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.comment_outlined,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.7),
-                            size: 20,
+                    ),
+                  ),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: widget.onShare,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Ink(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.share_outlined,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                                size: 24,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                "Share",
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            "$comments",
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.7),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),

@@ -330,6 +330,7 @@ class _FeedyTabState extends State<FeedyTab> {
                 child: FeedCard(
                   postId: post.id,
                   author: post.user.fullName ?? "Unknown",
+                  profilePictureUrl: post.user.profilePictureUrl,
                   text: post.text,
                   postType: post.postType,
                   imageUrl: post.imageUrl,
@@ -344,9 +345,12 @@ class _FeedyTabState extends State<FeedyTab> {
                     context.push("/post/details", extra: post.id);
                   },
                   onTap: () {
-                    debugPrint("Tapped post: ${post.id}");
+                    context.push("/post/details", extra: post.id);
                   },
                   onDelete: isOwner ? () => _deletePost(post.id) : null,
+                  onShare: () {
+                    debugPrint("Share post: ${post.id}");
+                  },
                   onQuizTap: post.postType == PostType.quiz && !post.hasAnswered
                       ? () async {
                           await showModalBottomSheet(

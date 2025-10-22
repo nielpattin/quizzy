@@ -35,10 +35,14 @@ enum QuestionType {
 
   static QuestionType fromString(String value) {
     switch (value) {
-      case 'multiple_choice':
+      case 'single_choice':
         return QuestionType.multipleChoice;
+      case 'checkbox':
+        return QuestionType.checkbox;
       case 'true_false':
         return QuestionType.trueFalse;
+      case 'multiple_choice':
+        return QuestionType.multipleChoice;
       case 'single_answer':
         return QuestionType.checkbox;
       default:
@@ -49,11 +53,11 @@ enum QuestionType {
   String toJson() {
     switch (this) {
       case QuestionType.multipleChoice:
-        return 'multiple_choice';
+        return 'single_choice';
+      case QuestionType.checkbox:
+        return 'checkbox';
       case QuestionType.trueFalse:
         return 'true_false';
-      case QuestionType.checkbox:
-        return 'single_answer';
     }
   }
 }
@@ -65,8 +69,20 @@ class QuestionData {
   QuestionData({required this.options, required this.correctAnswer});
 
   factory QuestionData.fromJson(Map<String, dynamic> json) {
+    List<String> parsedOptions = [];
+
+    if (json['options'] != null) {
+      final optionsList = json['options'] as List;
+      parsedOptions = optionsList
+          .map(
+            (option) =>
+                option is Map ? (option['text'] as String) : option.toString(),
+          )
+          .toList();
+    }
+
     return QuestionData(
-      options: List<String>.from(json['options'] ?? []),
+      options: parsedOptions,
       correctAnswer: json['correctAnswer'],
     );
   }

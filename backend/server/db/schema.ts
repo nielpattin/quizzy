@@ -2,11 +2,11 @@ import { pgTable, text, timestamp, uuid, boolean, varchar, date, integer, jsonb,
 import { relations } from 'drizzle-orm';
 
 export const questionTypeEnum = pgEnum('question_type', [
-  'multiple_choice',
+  'single_choice',
+  'checkbox',
   'true_false',
-  'single_answer',
-  'reorder',
   'type_answer',
+  'reorder',
   'drop_pin',
 ]);
 

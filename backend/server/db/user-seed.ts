@@ -18,9 +18,14 @@ import {
 	generatePostContent,
 	generateNotificationTitle,
 	generateNotificationSubtitle,
+	type SeedImageUrls,
 } from './config-seed';
 
-export const seedExcludedUsers = async (db: any, excludedUserIds: string[]) => {
+export const seedExcludedUsers = async (
+	db: any,
+	excludedUserIds: string[],
+	seedImageUrls?: SeedImageUrls,
+) => {
 	console.log('\n🔒 Generating guaranteed data for excluded users...');
 	
 	for (const userId of excludedUserIds) {
@@ -116,7 +121,7 @@ export const seedExcludedUsers = async (db: any, excludedUserIds: string[]) => {
 				estimatedMinutes: randomQuiz.questionCount * 2,
 				isLive: false,
 				joinedCount: 0,
-				code: `GAME${userId.slice(-4).toUpperCase()}${i + 1}`,
+				code: `GAME${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
 				quizVersion: randomQuiz.version,
 				startedAt: null,
 				endedAt: null,
@@ -186,22 +191,30 @@ export const seedExcludedUsers = async (db: any, excludedUserIds: string[]) => {
 			let questionType = null;
 			let questionText = null;
 			let questionData = null;
+			let imageUrl = null;
 			
 			if (postTypeRand < 0.3) {
 				postType = 'quiz';
-				const qTypes = ['multiple_choice', 'true_false', 'single_answer'];
+				const qTypes = ['single_choice', 'checkbox', 'true_false'];
 				questionType = qTypes[Math.floor(Math.random() * qTypes.length)] as any;
 				questionText = `Quick quiz: ${generatePostContent(categories[i % categories.length])}`;
 				questionData = generateQuestionData(questionType);
+				
+				if (seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0 && Math.random() < 0.3) {
+					imageUrl = seedImageUrls.quizzes[i % seedImageUrls.quizzes.length];
+				}
 			} else if (postTypeRand < 0.5) {
 				postType = 'image';
+				if (seedImageUrls?.posts && seedImageUrls.posts.length > 0) {
+					imageUrl = seedImageUrls.posts[i % seedImageUrls.posts.length];
+				}
 			}
 			
 			const postData = {
 				userId,
 				text: generatePostContent(categories[i % categories.length]),
 				postType,
-				imageUrl: postType === 'image' ? null : null,
+				imageUrl,
 				questionType,
 				questionText,
 				questionData,

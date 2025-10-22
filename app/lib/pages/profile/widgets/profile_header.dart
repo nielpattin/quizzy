@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "../../../utils/image_helper.dart";
+import "../../../widgets/user_avatar.dart";
 
 class ProfileHeader extends StatelessWidget {
   final String? fullName;
@@ -19,19 +19,7 @@ class ProfileHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
         children: [
-          ImageHelper.createValidNetworkImage(avatarUrl) != null
-              ? CircleAvatar(
-                  radius: 32,
-                  backgroundImage: ImageHelper.createValidNetworkImage(
-                    avatarUrl,
-                  )!,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                )
-              : CircleAvatar(
-                  radius: 32,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: Icon(Icons.person, size: 32, color: Colors.white),
-                ),
+          UserAvatar(imageUrl: avatarUrl, radius: 32),
           SizedBox(width: 16),
           Expanded(
             child: Column(

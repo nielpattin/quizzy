@@ -157,12 +157,26 @@ const main = async () => {
 	// Seed deterministic fixed users
 	await seedFixedUsers(db);
 
+	// Upload seed images to MinIO before generating posts
+	console.log('\n📤 Uploading seed images to MinIO...');
+	const fixedUsers = await db.select().from(schema.users).limit(1);
+	const seedImageOwner = fixedUsers[0]?.id || (excludedUserIds.length > 0 ? excludedUserIds[0] : null);
+
+	let seedImageUrls: { posts: string[], quizzes: string[] } = { posts: [], quizzes: [] };
+
+	if (seedImageOwner) {
+		const { uploadAllSeedImages } = await import('./config-seed');
+		seedImageUrls = await uploadAllSeedImages(db, seedImageOwner);
+	} else {
+		console.warn('⚠️  No users available for image ownership - skipping image upload');
+	}
+
 	// Generate data for random users
-	await seedRegularUsers(db);
+	await seedRegularUsers(db, seedImageUrls);
 
 	// Generate guaranteed data for excluded users
 	if (excludedUserIds.length > 0) {
-		await seedExcludedUsers(db, excludedUserIds);
+		await seedExcludedUsers(db, excludedUserIds, seedImageUrls);
 	}
 
 	// Seed collections and saved quizzes for fixed users (after quizzes exist)
