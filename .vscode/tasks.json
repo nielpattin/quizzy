@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flutter-Launch-All",
+      "dependsOn": [
+        "F-emulator-5554",
+        "F-emulator-5556"
+      ]
+    },
+    {
+      "label": "F-emulator-5554",
+      "type": "process",
+      "command": "nu",
+      "args": [
+        "-c",
+        "cd app; flutter run -d emulator-5554 | lines | where ($it | str contains 'I/flutter')"
+      ]
+    },
+    {
+      "label": "F-emulator-5556",
+      "type": "process",
+      "command": "nu",
+      "args": [
+        "-c",
+        "cd app; flutter run -d emulator-5556 | lines | where ($it | str contains 'I/flutter')"
+      ]
+    }
+  ]
+}

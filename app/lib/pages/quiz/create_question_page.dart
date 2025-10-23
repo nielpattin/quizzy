@@ -2,10 +2,10 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:image_picker/image_picker.dart";
 import "dart:io";
-import "widgets/property_chips.dart";
 import "widgets/question_pickers.dart";
 import "widgets/cover_image_picker.dart";
-import "widgets/answer_options_section.dart";
+import "widgets/clean_answer_list.dart";
+import "widgets/settings_toolbar.dart";
 
 class CreateQuestionPage extends StatefulWidget {
   final String quizId;
@@ -31,10 +31,8 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
   int? _correctAnswerIndex;
   File? _coverImage;
   late String _currentQuestionType;
-  final List<TextEditingController> _answerControllers = List.generate(
-    4,
-    (_) => TextEditingController()..text = "Answer",
-  );
+  final List<TextEditingController> _answerControllers = [];
+  int _answerCount = 4;
   int _questionCharCount = 0;
 
   @override
@@ -47,22 +45,40 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
       _timeLimit = widget.existingQuestion!["timeLimit"] ?? "20 sec";
       _points = widget.existingQuestion!["points"] ?? "100 coki";
 
+      if (widget.existingQuestion!["coverImagePath"] != null) {
+        _coverImage = File(
+          widget.existingQuestion!["coverImagePath"] as String,
+        );
+      }
+
       if (widget.existingQuestion!["data"] != null) {
         final data = widget.existingQuestion!["data"] as Map<String, dynamic>;
 
         if (_currentQuestionType == "multiple_choice") {
           final options = data["options"] as List<dynamic>?;
           if (options != null) {
-            for (int i = 0; i < options.length && i < 4; i++) {
-              _answerControllers[i].text = options[i].toString();
+            _answerCount = options.length.clamp(2, 5);
+            for (int i = 0; i < _answerCount; i++) {
+              _answerControllers.add(
+                TextEditingController()
+                  ..text = i < options.length
+                      ? options[i].toString()
+                      : "Answer",
+              );
             }
+          } else {
+            _initializeAnswers();
           }
           _correctAnswerIndex = data["correctIndex"] as int?;
         } else if (_currentQuestionType == "true_false") {
           final correctAnswer = data["correctAnswer"] as bool?;
           _correctAnswerIndex = correctAnswer == true ? 0 : 1;
         }
+      } else {
+        _initializeAnswers();
       }
+    } else {
+      _initializeAnswers();
     }
 
     _questionController.addListener(() {
@@ -70,6 +86,38 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
         _questionCharCount = _questionController.text.length;
       });
     });
+  }
+
+  void _initializeAnswers() {
+    for (int i = 0; i < _answerCount; i++) {
+      _answerControllers.add(TextEditingController()..text = "Answer");
+    }
+  }
+
+  void _addAnswer() {
+    if (_answerCount < 5) {
+      setState(() {
+        _answerCount++;
+        _answerControllers.add(TextEditingController()..text = "Answer");
+      });
+    }
+  }
+
+  void _removeAnswer(int index) {
+    if (_answerCount > 2) {
+      setState(() {
+        _answerControllers[index].dispose();
+        _answerControllers.removeAt(index);
+        _answerCount--;
+
+        if (_correctAnswerIndex == index) {
+          _correctAnswerIndex = null;
+        } else if (_correctAnswerIndex != null &&
+            _correctAnswerIndex! > index) {
+          _correctAnswerIndex = _correctAnswerIndex! - 1;
+        }
+      });
+    }
   }
 
   @override
@@ -185,6 +233,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
       "questionText": _questionController.text.trim(),
       "timeLimit": _timeLimit,
       "points": _points,
+      if (_coverImage != null) "coverImagePath": _coverImage!.path,
       "data": {
         if (_currentQuestionType == "multiple_choice") ...{
           "options": _answerControllers.map((c) => c.text.trim()).toList(),
@@ -203,7 +252,6 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1419),
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           widget.existingQuestion != null ? "Edit Question" : "Create Question",
@@ -213,7 +261,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFF0F1419),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
@@ -247,138 +295,110 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
         },
         child: Column(
           children: [
-            const SizedBox(height: 100),
             Expanded(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                    CoverImagePicker(
+                      coverImage: _coverImage,
+                      onTap: _pickImage,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "What's your question?",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A2433),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          CoverImagePicker(
-                            coverImage: _coverImage,
-                            onTap: _pickImage,
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: PropertyChip(
-                                  icon: Icons.timer_rounded,
-                                  label: _timeLimit,
-                                  onTap: _showTimeLimitPicker,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: PropertyChip(
-                                  icon: Icons.stars_rounded,
-                                  label: _points,
-                                  onTap: _showPointsPicker,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              TypeChip(
-                                label: _getTypeLabel(_currentQuestionType),
-                                onTap: _showQuestionTypePicker,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1A2433),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
+                          TextField(
+                            controller: _questionController,
+                            focusNode: _questionFocusNode,
+                            enableInteractiveSelection: true,
+                            maxLength: 1000,
+                            minLines: 2,
+                            maxLines: 8,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              height: 1.5,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                TextField(
-                                  controller: _questionController,
-                                  focusNode: _questionFocusNode,
-                                  enableInteractiveSelection: true,
-                                  maxLength: 1000,
-                                  minLines: 1,
-                                  maxLines: 6,
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    color: Colors.white,
-                                    height: 1.5,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    hintText: "What's your question?",
-                                    hintStyle: TextStyle(
-                                      color: Color(0xFF525B6A),
-                                      fontSize: 17,
-                                    ),
-                                    border: InputBorder.none,
-                                    counterText: "",
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  "$_questionCharCount/1000",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white.withValues(alpha: 0.5),
-                                  ),
-                                ),
-                              ],
+                            decoration: const InputDecoration(
+                              hintText: "Type your question here...",
+                              hintStyle: TextStyle(
+                                color: Color(0xFF525B6A),
+                                fontSize: 16,
+                              ),
+                              border: InputBorder.none,
+                              counterText: "",
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
                             ),
                           ),
-                          const SizedBox(height: 24),
-                          if (_currentQuestionType == "multiple_choice" ||
-                              _currentQuestionType == "true_false") ...[
-                            AnswerOptionsSection(
-                              questionType: _currentQuestionType,
-                              correctAnswerIndex: _correctAnswerIndex,
-                              answerControllers: _answerControllers,
-                              onMarkCorrect: (index) {
-                                setState(() => _correctAnswerIndex = index);
-                              },
+                          const SizedBox(height: 8),
+                          Text(
+                            "$_questionCharCount/1000",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.4),
                             ),
-                            const SizedBox(height: 40),
-                          ],
+                          ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 28),
+                    Container(
+                      height: 1,
+                      color: const Color(0xFF2D3748).withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 28),
+                    if (_currentQuestionType == "multiple_choice" ||
+                        _currentQuestionType == "true_false")
+                      CleanAnswerList(
+                        questionType: _currentQuestionType,
+                        correctAnswerIndex: _correctAnswerIndex,
+                        answerControllers: _answerControllers,
+                        answerCount: _answerCount,
+                        onMarkCorrect: (index) {
+                          setState(() => _correctAnswerIndex = index);
+                        },
+                        onAddAnswer: _currentQuestionType == "multiple_choice"
+                            ? _addAnswer
+                            : null,
+                        onRemoveAnswer:
+                            _currentQuestionType == "multiple_choice"
+                            ? _removeAnswer
+                            : null,
+                      ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
+            ),
+            SettingsToolbar(
+              timeLimit: _timeLimit,
+              points: _points,
+              questionType: _currentQuestionType,
+              onTimeTap: _showTimeLimitPicker,
+              onPointsTap: _showPointsPicker,
+              onTypeTap: _showQuestionTypePicker,
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _getTypeLabel(String type) {
-    switch (type) {
-      case "multiple_choice":
-        return "Quiz";
-      case "true_false":
-        return "True/False";
-      case "reorder":
-        return "Reorder";
-      case "type_answer":
-        return "Type Answer";
-      case "checkbox":
-        return "Checkbox";
-      case "drop_pin":
-        return "Drop Pin";
-      default:
-        return "Quiz";
-    }
   }
 }

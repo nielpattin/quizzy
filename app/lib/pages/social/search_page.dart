@@ -464,39 +464,49 @@ class _SearchPageState extends State<SearchPage> {
       itemBuilder: (context, index) {
         final user = _userResults[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: GestureDetector(
-            onTap: () => context.push("/profile/${user["id"]}"),
-            child: Row(
-              children: [
-                UserAvatar(imageUrl: user["profilePictureUrl"], radius: 28),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user["fullName"] ?? "Unknown",
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "@${user["username"] ?? "unknown"}",
-                        style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.push("/profile/${user["id"]}"),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8.0,
+                  horizontal: 4.0,
                 ),
-              ],
+                child: Row(
+                  children: [
+                    UserAvatar(imageUrl: user["profilePictureUrl"], radius: 28),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user["fullName"] ?? "Unknown",
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            "@${user["username"] ?? "unknown"}",
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         );

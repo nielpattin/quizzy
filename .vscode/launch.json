@@ -1,28 +1,23 @@
-{
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
+    {
+      "version": "0.2.0",
+      "configurations": [
         {
-            "name": "app",
-            "cwd": "app",
-            "request": "launch",
-            "type": "dart"
+            "name": "Flutter-All",
+            "preLaunchTask": "Flutter-Launch-All",
+            "type": "dart",
+            "request": "launch"
         },
         {
-            "name": "app (profile mode)",
-            "cwd": "app",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "profile"
+          "name": "Flutter-Emulator-5556 2",
+          "request": "launch",
+          "type": "dart",
+          "deviceId": "emulator-5556" // Replace with your other emulator's deviceId
         },
         {
-            "name": "app (release mode)",
-            "cwd": "app",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "release"
+          "name": "Flutter-Emulator-5554",
+          "request": "launch",
+          "type": "dart",
+          "deviceId": "emulator-5554" // Replace with your emulator's deviceId
         }
-    ]
-}
+      ],
+    }

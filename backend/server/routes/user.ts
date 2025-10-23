@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { db } from '../db/index'
 import { users, quizzes, gameSessions, posts, follows } from '../db/schema'
 import { eq, and, desc, sql } from 'drizzle-orm'
-import { authMiddleware, type AuthContext } from '../middleware/auth'
+import { authMiddleware, optionalAuthMiddleware, type AuthContext } from '../middleware/auth'
 
 type Variables = {
   user: AuthContext
@@ -92,7 +92,135 @@ userRoutes.put('/profile/picture', authMiddleware, async (c) => {
   }
 })
 
-// Profile endpoint with auth
+// Get user profile by ID (public endpoint with optional auth)
+userRoutes.get('/profile/:userId', optionalAuthMiddleware, async (c) => {
+  const targetUserId = c.req.param('userId')
+  const authContext = c.get('user') as AuthContext | undefined
+
+  try {
+    const [user] = await db
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        username: users.username,
+        bio: users.bio,
+        profilePictureUrl: users.profilePictureUrl,
+        accountType: users.accountType,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404)
+    }
+
+    // Get follower/following counts
+    const [followerCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(follows)
+      .where(eq(follows.followingId, targetUserId))
+
+    const [followingCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(follows)
+      .where(eq(follows.followerId, targetUserId))
+
+    // Check if current user follows this user
+    let isFollowing = false
+    if (authContext?.userId) {
+      const [followRecord] = await db
+        .select()
+        .from(follows)
+        .where(
+          and(
+            eq(follows.followerId, authContext.userId),
+            eq(follows.followingId, targetUserId)
+          )
+        )
+      isFollowing = !!followRecord
+    }
+
+    // Get user's public quizzes
+    const userQuizzes = await db
+      .select({
+        id: quizzes.id,
+        title: quizzes.title,
+        description: quizzes.description,
+        category: quizzes.category,
+        imageUrl: quizzes.imageUrl,
+        questionCount: quizzes.questionCount,
+        playCount: quizzes.playCount,
+        favoriteCount: quizzes.favoriteCount,
+        createdAt: quizzes.createdAt,
+      })
+      .from(quizzes)
+      .where(
+        and(
+          eq(quizzes.userId, targetUserId),
+          eq(quizzes.isPublic, true),
+          eq(quizzes.isDeleted, false)
+        )
+      )
+      .orderBy(desc(quizzes.createdAt))
+      .limit(20)
+
+    // Get user's game sessions
+    const userSessions = await db
+      .select({
+        id: gameSessions.id,
+        title: gameSessions.title,
+        estimatedMinutes: gameSessions.estimatedMinutes,
+        isLive: gameSessions.isLive,
+        joinedCount: gameSessions.joinedCount,
+        code: gameSessions.code,
+        startedAt: gameSessions.startedAt,
+        endedAt: gameSessions.endedAt,
+        createdAt: gameSessions.createdAt,
+      })
+      .from(gameSessions)
+      .where(eq(gameSessions.hostId, targetUserId))
+      .orderBy(desc(gameSessions.createdAt))
+      .limit(20)
+
+    // Get user's posts
+    const userPosts = await db
+      .select({
+        id: posts.id,
+        text: posts.text,
+        postType: posts.postType,
+        imageUrl: posts.imageUrl,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        createdAt: posts.createdAt,
+      })
+      .from(posts)
+      .where(eq(posts.userId, targetUserId))
+      .orderBy(desc(posts.createdAt))
+      .limit(20)
+
+    return c.json({
+      id: user.id,
+      fullName: user.fullName,
+      username: user.username,
+      bio: user.bio,
+      profilePictureUrl: user.profilePictureUrl,
+      accountType: user.accountType,
+      followersCount: followerCount?.count || 0,
+      followingCount: followingCount?.count || 0,
+      isFollowing,
+      createdAt: user.createdAt,
+      quizzes: userQuizzes,
+      sessions: userSessions,
+      posts: userPosts,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching user profile:', error)
+    return c.json({ error: 'Failed to fetch user profile' }, 500)
+  }
+})
+
+// Profile endpoint with auth (current user)
 userRoutes.get('/profile', authMiddleware, async (c) => {
   const { userId, email, userMetadata } = c.get('user') as AuthContext
 

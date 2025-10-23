@@ -1,3 +1,4 @@
+import "package:cached_network_image/cached_network_image.dart";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 
@@ -8,6 +9,7 @@ class TrendingCard extends StatelessWidget {
   final int count;
   final bool isSessions;
   final String quizId;
+  final String? imageUrl;
 
   const TrendingCard({
     super.key,
@@ -17,6 +19,7 @@ class TrendingCard extends StatelessWidget {
     required this.count,
     this.isSessions = false,
     required this.quizId,
+    this.imageUrl,
   });
 
   @override
@@ -45,6 +48,23 @@ class TrendingCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
+                  if (imageUrl != null && imageUrl!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl!,
+                        width: double.infinity,
+                        height: 90,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) =>
+                            Container(color: Colors.grey[700]),
+                        errorWidget: (context, url, error) =>
+                            Container(color: Colors.grey[700]),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     left: 8,

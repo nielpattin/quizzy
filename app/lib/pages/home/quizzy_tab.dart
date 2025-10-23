@@ -302,6 +302,7 @@ class _QuizzyTabState extends State<QuizzyTab>
                         count: item["playCount"] ?? 0,
                         isSessions: item["isSessions"] ?? false,
                         quizId: item["id"]?.toString() ?? "1",
+                        imageUrl: item["imageUrl"],
                       );
                     },
                   ),

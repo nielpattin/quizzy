@@ -12,6 +12,7 @@ import "pages/home/main_navigation_page.dart";
 
 import "pages/profile/profile_info_page.dart";
 import "pages/profile/profile_page.dart";
+import "pages/profile/user_profile_page.dart";
 import "pages/profile/settings_page.dart";
 import "pages/profile/edit_profile_page.dart";
 import "pages/social/search_page.dart";
@@ -203,6 +204,28 @@ final router = GoRouter(
           );
         },
       ),
+    ),
+    GoRoute(
+      path: "/profile/:id",
+      pageBuilder: (context, state) {
+        final userId = state.pathParameters["id"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: UserProfilePage(userId: userId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
     ),
     GoRoute(
       path: "/quiz/:id",
