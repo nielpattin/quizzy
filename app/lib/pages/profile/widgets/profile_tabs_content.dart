@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:cached_network_image/cached_network_image.dart";
 import "../../../utils/image_helper.dart";
 
 class ProfileTabsContent extends StatelessWidget {
@@ -53,6 +54,7 @@ class ProfileTabsContent extends StatelessWidget {
           title: quiz["title"],
           category: quiz["category"] ?? "General",
           plays: quiz["playCount"] ?? 0,
+          imageUrl: quiz["imageUrl"],
           color: Colors.primaries[index % Colors.primaries.length],
         );
       },
@@ -165,6 +167,7 @@ class _QuizCard extends StatelessWidget {
   final String title;
   final String category;
   final int plays;
+  final String? imageUrl;
   final Color color;
 
   const _QuizCard({
@@ -172,6 +175,7 @@ class _QuizCard extends StatelessWidget {
     required this.title,
     required this.category,
     required this.plays,
+    this.imageUrl,
     required this.color,
   });
 
@@ -199,6 +203,23 @@ class _QuizCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
+                  if (imageUrl != null && imageUrl!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl!,
+                        width: double.infinity,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) =>
+                            Container(color: color.withValues(alpha: 0.3)),
+                        errorWidget: (context, url, error) =>
+                            Container(color: color.withValues(alpha: 0.3)),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     left: 8,

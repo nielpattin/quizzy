@@ -73,9 +73,11 @@ class _CleanAnswerListState extends State<CleanAnswerList> {
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: Text("Add Answer (${widget.answerCount}/5)"),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF6949FF),
+                  foregroundColor: Theme.of(context).colorScheme.primary,
                   side: BorderSide(
-                    color: const Color(0xFF6949FF).withValues(alpha: 0.3),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                   padding: const EdgeInsets.symmetric(
@@ -107,20 +109,22 @@ class _CleanAnswerListState extends State<CleanAnswerList> {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: const Color(0xFF1A2433),
+              color: Theme.of(context).colorScheme.surface,
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFF6949FF).withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
             child: Center(
               child: Text(
                 "${index + 1}",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF6949FF),
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -131,12 +135,14 @@ class _CleanAnswerListState extends State<CleanAnswerList> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A2433),
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isCorrect
                     ? const Color(0xFF10B981)
-                    : const Color(0xFF2D3748),
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.2),
                 width: isCorrect ? 2 : 1,
               ),
             ),
@@ -145,15 +151,20 @@ class _CleanAnswerListState extends State<CleanAnswerList> {
               maxLines: null,
               minLines: 1,
               keyboardType: TextInputType.multiline,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: "Type answer",
-                hintStyle: TextStyle(color: Color(0xFF525B6A), fontSize: 15),
+                hintStyle: TextStyle(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontSize: 15,
+                ),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -254,18 +265,24 @@ class _CleanAnswerListState extends State<CleanAnswerList> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: isExpanded ? Colors.white : const Color(0xFF1A2433),
+                    color: isExpanded
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Theme.of(context).colorScheme.surface,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                       width: 2,
                     ),
                   ),
                   child: Icon(
                     isExpanded ? Icons.circle : Icons.circle_outlined,
                     color: isExpanded
-                        ? const Color(0xFF1A2433)
-                        : Colors.white.withValues(alpha: 0.6),
+                        ? Theme.of(context).colorScheme.surface
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                     size: 16,
                   ),
                 ),
@@ -285,12 +302,14 @@ class _CleanAnswerListState extends State<CleanAnswerList> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A2433),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isCorrect
                 ? const Color(0xFF10B981)
-                : const Color(0xFF2D3748),
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.2),
             width: isCorrect ? 2 : 1,
           ),
         ),
@@ -317,10 +336,10 @@ class _CleanAnswerListState extends State<CleanAnswerList> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -330,15 +349,24 @@ class _CleanAnswerListState extends State<CleanAnswerList> {
               decoration: BoxDecoration(
                 color: isCorrect
                     ? const Color(0xFF10B981)
-                    : const Color(0xFF1A2433),
+                    : Theme.of(context).colorScheme.surface,
                 shape: BoxShape.circle,
                 border: isCorrect
                     ? null
-                    : Border.all(color: const Color(0xFF2D3748), width: 2),
+                    : Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.2),
+                        width: 2,
+                      ),
               ),
               child: Icon(
                 isCorrect ? Icons.check_rounded : Icons.circle_outlined,
-                color: isCorrect ? Colors.white : const Color(0xFF525B6A),
+                color: isCorrect
+                    ? Colors.white
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.4),
                 size: 18,
               ),
             ),

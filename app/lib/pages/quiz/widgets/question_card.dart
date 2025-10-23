@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:cached_network_image/cached_network_image.dart";
 
 class QuestionCard extends StatelessWidget {
   final Map<String, dynamic> question;
@@ -17,7 +18,7 @@ class QuestionCard extends StatelessWidget {
   String _getTypeLabel(String type) {
     switch (type) {
       case "multiple_choice":
-        return "Quiz";
+        return "Single Choice";
       case "true_false":
         return "True/False";
       case "reorder":
@@ -29,7 +30,7 @@ class QuestionCard extends StatelessWidget {
       case "drop_pin":
         return "Drop Pin";
       default:
-        return "Quiz";
+        return "Single Choice";
     }
   }
 
@@ -38,12 +39,44 @@ class QuestionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF253347),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (question["imageUrl"] != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: CachedNetworkImage(
+                imageUrl: question["imageUrl"],
+                height: 120,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  height: 120,
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 120,
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    color: Color(0xFF616161),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               Text(
@@ -61,7 +94,7 @@ class QuestionCard extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6949FF),
+                  color: Theme.of(context).colorScheme.primary,
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
@@ -76,7 +109,7 @@ class QuestionCard extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6949FF),
+                  color: Theme.of(context).colorScheme.primary,
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
@@ -93,13 +126,13 @@ class QuestionCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.transparent,
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: const Color(0xFF6949FF), width: 2),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
                 ),
                 child: Text(
                   _getTypeLabel(question["type"]),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF6949FF),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),

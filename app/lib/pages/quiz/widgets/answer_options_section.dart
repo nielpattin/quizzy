@@ -25,11 +25,7 @@ class AnswerOptionsSection extends StatelessWidget {
               width: 4,
               height: 22,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6949FF), Color(0xFF9333EA)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

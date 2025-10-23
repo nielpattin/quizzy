@@ -1,0 +1,411 @@
+import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
+import "package:supabase_flutter/supabase_flutter.dart";
+import "dart:convert";
+import "dart:io";
+import "package:http/http.dart" as http;
+import "package:flutter_dotenv/flutter_dotenv.dart";
+import "package:image_picker/image_picker.dart";
+import "../../services/upload_service.dart";
+import "../../services/quiz_service.dart";
+
+class EditQuizPage extends StatefulWidget {
+  final String quizId;
+  const EditQuizPage({super.key, required this.quizId});
+
+  @override
+  State<EditQuizPage> createState() => _EditQuizPageState();
+}
+
+class _EditQuizPageState extends State<EditQuizPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  String _selectedCategory = "General Knowledge";
+  bool _isPublic = true;
+  bool _questionsVisible = false;
+  bool _isLoading = true;
+  bool _isSaving = false;
+  File? _selectedImageFile;
+  String? _existingImageUrl;
+
+  final List<String> _categories = [
+    "General Knowledge",
+    "Science",
+    "Math",
+    "History",
+    "Geography",
+    "Literature",
+    "Music",
+    "Movies",
+    "Sports",
+    "Technology",
+    "Programming",
+    "Art",
+    "Other",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuizData();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadQuizData() async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        throw Exception("Not authenticated");
+      }
+
+      final serverUrl = dotenv.env["SERVER_URL"];
+      final response = await http.get(
+        Uri.parse("$serverUrl/api/quiz/${widget.quizId}"),
+        headers: {"Authorization": "Bearer ${session.accessToken}"},
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception("Failed to load quiz");
+      }
+
+      final quiz = jsonDecode(response.body) as Map<String, dynamic>;
+
+      setState(() {
+        _titleController.text = quiz["title"] ?? "";
+        _descriptionController.text = quiz["description"] ?? "";
+        _selectedCategory = quiz["category"] ?? "General Knowledge";
+        _isPublic = quiz["isPublic"] ?? true;
+        _questionsVisible = quiz["questionsVisible"] ?? false;
+        _existingImageUrl = quiz["imageUrl"];
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error loading quiz: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        context.pop();
+      }
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+
+    if (image == null) return;
+
+    setState(() {
+      _selectedImageFile = File(image.path);
+      _existingImageUrl = null;
+    });
+  }
+
+  Future<void> _updateQuiz() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      String? imageUrl = _existingImageUrl;
+      if (_selectedImageFile != null) {
+        final imageData = await UploadService.uploadImage(_selectedImageFile!);
+        imageUrl = imageData["url"] as String?;
+      }
+
+      await QuizService.updateQuiz(
+        widget.quizId,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        category: _selectedCategory,
+        imageUrl: imageUrl,
+        isPublic: _isPublic,
+        questionsVisible: _questionsVisible,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Quiz updated successfully"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        context.pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error updating quiz: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImageFile = null;
+      _existingImageUrl = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Edit Quiz"),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text("Edit Quiz Info"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                "Quiz Details",
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (_selectedImageFile != null) ...[
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        _selectedImageFile!,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: _removeImage,
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else if (_existingImageUrl != null) ...[
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        _existingImageUrl!,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.white),
+                            onPressed: _pickImage,
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: _removeImage,
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                OutlinedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.add_photo_alternate),
+                  label: const Text("Add Cover Image (Optional)"),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: "Quiz Title",
+                  hintText: "Enter a catchy title",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return "Title is required";
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: "Description (optional)",
+                  hintText: "What is this quiz about?",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: InputDecoration(
+                  labelText: "Category",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                items: _categories.map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedCategory = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 24),
+              Text(
+                "Settings",
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                title: const Text("Public Quiz"),
+                subtitle: const Text("Anyone can find and play this quiz"),
+                value: _isPublic,
+                activeTrackColor: const Color(
+                  0xFF64A7FF,
+                ).withValues(alpha: 0.5),
+                activeThumbColor: const Color(0xFF64A7FF),
+                onChanged: (value) {
+                  setState(() => _isPublic = value);
+                },
+                contentPadding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text("Show Questions Before Playing"),
+                subtitle: const Text(
+                  "Players can see questions before starting",
+                ),
+                value: _questionsVisible,
+                activeTrackColor: const Color(
+                  0xFF64A7FF,
+                ).withValues(alpha: 0.5),
+                activeThumbColor: const Color(0xFF64A7FF),
+                onChanged: (value) {
+                  setState(() => _questionsVisible = value);
+                },
+                contentPadding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _isSaving ? null : _updateQuiz,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF64A7FF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        "Save Changes",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

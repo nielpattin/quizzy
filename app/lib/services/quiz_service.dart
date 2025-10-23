@@ -1,3 +1,4 @@
+import "dart:convert";
 import "package:http/http.dart" as http;
 import "http_client.dart";
 
@@ -52,11 +53,63 @@ class QuizService {
     });
   }
 
+  static Future<dynamic> updateQuiz(
+    String quizId, {
+    required String title,
+    String? description,
+    String? category,
+    String? imageUrl,
+    String? collectionId,
+    required bool isPublic,
+    required bool questionsVisible,
+  }) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.put(
+        Uri.parse("${HttpClient.baseUrl}/api/quiz/$quizId"),
+        headers: headers,
+        body: jsonEncode({
+          "title": title,
+          "description": description,
+          "category": category,
+          "imageUrl": imageUrl,
+          "collectionId": collectionId,
+          "isPublic": isPublic,
+          "questionsVisible": questionsVisible,
+        }),
+      );
+    });
+  }
+
   static Future<void> deleteQuiz(String quizId) async {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
       return http.delete(
         Uri.parse("${HttpClient.baseUrl}/api/quiz/$quizId"),
+        headers: headers,
+      );
+    });
+  }
+
+  static Future<void> reorderQuestions(
+    String quizId,
+    List<Map<String, dynamic>> questionsOrder,
+  ) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.put(
+        Uri.parse("${HttpClient.baseUrl}/api/question/reorder"),
+        headers: headers,
+        body: jsonEncode({"quizId": quizId, "questions": questionsOrder}),
+      );
+    });
+  }
+
+  static Future<void> deleteAllQuestions(String quizId) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.delete(
+        Uri.parse("${HttpClient.baseUrl}/api/quiz/$quizId/questions"),
         headers: headers,
       );
     });

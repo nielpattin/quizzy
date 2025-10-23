@@ -24,6 +24,7 @@ import "pages/quiz/category_page.dart";
 import "pages/quiz/trending_page.dart";
 import "pages/quiz/continue_playing_page.dart";
 import "pages/quiz/create_quiz_page.dart";
+import "pages/quiz/edit_quiz_page.dart";
 import "pages/quiz/add_questions_page.dart";
 import "pages/quiz/play_quiz_page.dart";
 import "pages/quiz/create_question_page.dart";
@@ -357,6 +358,28 @@ final router = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: AddQuestionsPage(quizId: quizId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/:id/edit",
+      pageBuilder: (context, state) {
+        final quizId = state.pathParameters["id"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: EditQuizPage(quizId: quizId),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position:

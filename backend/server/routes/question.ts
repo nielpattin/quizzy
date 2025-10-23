@@ -48,6 +48,7 @@ questionRoutes.post('/', authMiddleware, async (c) => {
         quizId: body.quizId,
         type: body.type,
         questionText: body.questionText,
+        imageUrl: body.imageUrl || null,
         data: body.data,
         orderIndex,
       })
@@ -117,6 +118,7 @@ questionRoutes.put('/:id', authMiddleware, async (c) => {
       .set({
         type: body.type,
         questionText: body.questionText,
+        imageUrl: body.imageUrl !== undefined ? body.imageUrl : undefined,
         data: body.data,
         orderIndex: body.orderIndex,
       })
@@ -203,6 +205,7 @@ questionRoutes.post('/bulk', authMiddleware, async (c) => {
       quizId: body.quizId,
       type: q.type,
       questionText: q.questionText,
+      imageUrl: q.imageUrl || null,
       data: q.data,
       orderIndex: q.orderIndex !== undefined ? q.orderIndex : index,
     }))
@@ -224,6 +227,51 @@ questionRoutes.post('/bulk', authMiddleware, async (c) => {
   } catch (error) {
     console.error('Error creating bulk questions:', error)
     return c.json({ error: 'Failed to create questions' }, 500)
+  }
+})
+
+questionRoutes.put('/reorder', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const body = await c.req.json()
+
+  try {
+    if (!body.quizId || !Array.isArray(body.questions) || body.questions.length === 0) {
+      return c.json({ error: 'quizId and questions array with id and orderIndex are required' }, 400)
+    }
+
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(and(eq(quizzes.id, body.quizId), eq(quizzes.isDeleted, false)))
+
+    if (!quiz) {
+      return c.json({ error: 'Quiz not found' }, 404)
+    }
+
+    if (quiz.userId !== userId) {
+      return c.json({ error: 'Unauthorized' }, 403)
+    }
+
+    for (const q of body.questions) {
+      if (!q.id || q.orderIndex === undefined) {
+        return c.json({ error: 'Each question must have id and orderIndex' }, 400)
+      }
+
+      await db
+        .update(questions)
+        .set({ orderIndex: q.orderIndex })
+        .where(and(eq(questions.id, q.id), eq(questions.quizId, body.quizId)))
+    }
+
+    await db
+      .update(quizzes)
+      .set({ updatedAt: new Date() })
+      .where(eq(quizzes.id, body.quizId))
+
+    return c.json({ message: 'Questions reordered successfully' })
+  } catch (error) {
+    console.error('Error reordering questions:', error)
+    return c.json({ error: 'Failed to reorder questions' }, 500)
   }
 })
 

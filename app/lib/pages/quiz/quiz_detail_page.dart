@@ -349,7 +349,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
       children: [
         Container(
           width: double.infinity,
-          height: 240,
+          height: 280,
           decoration: BoxDecoration(
             gradient: imageUrl == null
                 ? LinearGradient(
@@ -365,32 +365,16 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
                   )
                 : null,
           ),
-          child: Container(
-            decoration: imageUrl != null
-                ? BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withValues(alpha: 0.3),
-                        Colors.black.withValues(alpha: 0.5),
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  )
-                : null,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  _quizData!["title"],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+          child: Text(
+            _quizData!["title"],
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              height: 1.3,
             ),
           ),
         ),
@@ -400,24 +384,25 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
 
   Widget _buildStats() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: [
-          _StatItem(
-            icon: Icons.question_answer,
-            label: "Questions",
+          _StatChip(
+            icon: Icons.quiz_outlined,
             value: _quizData!["questionCount"].toString(),
+            label: "questions",
           ),
-          _StatItem(
+          _StatChip(
             icon: Icons.play_circle_outline,
-            label: "Played",
             value: _quizData!["playCount"].toString(),
+            label: "plays",
           ),
-          _StatItem(
+          _StatChip(
             icon: Icons.favorite_border,
-            label: "Favorites",
             value: _quizData!["favoriteCount"].toString(),
+            label: "favorites",
           ),
         ],
       ),
@@ -504,23 +489,55 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ElevatedButton.icon(
-            onPressed: () {
-              context.push("/quiz/${widget.quizId}/add-questions");
-            },
-            icon: const Icon(Icons.edit),
-            label: const Text(
-              "Edit Quiz",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final result = await context.push(
+                      "/quiz/${widget.quizId}/edit",
+                    );
+                    if (result == true) {
+                      _loadQuizData();
+                    }
+                  },
+                  icon: const Icon(Icons.edit),
+                  label: const Text(
+                    "Edit Quiz",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    context.push("/quiz/${widget.quizId}/add-questions");
+                  },
+                  icon: const Icon(Icons.list),
+                  label: const Text(
+                    "Questions",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -662,12 +679,12 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
   }
 }
 
-class _StatItem extends StatelessWidget {
+class _StatChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
 
-  const _StatItem({
+  const _StatChip({
     required this.icon,
     required this.label,
     required this.value,
@@ -675,28 +692,46 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
         ),
-        Text(
-          label,
-          style: TextStyle(
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 18,
             color: Theme.of(
               context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
-            fontSize: 14,
+            ).colorScheme.onSurface.withValues(alpha: 0.7),
           ),
-        ),
-      ],
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -712,115 +747,88 @@ class _QuestionCard extends StatelessWidget {
     required this.showAnswer,
   });
 
+  String _getQuestionTypeLabel(String type) {
+    switch (type) {
+      case "multiple_choice":
+        return "Quiz";
+      case "true_false":
+        return "True or False";
+      case "single_answer":
+        return "Single Answer";
+      case "type_answer":
+        return "Type Answer";
+      case "reorder":
+        return "Reorder";
+      case "drop_pin":
+        return "Drop Pin";
+      default:
+        return "Quiz";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final type = question["type"] as String;
-    final data = question["data"] as Map<String, dynamic>;
-
-    List<String> options = [];
-    int? correctIndex;
-
-    if (type == "multiple_choice" && data["options"] != null) {
-      final optionsList = data["options"] as List;
-      options = optionsList.map((opt) => opt["text"] as String).toList();
-      correctIndex = optionsList.indexWhere((opt) => opt["isCorrect"] == true);
-      if (correctIndex == -1) correctIndex = null;
-    } else if (type == "true_false") {
-      options = ["True", "False"];
-      final correctAnswer = data["correctAnswer"] as bool?;
-      correctIndex = correctAnswer == true ? 0 : 1;
-    }
+    final imageUrl = question["imageUrl"] as String?;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.white,
+        color: isDark ? const Color(0xFF2C3E50) : const Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-        ),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    "${index + 1}",
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[800] : Colors.grey[300],
+              borderRadius: BorderRadius.circular(8),
+              image: imageUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(imageUrl),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: imageUrl == null
+                ? Icon(
+                    Icons.image_outlined,
+                    size: 40,
+                    color: isDark ? Colors.grey[600] : Colors.grey[500],
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "${index + 1} - ${_getQuestionTypeLabel(type)}",
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
+                const SizedBox(height: 4),
+                Text(
                   question["questionText"],
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          if (options.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ...options.asMap().entries.map((entry) {
-              final optionIndex = entry.key;
-              final option = entry.value;
-              final isCorrect = showAnswer && optionIndex == correctIndex;
-
-              return Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isCorrect
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : isDark
-                        ? Colors.grey[800]
-                        : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: isCorrect
-                        ? Border.all(color: Colors.green, width: 2)
-                        : null,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          option,
-                          style: TextStyle(
-                            color: isCorrect
-                                ? Colors.green[700]
-                                : theme.colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      if (isCorrect)
-                        const Icon(
-                          Icons.check_circle,
-                          color: Colors.green,
-                          size: 20,
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ],
         ],
       ),
     );

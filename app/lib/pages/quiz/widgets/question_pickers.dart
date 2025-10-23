@@ -55,8 +55,8 @@ void showTimeLimitPicker(
                       height: 44,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF64A7FF)
-                            : const Color(0xFF253347),
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.transparent, width: 0),
                         boxShadow: [
@@ -144,8 +144,8 @@ void showPointsPicker(
                       height: 52,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF64A7FF)
-                            : const Color(0xFF253347),
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.transparent, width: 0),
                         boxShadow: [
@@ -187,7 +187,7 @@ void showQuestionTypePicker(
   final questionTypes = [
     {
       "type": "multiple_choice",
-      "label": "Quiz",
+      "label": "Single Choice",
       "svgPath": "images/Icons/SingleAnswer.svg",
     },
     {
@@ -258,12 +258,12 @@ void showQuestionTypePicker(
                   child: Container(
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF64A7FF)
-                          : const Color(0xFF253347),
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFF64A7FF)
+                            ? Theme.of(context).colorScheme.primary
                             : const Color(0xFF35383F),
                         width: isSelected ? 2 : 1,
                       ),

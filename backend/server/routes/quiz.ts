@@ -332,4 +332,41 @@ quizRoutes.delete('/:id', authMiddleware, async (c) => {
   }
 })
 
+quizRoutes.delete('/:id/questions', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const quizId = c.req.param('id')
+
+  try {
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(and(eq(quizzes.id, quizId), eq(quizzes.isDeleted, false)))
+
+    if (!quiz) {
+      return c.json({ error: 'Quiz not found' }, 404)
+    }
+
+    if (quiz.userId !== userId) {
+      return c.json({ error: 'Unauthorized' }, 403)
+    }
+
+    await db
+      .delete(questions)
+      .where(eq(questions.quizId, quizId))
+
+    await db
+      .update(quizzes)
+      .set({
+        questionCount: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(quizzes.id, quizId))
+
+    return c.json({ message: 'All questions deleted successfully' })
+  } catch (error) {
+    console.error('Error deleting all questions:', error)
+    return c.json({ error: 'Failed to delete all questions' }, 500)
+  }
+})
+
 export default quizRoutes

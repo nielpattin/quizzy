@@ -19,7 +19,7 @@ class QuestionTypeCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF253347),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFF35383F), width: 1),
         ),

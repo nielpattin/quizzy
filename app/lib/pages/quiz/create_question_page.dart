@@ -2,6 +2,11 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:image_picker/image_picker.dart";
 import "dart:io";
+import "package:supabase_flutter/supabase_flutter.dart";
+import "package:http/http.dart" as http;
+import "package:flutter_dotenv/flutter_dotenv.dart";
+import "dart:convert";
+import "../../services/upload_service.dart";
 import "widgets/question_pickers.dart";
 import "widgets/cover_image_picker.dart";
 import "widgets/clean_answer_list.dart";
@@ -34,6 +39,8 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
   final List<TextEditingController> _answerControllers = [];
   int _answerCount = 4;
   int _questionCharCount = 0;
+  bool _isSaving = false;
+  String? _existingImageUrl;
 
   @override
   void initState() {
@@ -45,10 +52,9 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
       _timeLimit = widget.existingQuestion!["timeLimit"] ?? "20 sec";
       _points = widget.existingQuestion!["points"] ?? "100 coki";
 
-      if (widget.existingQuestion!["coverImagePath"] != null) {
-        _coverImage = File(
-          widget.existingQuestion!["coverImagePath"] as String,
-        );
+      // Load existing image URL from database
+      if (widget.existingQuestion!["imageUrl"] != null) {
+        _existingImageUrl = widget.existingQuestion!["imageUrl"] as String;
       }
 
       if (widget.existingQuestion!["data"] != null) {
@@ -143,6 +149,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
       if (pickedFile != null) {
         setState(() {
           _coverImage = File(pickedFile.path);
+          _existingImageUrl = null;
         });
       }
     } catch (e) {
@@ -176,13 +183,29 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
     _questionFocusNode.unfocus();
     showQuestionTypePicker(context, _currentQuestionType, (type) {
       setState(() {
+        final oldType = _currentQuestionType;
         _currentQuestionType = type;
         _correctAnswerIndex = null;
+
+        // Initialize answer controllers when switching TO multiple_choice
+        if (type == "multiple_choice" && _answerControllers.isEmpty) {
+          _answerCount = 4;
+          _initializeAnswers();
+        }
+
+        // Clear answer controllers when switching FROM multiple_choice
+        if (oldType == "multiple_choice" && type != "multiple_choice") {
+          for (var controller in _answerControllers) {
+            controller.dispose();
+          }
+          _answerControllers.clear();
+          _answerCount = 0;
+        }
       });
     });
   }
 
-  void _saveQuestion() {
+  void _saveQuestion() async {
     if (_questionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -245,35 +268,170 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
       },
     };
 
-    context.pop(questionData);
+    if (widget.existingQuestion != null &&
+        widget.existingQuestion!.containsKey("id")) {
+      await _updateExistingQuestion(questionData);
+    } else {
+      await _createNewQuestion(questionData);
+    }
+  }
+
+  Future<void> _createNewQuestion(Map<String, dynamic> questionData) async {
+    setState(() => _isSaving = true);
+
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        throw Exception("Not authenticated");
+      }
+
+      final serverUrl = dotenv.env["SERVER_URL"];
+      String? imageUrl;
+
+      // Upload image if exists
+      if (_coverImage != null) {
+        final imageData = await UploadService.uploadImage(_coverImage!);
+        imageUrl = imageData["url"] as String?;
+      }
+
+      final response = await http.post(
+        Uri.parse("$serverUrl/api/question"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer ${session.accessToken}",
+        },
+        body: jsonEncode({
+          "quizId": widget.quizId,
+          "type": questionData["type"],
+          "questionText": questionData["questionText"],
+          "imageUrl": imageUrl,
+          "data": questionData["data"],
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Question created successfully"),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.pop(true);
+        }
+      } else {
+        throw Exception("Failed to create question: ${response.body}");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error creating question: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> _updateExistingQuestion(
+    Map<String, dynamic> questionData,
+  ) async {
+    setState(() => _isSaving = true);
+
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        throw Exception("Not authenticated");
+      }
+
+      final serverUrl = dotenv.env["SERVER_URL"];
+      final questionId = widget.existingQuestion!["id"];
+      String? imageUrl = widget.existingQuestion!["imageUrl"] as String?;
+
+      // Only upload if user picked a NEW image
+      if (_coverImage != null) {
+        final imageData = await UploadService.uploadImage(_coverImage!);
+        imageUrl = imageData["url"] as String?;
+      }
+
+      final response = await http.put(
+        Uri.parse("$serverUrl/api/question/$questionId"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer ${session.accessToken}",
+        },
+        body: jsonEncode({
+          "type": questionData["type"],
+          "questionText": questionData["questionText"],
+          "imageUrl": imageUrl,
+          "data": questionData["data"],
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Question updated successfully"),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.pop(true);
+        }
+      } else {
+        throw Exception("Failed to update question: ${response.body}");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error updating question: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1419),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           widget.existingQuestion != null ? "Edit Question" : "Create Question",
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
-        backgroundColor: const Color(0xFF0F1419),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: Theme.of(context).colorScheme.onSurface,
+            size: 20,
+          ),
           onPressed: () => context.pop(),
         ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
             child: ElevatedButton(
-              onPressed: _saveQuestion,
+              onPressed: _isSaving ? null : _saveQuestion,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6949FF),
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -281,10 +439,22 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: const Text(
-                "Save",
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text(
+                      "Save",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -303,22 +473,25 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
                   children: [
                     CoverImagePicker(
                       coverImage: _coverImage,
+                      imageUrl: _existingImageUrl,
                       onTap: _pickImage,
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       "What's your question?",
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF9CA3AF),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A2433),
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
@@ -331,15 +504,17 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
                             maxLength: 1000,
                             minLines: 2,
                             maxLines: 8,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onSurface,
                               height: 1.5,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: "Type your question here...",
                               hintStyle: TextStyle(
-                                color: Color(0xFF525B6A),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.4),
                                 fontSize: 16,
                               ),
                               border: InputBorder.none,
@@ -353,7 +528,9 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
                             "$_questionCharCount/1000",
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.4),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.4),
                             ),
                           ),
                         ],
@@ -362,7 +539,9 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
                     const SizedBox(height: 28),
                     Container(
                       height: 1,
-                      color: const Color(0xFF2D3748).withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.1),
                     ),
                     const SizedBox(height: 28),
                     if (_currentQuestionType == "multiple_choice" ||
