@@ -338,7 +338,7 @@ userRoutes.post('/setup', authMiddleware, async (c) => {
           username: username,
           dob: dob,
           profilePictureUrl: avatarUrl,
-          accountType: accountType || 'student',
+          accountType: accountType || 'user',
           isSetupComplete: true,
         })
         .returning()

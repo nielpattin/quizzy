@@ -12,6 +12,10 @@ export const questionTypeEnum = pgEnum('question_type', [
 
 export const postTypeEnum = pgEnum('post_type', ['text', 'image', 'quiz']);
 
+export const accountTypeEnum = pgEnum('account_type', ['admin', 'employee', 'user']);
+
+export const statusEnum = pgEnum('status', ['active', 'inactive']);
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
@@ -20,10 +24,12 @@ export const users = pgTable('users', {
   dob: date('dob'),
   bio: text('bio'),
   profilePictureUrl: text('profile_picture_url'),
-  accountType: text('account_type').notNull().default('student'),
+  accountType: accountTypeEnum('account_type').notNull().default('user'),
+  status: statusEnum('status').notNull().default('active'),
   isSetupComplete: boolean('is_setup_complete').notNull().default(false),
   followersCount: integer('followers_count').notNull().default(0),
   followingCount: integer('following_count').notNull().default(0),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
@@ -36,6 +42,7 @@ export const collections = pgTable('collections', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
+  imageUrl: text('image_url'),
   quizCount: integer('quiz_count').notNull().default(0),
   isPublic: boolean('is_public').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

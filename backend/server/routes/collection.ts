@@ -26,6 +26,7 @@ collectionRoutes.post('/', authMiddleware, async (c) => {
         userId,
         title: body.title,
         description: body.description || null,
+        imageUrl: body.imageUrl || null,
         isPublic: body.isPublic !== undefined ? body.isPublic : true,
       })
       .returning()
@@ -46,6 +47,7 @@ collectionRoutes.get('/:id', async (c) => {
         id: collections.id,
         title: collections.title,
         description: collections.description,
+        imageUrl: collections.imageUrl,
         quizCount: collections.quizCount,
         isPublic: collections.isPublic,
         createdAt: collections.createdAt,
@@ -114,6 +116,7 @@ collectionRoutes.put('/:id', authMiddleware, async (c) => {
       .set({
         title: body.title,
         description: body.description,
+        imageUrl: body.imageUrl,
         isPublic: body.isPublic,
         updatedAt: new Date(),
       })
@@ -274,6 +277,7 @@ collectionRoutes.get('/user/:userId', async (c) => {
         id: collections.id,
         title: collections.title,
         description: collections.description,
+        imageUrl: collections.imageUrl,
         quizCount: collections.quizCount,
         isPublic: collections.isPublic,
         createdAt: collections.createdAt,
