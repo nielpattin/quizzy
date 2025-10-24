@@ -428,9 +428,10 @@ final router = GoRouter(
       path: "/quiz/:id/play",
       pageBuilder: (context, state) {
         final quizId = state.pathParameters["id"]!;
+        final isPreview = state.uri.queryParameters["preview"] == "true";
         return CustomTransitionPage(
           key: state.pageKey,
-          child: PlayQuizPage(quizId: quizId),
+          child: PlayQuizPage(quizId: quizId, isPreview: isPreview),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },

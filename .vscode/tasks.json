@@ -2,29 +2,56 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Flutter-Launch-All",
+      "label": "Launch-All-Emulators",
       "dependsOn": [
-        "F-emulator-5554",
-        "F-emulator-5556"
-      ]
+        "5554-Emulator",
+        "5556-Emulator"
+      ],
+      // "dependsOrder": "sequence"
     },
     {
-      "label": "F-emulator-5554",
+      "label": "5554-Emulator",
       "type": "process",
-      "command": "nu",
+      "command": "cmd",
       "args": [
-        "-c",
-        "cd app; flutter run -d emulator-5554 | lines | where ($it | str contains 'I/flutter')"
-      ]
+        "/k",
+        "cd app && flutter run -d emulator-5554"
+      ],
+      // "group": {
+      //   "kind": "build",
+      //   "isDefault": false
+      // },
+      // "presentation": {
+      //   "echo": true,
+      //   "reveal": "always",
+      //   "focus": false,
+      //   "panel": "new",
+      //   "showReuseMessage": false,
+      //   "clear": false
+      // },
+      "problemMatcher": []
     },
     {
-      "label": "F-emulator-5556",
+      "label": "5556-Emulator",
       "type": "process",
-      "command": "nu",
+      "command": "cmd",
       "args": [
-        "-c",
-        "cd app; flutter run -d emulator-5556 | lines | where ($it | str contains 'I/flutter')"
-      ]
+        "/k",
+        "cd app && flutter run -d emulator-5556"
+      ],
+      // "group": {
+      //   "kind": "build",
+      //   "isDefault": false
+      // },
+      // "presentation": {
+      //   "echo": true,
+      //   "reveal": "always",
+      //   "focus": false,
+      //   "panel": "new",
+      //   "showReuseMessage": false,
+      //   "clear": false
+      // },
+      "problemMatcher": []
     }
   ]
 }

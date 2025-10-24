@@ -3,7 +3,7 @@
       "configurations": [
         {
             "name": "Flutter-All",
-            "preLaunchTask": "Flutter-Launch-All",
+            "preLaunchTask": "Launch-All-Emulators",
             "type": "dart",
             "request": "launch"
         },

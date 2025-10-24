@@ -177,7 +177,7 @@ class _AddQuestionsPageState extends State<AddQuestionsPage> {
   }
 
   void _previewQuiz() {
-    context.push("/quiz/${widget.quizId}/play");
+    context.push("/quiz/${widget.quizId}/play?preview=true");
   }
 
   void _showReorderModal() {

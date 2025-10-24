@@ -80,8 +80,41 @@ class CoverImagePicker extends StatelessWidget {
                 ),
                 errorWidget: (context, url, error) => Container(
                   height: 160,
-                  color: Theme.of(context).colorScheme.surface,
-                  child: const Icon(Icons.image_not_supported),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Theme.of(context).colorScheme.surface,
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                      ],
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.image_outlined,
+                          size: 48,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Image unavailable",
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -1,6 +1,10 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "dart:async";
+import "dart:convert";
+import "package:http/http.dart" as http;
+import "package:flutter_dotenv/flutter_dotenv.dart";
+import "package:supabase_flutter/supabase_flutter.dart";
 import "../../../services/websocket_service.dart";
 import "../../../services/real_time_notification_service.dart";
 import "../../../services/api_service.dart";
@@ -12,8 +16,9 @@ import "../../../widgets/secure_question_timer.dart";
 
 class PlayQuizPage extends StatefulWidget {
   final String quizId;
+  final bool isPreview;
 
-  const PlayQuizPage({required this.quizId, super.key});
+  const PlayQuizPage({required this.quizId, this.isPreview = false, super.key});
 
   @override
   State<PlayQuizPage> createState() => _PlayQuizPageState();
@@ -48,8 +53,12 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
   @override
   void initState() {
     super.initState();
-    _loadQuizData();
-    _initRealTimeFeatures();
+    if (widget.isPreview) {
+      _loadQuizDataForPreview();
+    } else {
+      _loadQuizData();
+      _initRealTimeFeatures();
+    }
   }
 
   Future<void> _loadQuizData() async {
@@ -72,6 +81,50 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
 
       // Load first question with timing
       await _loadQuestionWithTiming(0);
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadQuizDataForPreview() async {
+    try {
+      final quizResponse = await ApiService.getQuiz(widget.quizId);
+
+      if (quizResponse == null) {
+        throw Exception("Failed to load quiz");
+      }
+
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        throw Exception("Not authenticated");
+      }
+
+      final serverUrl = dotenv.env["SERVER_URL"];
+      final questionsResponse = await http.get(
+        Uri.parse("$serverUrl/api/quiz/${widget.quizId}/questions"),
+        headers: {"Authorization": "Bearer ${session.accessToken}"},
+      );
+
+      if (questionsResponse.statusCode != 200) {
+        throw Exception("Failed to load questions");
+      }
+
+      final List<dynamic> questionsList = jsonDecode(questionsResponse.body);
+
+      if (questionsList.isEmpty) {
+        throw Exception("No questions found in this quiz");
+      }
+
+      setState(() {
+        _quizData = quizResponse;
+        _questions = questionsList;
+        _userAnswers.addAll(List.filled(questionsList.length, null));
+        _currentQuestionData = questionsList[0];
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -205,44 +258,64 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
     if (_selectedAnswerIndex == null || _currentQuestionData == null) return;
 
     try {
-      // Get answer text based on selection
       final currentQuestion = _currentQuestionData!;
       final questionType = currentQuestion["type"] as String;
-      String answerText;
 
-      if (questionType == "multiple_choice") {
-        final options = (currentQuestion["data"]["options"] as List)
-            .cast<String>();
-        answerText = options[_selectedAnswerIndex!];
-      } else if (questionType == "true_false") {
-        answerText = _selectedAnswerIndex == 0 ? "true" : "false";
-      } else {
-        answerText = _selectedAnswerIndex.toString();
-      }
+      if (widget.isPreview) {
+        if (questionType == "single_choice" ||
+            questionType == "multiple_choice") {
+          final correctAnswer = currentQuestion["data"]["correctAnswer"] as int;
+          _selectedAnswerIndex == correctAnswer;
+        } else if (questionType == "true_false") {
+          final correctAnswer =
+              currentQuestion["data"]["correctAnswer"] as bool;
+          (_selectedAnswerIndex == 0) == correctAnswer;
+        } else if (questionType == "checkbox") {
+          final correctAnswers =
+              (currentQuestion["data"]["correctAnswers"] as List).cast<int>();
+          correctAnswers.contains(_selectedAnswerIndex);
+        }
 
-      // Submit answer with timing validation
-      final response = await ApiService.submitAnswerWithValidation(
-        _sessionId!,
-        currentQuestion["id"],
-        answerText,
-      );
-
-      if (response["error"] == "time_expired") {
         setState(() {
-          _isTimeExpired = true;
+          _userAnswers[_currentQuestionIndex] = _selectedAnswerIndex;
           _showResult = true;
         });
-        return;
+      } else {
+        String answerText;
+
+        if (questionType == "multiple_choice") {
+          final options = (currentQuestion["data"]["options"] as List)
+              .cast<String>();
+          answerText = options[_selectedAnswerIndex!];
+        } else if (questionType == "true_false") {
+          answerText = _selectedAnswerIndex == 0 ? "true" : "false";
+        } else {
+          answerText = _selectedAnswerIndex.toString();
+        }
+
+        final response = await ApiService.submitAnswerWithValidation(
+          _sessionId!,
+          currentQuestion["id"],
+          answerText,
+        );
+
+        if (response["error"] == "time_expired") {
+          setState(() {
+            _isTimeExpired = true;
+            _showResult = true;
+          });
+          return;
+        }
+
+        response["isCorrect"] as bool;
+        final score = response["score"] as int;
+
+        setState(() {
+          _userAnswers[_currentQuestionIndex] = _selectedAnswerIndex;
+          _showResult = true;
+          _score += score;
+        });
       }
-
-      final isCorrect = response["isCorrect"] as bool;
-      final score = response["score"] as int;
-
-      setState(() {
-        _userAnswers[_currentQuestionIndex] = _selectedAnswerIndex;
-        _showResult = true;
-        _score += score;
-      });
     } catch (e) {
       setState(() {
         _errorMessage = "Failed to submit answer: ${e.toString()}";
@@ -259,8 +332,13 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
         _isTimeExpired = false;
       });
 
-      // Load next question with timing
-      await _loadQuestionWithTiming(_currentQuestionIndex);
+      if (widget.isPreview) {
+        setState(() {
+          _currentQuestionData = _questions[_currentQuestionIndex];
+        });
+      } else {
+        await _loadQuestionWithTiming(_currentQuestionIndex);
+      }
     } else {
       _showFinalResults();
     }
@@ -286,6 +364,42 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
         _websocketService.currentStatus == ConnectionStatus.connected) {
       // Note: Using public method or creating a public method in WebSocketService
       // For now, we'll skip this as _sendMessage is private
+    }
+
+    if (widget.isPreview) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text("Preview Complete!"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.check_circle_outline,
+                size: 64,
+                color: Color(0xFF64A7FF),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "You've completed the preview",
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                context.pop();
+                context.pop();
+              },
+              child: const Text("Done"),
+            ),
+          ],
+        ),
+      );
+      return;
     }
 
     showDialog(
@@ -402,7 +516,33 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(_quizData!["title"]),
+        title: widget.isPreview
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("Preview Mode"),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      "PREVIEW",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Text(_quizData!["title"]),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -410,47 +550,47 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
           onPressed: () => context.pop(),
         ),
         actions: [
-          // Real-time notifications
-          if (_showRealTimeFeatures) ...[
-            RealTimeNotificationWidget(
-              onTap: () {
-                // Show notification panel
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => const NotificationPanel(),
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-            const ConnectionStatusIndicator(),
-            const SizedBox(width: 8),
+          if (!widget.isPreview) ...[
+            if (_showRealTimeFeatures) ...[
+              RealTimeNotificationWidget(
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => const NotificationPanel(),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              const ConnectionStatusIndicator(),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: Icon(
+                  _showLeaderboard
+                      ? Icons.leaderboard
+                      : Icons.leaderboard_outlined,
+                  color: _showLeaderboard
+                      ? const Color(0xFF64A7FF)
+                      : Colors.white,
+                ),
+                onPressed: _toggleLeaderboard,
+                tooltip: 'Toggle Leaderboard',
+              ),
+            ],
             IconButton(
               icon: Icon(
-                _showLeaderboard
-                    ? Icons.leaderboard
-                    : Icons.leaderboard_outlined,
-                color: _showLeaderboard
+                _showRealTimeFeatures ? Icons.wifi : Icons.wifi_off,
+                color: _showRealTimeFeatures
                     ? const Color(0xFF64A7FF)
                     : Colors.white,
               ),
-              onPressed: _toggleLeaderboard,
-              tooltip: 'Toggle Leaderboard',
+              onPressed: _toggleRealTimeFeatures,
+              tooltip: _showRealTimeFeatures
+                  ? 'Disable Real-time'
+                  : 'Enable Real-time',
             ),
           ],
-          IconButton(
-            icon: Icon(
-              _showRealTimeFeatures ? Icons.wifi : Icons.wifi_off,
-              color: _showRealTimeFeatures
-                  ? const Color(0xFF64A7FF)
-                  : Colors.white,
-            ),
-            onPressed: _toggleRealTimeFeatures,
-            tooltip: _showRealTimeFeatures
-                ? 'Disable Real-time'
-                : 'Enable Real-time',
-          ),
         ],
       ),
       body: Column(
@@ -577,44 +717,47 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      Row(
-                        children: [
-                          Text(
-                            "Score: $_score",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF64A7FF),
-                              fontWeight: FontWeight.bold,
+                      if (!widget.isPreview)
+                        Row(
+                          children: [
+                            Text(
+                              "Score: $_score",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFF64A7FF),
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          if (_showRealTimeFeatures) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'LIVE',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
+                            if (_showRealTimeFeatures) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'LIVE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ],
-                        ],
-                      ),
+                        ),
                     ],
                   ),
 
                   // Live leaderboard (shown when toggled)
-                  if (_showRealTimeFeatures && _showLeaderboard) ...[
+                  if (!widget.isPreview &&
+                      _showRealTimeFeatures &&
+                      _showLeaderboard) ...[
                     const SizedBox(height: 24),
                     const LiveLeaderboard(
                       title: "Live Leaderboard",
@@ -625,7 +768,9 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
                   ],
 
                   // Live participant list (compact version)
-                  if (_showRealTimeFeatures && !_showLeaderboard) ...[
+                  if (!widget.isPreview &&
+                      _showRealTimeFeatures &&
+                      !_showLeaderboard) ...[
                     const SizedBox(height: 16),
                     const LiveParticipantList(
                       title: "Also Playing",
@@ -635,8 +780,8 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Secure timer widget
-                  if (_serverDeadline != null) ...[
+                  // Timer widget (server for real game only)
+                  if (!widget.isPreview && _serverDeadline != null) ...[
                     const SizedBox(height: 16),
                     SecureQuestionTimer(
                       serverDeadline: _serverDeadline!,
@@ -755,7 +900,7 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
     _connectionSubscription?.cancel();
     _messageSubscription?.cancel();
     _notificationService.dispose();
-    if (_showRealTimeFeatures) {
+    if (!widget.isPreview && _showRealTimeFeatures) {
       _websocketService.leaveSession();
     }
     super.dispose();

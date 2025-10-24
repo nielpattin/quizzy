@@ -278,33 +278,42 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              isFavorited ? Icons.favorite : Icons.favorite_border,
-              color: isFavorited ? Colors.red : Colors.white,
-            ),
-            onPressed: _toggleFavorite,
-          ),
-          if (_isOwner)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.white),
-              onPressed: _deleteQuiz,
-            ),
           if (!_isOwner)
             IconButton(
-              icon: const Icon(Icons.more_vert, color: Colors.white),
+              icon: Icon(
+                isFavorited ? Icons.favorite : Icons.favorite_border,
+                color: isFavorited ? Colors.red : null,
+              ),
+              onPressed: _toggleFavorite,
+            ),
+          if (_isOwner)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                final result = await context.push(
+                  "/quiz/${widget.quizId}/edit",
+                );
+                if (result == true) {
+                  _loadQuizData();
+                }
+              },
+            ),
+          if (_isOwner)
+            IconButton(icon: const Icon(Icons.delete), onPressed: _deleteQuiz),
+          if (!_isOwner)
+            IconButton(
+              icon: const Icon(Icons.more_vert),
               onPressed: _showReportModal,
             ),
         ],
       ),
-      extendBodyBehindAppBar: true,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,17 +502,12 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final result = await context.push(
-                      "/quiz/${widget.quizId}/edit",
-                    );
-                    if (result == true) {
-                      _loadQuizData();
-                    }
+                  onPressed: () {
+                    context.push("/quiz/${widget.quizId}/add-questions");
                   },
-                  icon: const Icon(Icons.edit),
+                  icon: const Icon(Icons.list),
                   label: const Text(
-                    "Edit Quiz",
+                    "Questions",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -519,12 +523,10 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    context.push("/quiz/${widget.quizId}/add-questions");
-                  },
-                  icon: const Icon(Icons.list),
+                  onPressed: _createGame,
+                  icon: const Icon(Icons.group),
                   label: const Text(
-                    "Questions",
+                    "Create Game",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(

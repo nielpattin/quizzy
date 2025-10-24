@@ -126,7 +126,10 @@ class QuestionCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.transparent,
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
                 ),
                 child: Text(
                   _getTypeLabel(question["type"]),

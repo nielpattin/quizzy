@@ -220,7 +220,9 @@ class AnswerCard extends StatelessWidget {
                           Navigator.of(sheetContext).pop();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           elevation: 0,

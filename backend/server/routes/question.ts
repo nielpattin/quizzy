@@ -40,7 +40,7 @@ questionRoutes.post('/', authMiddleware, async (c) => {
 
     const orderIndex = body.orderIndex !== undefined 
       ? body.orderIndex 
-      : (maxOrderIndex[0]?.max !== null ? maxOrderIndex[0].max + 1 : 0)
+      : ((maxOrderIndex[0]?.max ?? -1) + 1)
 
     const [newQuestion] = await db
       .insert(questions)
@@ -66,6 +66,51 @@ questionRoutes.post('/', authMiddleware, async (c) => {
   } catch (error) {
     console.error('Error creating question:', error)
     return c.json({ error: 'Failed to create question' }, 500)
+  }
+})
+
+questionRoutes.put('/reorder', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const body = await c.req.json()
+
+  try {
+    if (!body.quizId || !Array.isArray(body.questions) || body.questions.length === 0) {
+      return c.json({ error: 'quizId and questions array with id and orderIndex are required' }, 400)
+    }
+
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(and(eq(quizzes.id, body.quizId), eq(quizzes.isDeleted, false)))
+
+    if (!quiz) {
+      return c.json({ error: 'Quiz not found' }, 404)
+    }
+
+    if (quiz.userId !== userId) {
+      return c.json({ error: 'Unauthorized' }, 403)
+    }
+
+    for (const q of body.questions) {
+      if (!q.id || q.orderIndex === undefined) {
+        return c.json({ error: 'Each question must have id and orderIndex' }, 400)
+      }
+
+      await db
+        .update(questions)
+        .set({ orderIndex: q.orderIndex })
+        .where(and(eq(questions.id, q.id), eq(questions.quizId, body.quizId)))
+    }
+
+    await db
+      .update(quizzes)
+      .set({ updatedAt: new Date() })
+      .where(eq(quizzes.id, body.quizId))
+
+    return c.json({ message: 'Questions reordered successfully' })
+  } catch (error) {
+    console.error('Error reordering questions:', error)
+    return c.json({ error: 'Failed to reorder questions' }, 500)
   }
 })
 
@@ -227,51 +272,6 @@ questionRoutes.post('/bulk', authMiddleware, async (c) => {
   } catch (error) {
     console.error('Error creating bulk questions:', error)
     return c.json({ error: 'Failed to create questions' }, 500)
-  }
-})
-
-questionRoutes.put('/reorder', authMiddleware, async (c) => {
-  const { userId } = c.get('user') as AuthContext
-  const body = await c.req.json()
-
-  try {
-    if (!body.quizId || !Array.isArray(body.questions) || body.questions.length === 0) {
-      return c.json({ error: 'quizId and questions array with id and orderIndex are required' }, 400)
-    }
-
-    const [quiz] = await db
-      .select()
-      .from(quizzes)
-      .where(and(eq(quizzes.id, body.quizId), eq(quizzes.isDeleted, false)))
-
-    if (!quiz) {
-      return c.json({ error: 'Quiz not found' }, 404)
-    }
-
-    if (quiz.userId !== userId) {
-      return c.json({ error: 'Unauthorized' }, 403)
-    }
-
-    for (const q of body.questions) {
-      if (!q.id || q.orderIndex === undefined) {
-        return c.json({ error: 'Each question must have id and orderIndex' }, 400)
-      }
-
-      await db
-        .update(questions)
-        .set({ orderIndex: q.orderIndex })
-        .where(and(eq(questions.id, q.id), eq(questions.quizId, body.quizId)))
-    }
-
-    await db
-      .update(quizzes)
-      .set({ updatedAt: new Date() })
-      .where(eq(quizzes.id, body.quizId))
-
-    return c.json({ message: 'Questions reordered successfully' })
-  } catch (error) {
-    console.error('Error reordering questions:', error)
-    return c.json({ error: 'Failed to reorder questions' }, 500)
   }
 })
 
