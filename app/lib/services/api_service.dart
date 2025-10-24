@@ -56,9 +56,8 @@ class ApiService {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
       return http.post(
-        Uri.parse("${HttpClient.baseUrl}/api/follow"),
+        Uri.parse("${HttpClient.baseUrl}/api/follow/$userId"),
         headers: headers,
-        body: jsonEncode({"followingId": userId}),
       );
     });
   }
@@ -88,7 +87,7 @@ class ApiService {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("${HttpClient.baseUrl}/api/follow/followers/$userId"),
+        Uri.parse("${HttpClient.baseUrl}/api/follow/$userId/followers"),
         headers: headers,
       );
     });
@@ -98,7 +97,7 @@ class ApiService {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("${HttpClient.baseUrl}/api/follow/following/$userId"),
+        Uri.parse("${HttpClient.baseUrl}/api/follow/$userId/following"),
         headers: headers,
       );
     });

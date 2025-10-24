@@ -186,8 +186,24 @@ class _ProfilePageState extends State<ProfilePage>
               ),
               ProfileStats(
                 stats: stats,
-                onFollowersPressed: () {},
-                onFollowingPressed: () {},
+                onFollowersPressed: () {
+                  final currentUserId =
+                      Supabase.instance.client.auth.currentUser?.id;
+                  if (currentUserId != null) {
+                    context.push(
+                      "/profile/followers-following?userId=$currentUserId&initialTab=0",
+                    );
+                  }
+                },
+                onFollowingPressed: () {
+                  final currentUserId =
+                      Supabase.instance.client.auth.currentUser?.id;
+                  if (currentUserId != null) {
+                    context.push(
+                      "/profile/followers-following?userId=$currentUserId&initialTab=1",
+                    );
+                  }
+                },
                 onQuizzesPressed: () {
                   _tabController.animateTo(0);
                 },

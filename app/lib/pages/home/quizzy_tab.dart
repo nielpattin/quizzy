@@ -299,7 +299,7 @@ class _QuizzyTabState extends State<QuizzyTab>
                         title: item["title"] ?? "Untitled",
                         author: user?["fullName"] ?? "Unknown",
                         category: item["category"] ?? "General",
-                        count: item["playCount"] ?? 0,
+                        count: item["questionCount"] ?? 0,
                         isSessions: item["isSessions"] ?? false,
                         quizId: item["id"]?.toString() ?? "1",
                         imageUrl: item["imageUrl"],

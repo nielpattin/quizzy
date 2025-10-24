@@ -54,6 +54,7 @@ class ProfileTabsContent extends StatelessWidget {
           title: quiz["title"],
           category: quiz["category"] ?? "General",
           plays: quiz["playCount"] ?? 0,
+          questionCount: quiz["questionCount"] ?? 0,
           imageUrl: quiz["imageUrl"],
           color: Colors.primaries[index % Colors.primaries.length],
         );
@@ -167,6 +168,7 @@ class _QuizCard extends StatelessWidget {
   final String title;
   final String category;
   final int plays;
+  final int questionCount;
   final String? imageUrl;
   final Color color;
 
@@ -175,6 +177,7 @@ class _QuizCard extends StatelessWidget {
     required this.title,
     required this.category,
     required this.plays,
+    required this.questionCount,
     this.imageUrl,
     required this.color,
   });
@@ -259,22 +262,52 @@ class _QuizCard extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(
-                        Icons.play_arrow,
-                        size: 14,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.play_arrow,
+                            size: 14,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            "$plays plays",
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 4),
-                      Text(
-                        "$plays plays",
-                        style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
-                          fontSize: 12,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.copy, size: 11, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              "$questionCount",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

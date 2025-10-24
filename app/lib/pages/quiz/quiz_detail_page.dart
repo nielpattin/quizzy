@@ -418,6 +418,17 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
     );
   }
 
+  void _navigateToCreatorProfile() {
+    final creatorUserId = _quizData?["user"]?["id"];
+    if (creatorUserId == null) return;
+
+    if (creatorUserId == _currentUserId) {
+      context.go("/profile");
+    } else {
+      context.push("/profile/$creatorUserId");
+    }
+  }
+
   Widget _buildCreatorInfo() {
     final user = _quizData!["user"];
 
@@ -425,46 +436,64 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
       padding: const EdgeInsets.all(24),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            backgroundImage: ImageHelper.createValidNetworkImage(
-              user["profilePictureUrl"],
-            ),
-            child:
-                ImageHelper.createValidNetworkImage(
-                      user["profilePictureUrl"],
-                    ) ==
-                    null
-                ? const Icon(Icons.person, color: Colors.white, size: 28)
-                : null,
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user["fullName"] ?? "Unknown",
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+            child: InkWell(
+              onTap: _navigateToCreatorProfile,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      backgroundImage: ImageHelper.createValidNetworkImage(
+                        user["profilePictureUrl"],
+                      ),
+                      child:
+                          ImageHelper.createValidNetworkImage(
+                                user["profilePictureUrl"],
+                              ) ==
+                              null
+                          ? const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 28,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user["fullName"] ?? "Unknown",
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            "@${user["username"] ?? "unknown"}",
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  "@${user["username"] ?? "unknown"}",
-                  style: TextStyle(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-          if (!_isOwner)
+          if (!_isOwner) ...[
+            const SizedBox(width: 12),
             OutlinedButton(
               onPressed: _toggleFollow,
               style: OutlinedButton.styleFrom(
@@ -487,6 +516,7 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
               ),
               child: Text(isFollowing ? "Following" : "Follow"),
             ),
+          ],
         ],
       ),
     );

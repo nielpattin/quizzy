@@ -396,6 +396,7 @@ userRoutes.get('/quizzes', authMiddleware, async (c) => {
         title: quizzes.title,
         description: quizzes.description,
         category: quizzes.category,
+        imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
         favoriteCount: quizzes.favoriteCount,

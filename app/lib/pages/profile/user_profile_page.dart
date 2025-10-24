@@ -153,8 +153,16 @@ class _UserProfilePageState extends State<UserProfilePage>
               ),
               ProfileStats(
                 stats: stats,
-                onFollowersPressed: () {},
-                onFollowingPressed: () {},
+                onFollowersPressed: () {
+                  context.push(
+                    "/profile/followers-following?userId=${widget.userId}&initialTab=0",
+                  );
+                },
+                onFollowingPressed: () {
+                  context.push(
+                    "/profile/followers-following?userId=${widget.userId}&initialTab=1",
+                  );
+                },
                 onQuizzesPressed: () {
                   _tabController.animateTo(0);
                 },
