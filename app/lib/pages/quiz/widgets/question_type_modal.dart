@@ -46,10 +46,10 @@ void showQuestionTypeModal({
                 children: [
                   QuestionTypeCard(
                     svgPath: "images/Icons/SingleAnswer.svg",
-                    label: "Quiz",
+                    label: "Single Choice",
                     onTap: () {
                       context.pop();
-                      onTypeSelected("multiple_choice");
+                      onTypeSelected("single_choice");
                     },
                   ),
                   QuestionTypeCard(

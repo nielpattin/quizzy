@@ -13,12 +13,16 @@ class CreatedTab extends StatefulWidget {
   final Function(int) onSubTabChanged;
   final SortOption sort;
   final VoidCallback onSortTap;
+  final VoidCallback? onCreateCollection;
+  final Function(VoidCallback)? onRefreshCollectionsRegister;
   const CreatedTab({
     super.key,
     required this.selectedSubTab,
     required this.onSubTabChanged,
     required this.sort,
     required this.onSortTap,
+    this.onCreateCollection,
+    this.onRefreshCollectionsRegister,
   });
 
   @override
@@ -28,6 +32,15 @@ class CreatedTab extends StatefulWidget {
 class _CreatedTabState extends State<CreatedTab> {
   int? _quizzesCount;
   int? _collectionsCount;
+  final _collectionsListKey = GlobalKey<_CollectionsListState>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.onRefreshCollectionsRegister != null) {
+      widget.onRefreshCollectionsRegister!(refreshCollections);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,17 +57,6 @@ class _CreatedTabState extends State<CreatedTab> {
           showSort: widget.selectedSubTab == 0,
           sort: widget.sort,
           onSortTap: widget.onSortTap,
-          trailing: widget.selectedSubTab == 1
-              ? IconButton(
-                  icon: Icon(
-                    Icons.add_circle_outline,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 26,
-                  ),
-                  onPressed: () {},
-                  tooltip: "New Collection",
-                )
-              : null,
         ),
         Expanded(
           child: widget.selectedSubTab == 0
@@ -71,6 +73,7 @@ class _CreatedTabState extends State<CreatedTab> {
                   },
                 )
               : _CollectionsList(
+                  key: _collectionsListKey,
                   onCountChanged: (count) {
                     if (mounted) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,10 +83,15 @@ class _CreatedTabState extends State<CreatedTab> {
                       });
                     }
                   },
+                  onCreateCollection: widget.onCreateCollection,
                 ),
         ),
       ],
     );
+  }
+
+  void refreshCollections() {
+    _collectionsListKey.currentState?.refresh();
   }
 }
 
@@ -212,7 +220,12 @@ class _QuizzesListState extends State<_QuizzesList>
 
 class _CollectionsList extends StatefulWidget {
   final Function(int) onCountChanged;
-  const _CollectionsList({required this.onCountChanged});
+  final VoidCallback? onCreateCollection;
+  const _CollectionsList({
+    super.key,
+    required this.onCountChanged,
+    this.onCreateCollection,
+  });
 
   @override
   State<_CollectionsList> createState() => _CollectionsListState();
@@ -229,6 +242,12 @@ class _CollectionsListState extends State<_CollectionsList>
   void initState() {
     super.initState();
     _collectionsFuture = LibraryService.fetchCollections();
+  }
+
+  void refresh() {
+    setState(() {
+      _collectionsFuture = LibraryService.fetchCollections();
+    });
   }
 
   @override
@@ -262,20 +281,11 @@ class _CollectionsListState extends State<_CollectionsList>
         widget.onCountChanged(collections.length);
 
         if (collections.isEmpty) {
-          return Center(
-            child: Text(
-              "No collections yet",
-              style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-          );
+          return _buildEmptyState();
         }
 
         return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 12,
@@ -288,11 +298,51 @@ class _CollectionsListState extends State<_CollectionsList>
             return CollectionCard(
               title: collection.title,
               quizCount: collection.quizCount,
+              imageUrl: collection.imageUrl,
               gradient: collection.gradient,
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.collections_bookmark_outlined,
+            size: 64,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "No collections yet",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Tap the + button to create your first collection",
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 

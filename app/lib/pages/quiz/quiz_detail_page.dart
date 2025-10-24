@@ -751,7 +751,7 @@ class _QuestionCard extends StatelessWidget {
 
   String _getQuestionTypeLabel(String type) {
     switch (type) {
-      case "multiple_choice":
+      case "single_choice":
         return "Quiz";
       case "true_false":
         return "True or False";

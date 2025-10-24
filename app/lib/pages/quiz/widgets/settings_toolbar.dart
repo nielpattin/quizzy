@@ -65,8 +65,8 @@ class SettingsToolbar extends StatelessWidget {
 
   String _getTypeLabel(String type) {
     switch (type) {
-      case "multiple_choice":
-        return "Quiz";
+      case "single_choice":
+        return "Single Choice";
       case "true_false":
         return "True/False";
       case "reorder":
@@ -78,7 +78,7 @@ class SettingsToolbar extends StatelessWidget {
       case "drop_pin":
         return "Drop Pin";
       default:
-        return "Quiz";
+        return "Single Choice";
     }
   }
 }

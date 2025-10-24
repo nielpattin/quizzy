@@ -60,7 +60,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
       if (widget.existingQuestion!["data"] != null) {
         final data = widget.existingQuestion!["data"] as Map<String, dynamic>;
 
-        if (_currentQuestionType == "multiple_choice") {
+        if (_currentQuestionType == "single_choice") {
           final options = data["options"] as List<dynamic>?;
           if (options != null) {
             _answerCount = options.length.clamp(2, 5);
@@ -187,14 +187,14 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
         _currentQuestionType = type;
         _correctAnswerIndex = null;
 
-        // Initialize answer controllers when switching TO multiple_choice
-        if (type == "multiple_choice" && _answerControllers.isEmpty) {
+        // Initialize answer controllers when switching TO single_choice
+        if (type == "single_choice" && _answerControllers.isEmpty) {
           _answerCount = 4;
           _initializeAnswers();
         }
 
-        // Clear answer controllers when switching FROM multiple_choice
-        if (oldType == "multiple_choice" && type != "multiple_choice") {
+        // Clear answer controllers when switching FROM single_choice
+        if (oldType == "single_choice" && type != "single_choice") {
           for (var controller in _answerControllers) {
             controller.dispose();
           }
@@ -216,7 +216,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
       return;
     }
 
-    if (_currentQuestionType == "multiple_choice") {
+    if (_currentQuestionType == "single_choice") {
       if (_correctAnswerIndex == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -258,7 +258,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
       "points": _points,
       if (_coverImage != null) "coverImagePath": _coverImage!.path,
       "data": {
-        if (_currentQuestionType == "multiple_choice") ...{
+        if (_currentQuestionType == "single_choice") ...{
           "options": _answerControllers.map((c) => c.text.trim()).toList(),
           "correctIndex": _correctAnswerIndex,
         },
@@ -544,7 +544,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
                       ).colorScheme.onSurface.withValues(alpha: 0.1),
                     ),
                     const SizedBox(height: 28),
-                    if (_currentQuestionType == "multiple_choice" ||
+                    if (_currentQuestionType == "single_choice" ||
                         _currentQuestionType == "true_false")
                       CleanAnswerList(
                         questionType: _currentQuestionType,
@@ -554,11 +554,10 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
                         onMarkCorrect: (index) {
                           setState(() => _correctAnswerIndex = index);
                         },
-                        onAddAnswer: _currentQuestionType == "multiple_choice"
+                        onAddAnswer: _currentQuestionType == "single_choice"
                             ? _addAnswer
                             : null,
-                        onRemoveAnswer:
-                            _currentQuestionType == "multiple_choice"
+                        onRemoveAnswer: _currentQuestionType == "single_choice"
                             ? _removeAnswer
                             : null,
                       ),

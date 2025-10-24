@@ -13,14 +13,14 @@ class QuizQuestionCard extends StatelessWidget {
     final currentQuestion = controller.currentQuestion;
     final questionType = currentQuestion["type"] as String;
 
-    final options = questionType == "multiple_choice"
+    final options = questionType == "single_choice"
         ? (currentQuestion["data"]["options"] as List)
               .map((opt) => opt is Map ? opt["text"] as String : opt as String)
               .toList()
         : ["True", "False"];
 
     int? correctIndex = currentQuestion["data"]["correctIndex"] as int?;
-    if (correctIndex == null && questionType == "multiple_choice") {
+    if (correctIndex == null && questionType == "single_choice") {
       final optionsList = currentQuestion["data"]["options"] as List;
       for (int i = 0; i < optionsList.length; i++) {
         if (optionsList[i] is Map && optionsList[i]["isCorrect"] == true) {

@@ -29,6 +29,7 @@ import "pages/quiz/add_questions_page.dart";
 import "pages/quiz/play_quiz_page.dart";
 import "pages/quiz/create_question_page.dart";
 import "pages/session/live_quiz_session_page.dart";
+import "pages/library/create_collection_page.dart";
 import "utils/route_observer.dart";
 
 final router = GoRouter(
@@ -93,6 +94,22 @@ final router = GoRouter(
     GoRoute(
       path: "/library",
       builder: (context, state) => const MainNavigationPage(initialIndex: 1),
+    ),
+    GoRoute(
+      path: "/library/create-collection",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const CreateCollectionPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                ),
+            child: child,
+          );
+        },
+      ),
     ),
     GoRoute(
       path: "/join",
@@ -400,7 +417,7 @@ final router = GoRouter(
       pageBuilder: (context, state) {
         final quizId = state.pathParameters["id"]!;
         final questionType =
-            state.uri.queryParameters["type"] ?? "multiple_choice";
+            state.uri.queryParameters["type"] ?? "single_choice";
         final existingQuestion = state.extra as Map<String, dynamic>?;
         return CustomTransitionPage(
           key: state.pageKey,

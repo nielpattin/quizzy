@@ -186,7 +186,7 @@ void showQuestionTypePicker(
 ) {
   final questionTypes = [
     {
-      "type": "multiple_choice",
+      "type": "single_choice",
       "label": "Single Choice",
       "svgPath": "images/Icons/SingleAnswer.svg",
     },

@@ -128,6 +128,7 @@ class ApiService {
     String title,
     String? description,
     bool isPublic,
+    String? imageUrl,
   ) async {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
@@ -138,6 +139,7 @@ class ApiService {
           "title": title,
           "description": description,
           "isPublic": isPublic,
+          "imageUrl": imageUrl,
         }),
       );
     });

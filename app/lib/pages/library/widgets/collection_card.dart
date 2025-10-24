@@ -1,14 +1,17 @@
 import "package:flutter/material.dart";
+import "package:cached_network_image/cached_network_image.dart";
 import "meta_chip.dart";
 
 class CollectionCard extends StatelessWidget {
   final String title;
   final int quizCount;
+  final String? imageUrl;
   final List<Color> gradient;
   const CollectionCard({
     super.key,
     required this.title,
     required this.quizCount,
+    this.imageUrl,
     required this.gradient,
   });
 
@@ -34,11 +37,43 @@ class CollectionCard extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(14),
               ),
-              gradient: LinearGradient(
-                colors: gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(14),
               ),
+              child: imageUrl != null && imageUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: gradient,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: gradient,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: gradient,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                    ),
             ),
           ),
           Padding(

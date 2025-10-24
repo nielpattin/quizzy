@@ -6,7 +6,7 @@ import "dart:io";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "package:image_picker/image_picker.dart";
-import "../../services/upload_service.dart";
+import "../../services/api_service.dart";
 
 class CreateQuizPage extends StatefulWidget {
   const CreateQuizPage({super.key});
@@ -20,10 +20,13 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   String _selectedCategory = "General Knowledge";
+  String? _selectedCollectionId;
   bool _isPublic = true;
   bool _questionsVisible = false;
   bool _isLoading = false;
+  bool _loadingCollections = false;
   File? _selectedImageFile;
+  List<Map<String, dynamic>> _collections = [];
 
   final List<String> _categories = [
     "General Knowledge",
@@ -42,10 +45,31 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadCollections();
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCollections() async {
+    setState(() => _loadingCollections = true);
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        final data = await ApiService.getUserCollections(userId);
+        setState(() => _collections = List<Map<String, dynamic>>.from(data));
+      }
+    } catch (e) {
+      debugPrint("Error loading collections: $e");
+    } finally {
+      setState(() => _loadingCollections = false);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -94,6 +118,8 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               ? null
               : _descriptionController.text.trim(),
           "category": _selectedCategory,
+          if (_selectedCollectionId != null)
+            "collectionId": _selectedCollectionId,
           if (imageUrl != null) "imageUrl": imageUrl,
           "isPublic": _isPublic,
           "questionsVisible": _questionsVisible,
@@ -243,6 +269,43 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                     setState(() => _selectedCategory = value);
                   }
                 },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                value: _selectedCollectionId,
+                decoration: InputDecoration(
+                  labelText: "Collection (Optional)",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  suffixIcon: _loadingCollections
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text("None"),
+                  ),
+                  ..._collections.map((collection) {
+                    return DropdownMenuItem<String?>(
+                      value: collection["id"] as String,
+                      child: Text(collection["title"] as String),
+                    );
+                  }).toList(),
+                ],
+                onChanged: _loadingCollections
+                    ? null
+                    : (value) {
+                        setState(() => _selectedCollectionId = value);
+                      },
               ),
               const SizedBox(height: 24),
               Text(

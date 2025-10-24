@@ -263,7 +263,7 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
 
       if (widget.isPreview) {
         if (questionType == "single_choice" ||
-            questionType == "multiple_choice") {
+            questionType == "single_choice") {
           final correctAnswer = currentQuestion["data"]["correctAnswer"] as int;
           _selectedAnswerIndex == correctAnswer;
         } else if (questionType == "true_false") {
@@ -283,7 +283,7 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
       } else {
         String answerText;
 
-        if (questionType == "multiple_choice") {
+        if (questionType == "single_choice") {
           final options = (currentQuestion["data"]["options"] as List)
               .cast<String>();
           answerText = options[_selectedAnswerIndex!];
@@ -507,7 +507,7 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
     }
 
     final questionType = currentQuestion["type"] as String;
-    final options = questionType == "multiple_choice"
+    final options = questionType == "single_choice"
         ? (currentQuestion["data"]["options"] as List).cast<String>()
         : ["True", "False"];
     final correctIndex = currentQuestion["data"]["correctIndex"] as int?;

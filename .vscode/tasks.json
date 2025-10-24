@@ -5,9 +5,8 @@
       "label": "Launch-All-Emulators",
       "dependsOn": [
         "5554-Emulator",
-        "5556-Emulator"
+        "5556-Emulator",
       ],
-      // "dependsOrder": "sequence"
     },
     {
       "label": "5554-Emulator",
@@ -17,18 +16,6 @@
         "/k",
         "cd app && flutter run -d emulator-5554"
       ],
-      // "group": {
-      //   "kind": "build",
-      //   "isDefault": false
-      // },
-      // "presentation": {
-      //   "echo": true,
-      //   "reveal": "always",
-      //   "focus": false,
-      //   "panel": "new",
-      //   "showReuseMessage": false,
-      //   "clear": false
-      // },
       "problemMatcher": []
     },
     {
@@ -39,18 +26,6 @@
         "/k",
         "cd app && flutter run -d emulator-5556"
       ],
-      // "group": {
-      //   "kind": "build",
-      //   "isDefault": false
-      // },
-      // "presentation": {
-      //   "echo": true,
-      //   "reveal": "always",
-      //   "focus": false,
-      //   "panel": "new",
-      //   "showReuseMessage": false,
-      //   "clear": false
-      // },
       "problemMatcher": []
     }
   ]

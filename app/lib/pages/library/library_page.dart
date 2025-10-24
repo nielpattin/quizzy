@@ -21,6 +21,7 @@ class _LibraryPageState extends State<LibraryPage> {
   int _createdTabIndex = 0;
   int _gameTabIndex = 0;
   SortOption _sort = SortOption.newest;
+  VoidCallback? _refreshCollectionsCallback;
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +47,28 @@ class _LibraryPageState extends State<LibraryPage> {
           ),
         ],
       ),
+      floatingActionButton: _shouldShowFAB()
+          ? FloatingActionButton(
+              onPressed: _handleCreateCollection,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: const Icon(Icons.add, color: Colors.white, size: 28),
+            )
+          : null,
       bottomNavigationBar: widget.showBottomNav
           ? const BottomNav(selectedIndex: 1)
           : null,
     );
+  }
+
+  bool _shouldShowFAB() {
+    return _selectedCategoryIndex == 0 && _createdTabIndex == 1;
+  }
+
+  Future<void> _handleCreateCollection() async {
+    final result = await context.push("/library/create-collection");
+    if (result == true && mounted && _refreshCollectionsCallback != null) {
+      _refreshCollectionsCallback!();
+    }
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
@@ -96,6 +115,9 @@ class _LibraryPageState extends State<LibraryPage> {
       onSubTabChanged: (i) => setState(() => _createdTabIndex = i),
       sort: _sort,
       onSortTap: _showSortSheet,
+      onRefreshCollectionsRegister: (callback) {
+        _refreshCollectionsCallback = callback;
+      },
     );
   }
 
