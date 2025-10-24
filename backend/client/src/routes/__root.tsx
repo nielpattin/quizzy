@@ -50,7 +50,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" className="dark" suppressHydrationWarning={true}>
 			<head>
 				<HeadContent />
 			</head>

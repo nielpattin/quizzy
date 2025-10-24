@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../db/index'
-import { users, quizzes, gameSessions, collections } from '../db/schema'
+import { users, quizzes, gameSessions, collections, posts, postReports } from '../db/schema'
 import { eq, desc, sql, and, or, ilike, count } from 'drizzle-orm'
 import { authMiddleware, type AuthContext } from '../middleware/auth'
 
@@ -601,6 +601,233 @@ adminRoutes.delete('/collections/:id', async (c) => {
   } catch (error) {
     console.error('[BACKEND] Error deleting collection:', error)
     return c.json({ error: 'Failed to delete collection' }, 500)
+  }
+})
+
+adminRoutes.get('/posts/stats', async (c) => {
+  try {
+    const [totalPosts] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(posts)
+    
+    const [pendingReview] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(posts)
+      .where(eq(posts.moderationStatus, 'review_pending'))
+    
+    const [flaggedContent] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(posts)
+      .where(eq(posts.moderationStatus, 'flagged'))
+    
+    const engagementResult = await db
+      .select({
+        avgEngagement: sql<number>`
+          CASE 
+            WHEN COUNT(*) > 0 
+            THEN CAST(
+              (SUM(${posts.likesCount}) + SUM(${posts.commentsCount})) * 100.0 / 
+              NULLIF(COUNT(*), 0) 
+              AS NUMERIC(5,1)
+            )
+            ELSE 0 
+          END
+        `,
+      })
+      .from(posts)
+    
+    const engagementRate = Number(engagementResult[0]?.avgEngagement || 0)
+
+    return c.json({
+      totalPosts: totalPosts?.count || 0,
+      pendingReview: pendingReview?.count || 0,
+      engagementRate: Number(engagementRate.toFixed(1)),
+      flaggedContent: flaggedContent?.count || 0,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching post stats:', error)
+    return c.json({ error: 'Failed to fetch post stats' }, 500)
+  }
+})
+
+adminRoutes.get('/posts', async (c) => {
+  try {
+    const search = c.req.query('search') || ''
+    const postType = c.req.query('postType') || ''
+    const status = c.req.query('status') || ''
+    const page = Number.parseInt(c.req.query('page') || '1', 10)
+    const limit = Number.parseInt(c.req.query('limit') || '10', 10)
+    const offset = (page - 1) * limit
+
+    let conditions = []
+    
+    if (search) {
+      conditions.push(
+        or(
+          ilike(posts.text, `%${search}%`),
+          ilike(posts.questionText, `%${search}%`)
+        )
+      )
+    }
+    
+    if (postType) {
+      conditions.push(eq(posts.postType, postType))
+    }
+    
+    if (status === 'pending') {
+      conditions.push(eq(posts.moderationStatus, 'review_pending'))
+    } else if (status === 'flagged') {
+      conditions.push(eq(posts.moderationStatus, 'flagged'))
+    } else if (status === 'approved') {
+      conditions.push(eq(posts.moderationStatus, 'approved'))
+    } else if (status === 'rejected') {
+      conditions.push(eq(posts.moderationStatus, 'rejected'))
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    const allPosts = await db
+      .select({
+        id: posts.id,
+        text: posts.text,
+        postType: posts.postType,
+        imageUrl: posts.imageUrl,
+        questionType: posts.questionType,
+        questionText: posts.questionText,
+        questionData: posts.questionData,
+        answersCount: posts.answersCount,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        moderationStatus: posts.moderationStatus,
+        moderatedBy: posts.moderatedBy,
+        moderatedAt: posts.moderatedAt,
+        flagCount: posts.flagCount,
+        flagReasons: posts.flagReasons,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        userId: posts.userId,
+        user: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+          profilePictureUrl: users.profilePictureUrl,
+          accountType: users.accountType,
+        },
+      })
+      .from(posts)
+      .leftJoin(users, eq(posts.userId, users.id))
+      .where(whereClause)
+      .orderBy(desc(posts.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [totalCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(posts)
+      .where(whereClause)
+
+    return c.json({
+      posts: allPosts,
+      total: totalCount?.count || 0,
+      page,
+      limit,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching posts:', error)
+    return c.json({ error: 'Failed to fetch posts' }, 500)
+  }
+})
+
+adminRoutes.put('/posts/:id/moderate', async (c) => {
+  const postId = c.req.param('id')
+  const { userId: adminId } = c.get('user') as AuthContext
+  const body = await c.req.json()
+
+  try {
+    const { status, reason } = body
+
+    if (!status || !['approved', 'rejected', 'flagged', 'review_pending'].includes(status)) {
+      return c.json({ error: 'Invalid moderation status' }, 400)
+    }
+
+    const [post] = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+
+    if (!post) {
+      return c.json({ error: 'Post not found' }, 404)
+    }
+
+    const [updatedPost] = await db
+      .update(posts)
+      .set({
+        moderationStatus: status,
+        moderatedBy: adminId,
+        moderatedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(posts.id, postId))
+      .returning()
+
+    return c.json({ success: true, post: updatedPost })
+  } catch (error) {
+    console.error('[BACKEND] Error moderating post:', error)
+    return c.json({ error: 'Failed to moderate post' }, 500)
+  }
+})
+
+adminRoutes.delete('/posts/:id', async (c) => {
+  const postId = c.req.param('id')
+
+  try {
+    const [post] = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+
+    if (!post) {
+      return c.json({ error: 'Post not found' }, 404)
+    }
+
+    await db
+      .delete(posts)
+      .where(eq(posts.id, postId))
+
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('[BACKEND] Error deleting post:', error)
+    return c.json({ error: 'Failed to delete post' }, 500)
+  }
+})
+
+adminRoutes.get('/posts/:id/reports', async (c) => {
+  const postId = c.req.param('id')
+
+  try {
+    const reports = await db
+      .select({
+        id: postReports.id,
+        reason: postReports.reason,
+        description: postReports.description,
+        createdAt: postReports.createdAt,
+        userId: postReports.userId,
+        user: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+      })
+      .from(postReports)
+      .leftJoin(users, eq(postReports.userId, users.id))
+      .where(eq(postReports.postId, postId))
+      .orderBy(desc(postReports.createdAt))
+
+    return c.json({ reports })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching post reports:', error)
+    return c.json({ error: 'Failed to fetch post reports' }, 500)
   }
 })
 

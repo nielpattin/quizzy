@@ -12,6 +12,8 @@ export const questionTypeEnum = pgEnum('question_type', [
 
 export const postTypeEnum = pgEnum('post_type', ['text', 'image', 'quiz']);
 
+export const moderationStatusEnum = pgEnum('moderation_status', ['approved', 'flagged', 'rejected', 'review_pending']);
+
 export const accountTypeEnum = pgEnum('account_type', ['admin', 'employee', 'user']);
 
 export const statusEnum = pgEnum('status', ['active', 'inactive']);
@@ -257,12 +259,18 @@ export const posts = pgTable('posts', {
   answersCount: integer('answers_count').notNull().default(0),
   likesCount: integer('likes_count').notNull().default(0),
   commentsCount: integer('comments_count').notNull().default(0),
+  moderationStatus: moderationStatusEnum('moderation_status').notNull().default('approved'),
+  moderatedBy: uuid('moderated_by').references(() => users.id, { onDelete: 'set null' }),
+  moderatedAt: timestamp('moderated_at', { withTimezone: true }),
+  flagCount: integer('flag_count').notNull().default(0),
+  flagReasons: jsonb('flag_reasons').$type<string[]>().default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index('posts_user_id_idx').on(table.userId),
   index('posts_created_at_idx').on(table.createdAt),
   index('posts_post_type_idx').on(table.postType),
+  index('posts_moderation_status_idx').on(table.moderationStatus),
 ]);
 
 export const follows = pgTable('follows', {
@@ -476,3 +484,28 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
    }),
    likes: many(commentLikes),
  }));
+
+export const postReports = pgTable('post_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  reason: text('reason').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('post_reports_post_id_idx').on(table.postId),
+  index('post_reports_user_id_idx').on(table.userId),
+  index('post_reports_created_at_idx').on(table.createdAt),
+  unique('post_reports_user_post_unq').on(table.userId, table.postId),
+]);
+
+export const postReportsRelations = relations(postReports, ({ one }) => ({
+  post: one(posts, {
+    fields: [postReports.postId],
+    references: [posts.id],
+  }),
+  user: one(users, {
+    fields: [postReports.userId],
+    references: [users.id],
+  }),
+}));
