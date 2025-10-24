@@ -156,27 +156,27 @@ function FeedManager() {
 					<TabsList className="bg-[#0a0f1a] border-[#253347]">
 						<TabsTrigger
 							value="all"
-							className="data-[state=active]:bg-[#64a7ff] data-[state=active]:text-white text-muted-foreground"
+							className="data-[state=active]:bg-[#64a7ff] data-[state=active]:text-white text-[#8b9bab]"
 						>
 							All Posts
 						</TabsTrigger>
 						<TabsTrigger
 							value="pending"
-							className="data-[state=active]:bg-[#64a7ff] data-[state=active]:text-white text-muted-foreground"
+							className="data-[state=active]:bg-[#64a7ff] data-[state=active]:text-white text-[#8b9bab]"
 						>
 							<Clock className="w-4 h-4 mr-2" />
 							Pending
 						</TabsTrigger>
 						<TabsTrigger
 							value="flagged"
-							className="data-[state=active]:bg-[#64a7ff] data-[state=active]:text-white text-muted-foreground"
+							className="data-[state=active]:bg-[#64a7ff] data-[state=active]:text-white text-[#8b9bab]"
 						>
 							<Flag className="w-4 h-4 mr-2" />
 							Flagged
 						</TabsTrigger>
 						<TabsTrigger
 							value="approved"
-							className="data-[state=active]:bg-[#64a7ff] data-[state=active]:text-white text-muted-foreground"
+							className="data-[state=active]:bg-[#64a7ff] data-[state=active]:text-white text-[#8b9bab]"
 						>
 							<CheckCircle2 className="w-4 h-4 mr-2" />
 							Approved
