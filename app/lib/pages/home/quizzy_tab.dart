@@ -287,7 +287,7 @@ class _QuizzyTabState extends State<QuizzyTab>
                 ),
                 SizedBox(height: 16),
                 SizedBox(
-                  height: 220,
+                  height: 180,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: trending.length,
@@ -303,6 +303,7 @@ class _QuizzyTabState extends State<QuizzyTab>
                         isSessions: item["isSessions"] ?? false,
                         quizId: item["id"]?.toString() ?? "1",
                         imageUrl: item["imageUrl"],
+                        profilePictureUrl: user?["profilePictureUrl"],
                       );
                     },
                   ),
