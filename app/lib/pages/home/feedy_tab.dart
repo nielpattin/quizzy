@@ -260,132 +260,130 @@ class _FeedyTabState extends State<FeedyTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading && _feedItems.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_feedItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.feed_outlined,
-              size: 80,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "No feed items available",
-              style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Follow more users to see their posts",
-              style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.5),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _refreshFeed,
-      child: Stack(
-        children: [
-          ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: _feedItems.length + (_isLoading ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == _feedItems.length) {
-                return const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              final item = _feedItems[index];
-              final currentUserId =
-                  Supabase.instance.client.auth.currentUser?.id;
-              final postOwnerId = item["user"]?["id"];
-              final isOwner =
-                  currentUserId != null && currentUserId == postOwnerId;
-
-              final post = Post.fromJson(item);
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: FeedCard(
-                  postId: post.id,
-                  author: post.user.fullName ?? "Unknown",
-                  profilePictureUrl: post.user.profilePictureUrl,
-                  text: post.text,
-                  postType: post.postType,
-                  imageUrl: post.imageUrl,
-                  questionText: post.questionText,
-                  hasAnswered: post.hasAnswered,
-                  likes: post.likesCount,
-                  comments: post.commentsCount,
-                  isLiked: post.isLiked,
-                  isOwner: isOwner,
-                  onLike: () => _toggleLike(post.id, post.isLiked),
-                  onComment: () {
-                    context.push("/post/details", extra: post.id);
-                  },
-                  onTap: () {
-                    context.push("/post/details", extra: post.id);
-                  },
-                  onDelete: isOwner ? () => _deletePost(post.id) : null,
-                  onShare: () {
-                    debugPrint("Share post: ${post.id}");
-                  },
-                  onQuizTap: post.postType == PostType.quiz && !post.hasAnswered
-                      ? () async {
-                          await showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (context) => QuickQuestionModal(
-                              post: post,
-                              onAnswered: () {
-                                setState(() {
-                                  final index = _feedItems.indexWhere(
-                                    (p) => p["id"] == post.id,
-                                  );
-                                  if (index != -1) {
-                                    _feedItems[index]["hasAnswered"] = true;
-                                  }
-                                });
-                              },
-                            ),
-                          );
-                        }
-                      : null,
+    return Stack(
+      children: [
+        if (_isLoading && _feedItems.isEmpty)
+          const Center(child: CircularProgressIndicator())
+        else if (_feedItems.isEmpty)
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.feed_outlined,
+                  size: 80,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
-              );
-            },
-          ),
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton(
-              onPressed: _navigateToCreatePost,
-              child: const Icon(Icons.add),
+                const SizedBox(height: 16),
+                Text(
+                  "No feed items available",
+                  style: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Follow more users to see their posts",
+                  style: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          RefreshIndicator(
+            onRefresh: _refreshFeed,
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: _feedItems.length + (_isLoading ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _feedItems.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final item = _feedItems[index];
+                final currentUserId =
+                    Supabase.instance.client.auth.currentUser?.id;
+                final postOwnerId = item["user"]?["id"];
+                final isOwner =
+                    currentUserId != null && currentUserId == postOwnerId;
+
+                final post = Post.fromJson(item);
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: FeedCard(
+                    postId: post.id,
+                    author: post.user.fullName ?? "Unknown",
+                    profilePictureUrl: post.user.profilePictureUrl,
+                    text: post.text,
+                    postType: post.postType,
+                    imageUrl: post.imageUrl,
+                    questionText: post.questionText,
+                    hasAnswered: post.hasAnswered,
+                    likes: post.likesCount,
+                    comments: post.commentsCount,
+                    isLiked: post.isLiked,
+                    isOwner: isOwner,
+                    onLike: () => _toggleLike(post.id, post.isLiked),
+                    onComment: () {
+                      context.push("/post/details", extra: post.id);
+                    },
+                    onTap: () {
+                      context.push("/post/details", extra: post.id);
+                    },
+                    onDelete: isOwner ? () => _deletePost(post.id) : null,
+                    onShare: () {
+                      debugPrint("Share post: ${post.id}");
+                    },
+                    onQuizTap:
+                        post.postType == PostType.quiz && !post.hasAnswered
+                        ? () async {
+                            await showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              builder: (context) => QuickQuestionModal(
+                                post: post,
+                                onAnswered: () {
+                                  setState(() {
+                                    final index = _feedItems.indexWhere(
+                                      (p) => p["id"] == post.id,
+                                    );
+                                    if (index != -1) {
+                                      _feedItems[index]["hasAnswered"] = true;
+                                    }
+                                  });
+                                },
+                              ),
+                            );
+                          }
+                        : null,
+                  ),
+                );
+              },
             ),
           ),
-        ],
-      ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton(
+            onPressed: _navigateToCreatePost,
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
     );
   }
 }

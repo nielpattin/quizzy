@@ -151,192 +151,151 @@ class _UserProfilePageState extends State<UserProfilePage>
           final posts = data['posts'] as List<dynamic>;
           final stats = data['stats'] as Map<String, dynamic>;
 
-          return RefreshIndicator(
-            onRefresh: _refreshProfile,
-            child: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                SliverToBoxAdapter(
-                  child: ProfileHeader(
-                    fullName: fullName,
-                    username: username,
-                    avatarUrl: avatarUrl,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: ProfileStats(
-                    stats: stats,
-                    onFollowersPressed: () {
-                      context.push(
-                        "/profile/followers-following?userId=${widget.userId}&initialTab=0",
-                      );
-                    },
-                    onFollowingPressed: () {
-                      context.push(
-                        "/profile/followers-following?userId=${widget.userId}&initialTab=1",
-                      );
-                    },
-                    onQuizzesPressed: () {
-                      _tabController.animateTo(0);
-                    },
-                    onSessionsPressed: () {
-                      _tabController.animateTo(1);
-                    },
-                  ),
-                ),
-                if (bio.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 4.0,
-                      ),
-                      child: Text(
-                        bio,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 13,
-                          height: 1.3,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 12.0,
-                    ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isOwnProfile
-                            ? () async {
-                                final result = await context.push<bool>(
-                                  "/edit-profile",
-                                );
-                                if (result == true) {
-                                  setState(() {
-                                    _profileFuture = _loadProfile();
-                                  });
-                                }
-                              }
-                            : _toggleFollow,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _isOwnProfile
-                              ? Theme.of(context).colorScheme.surface
-                              : _isFollowing
-                              ? Theme.of(context).colorScheme.surface
-                              : Theme.of(context).colorScheme.primary,
-                          foregroundColor: _isOwnProfile
-                              ? Theme.of(context).colorScheme.onSurface
-                              : _isFollowing
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: (_isOwnProfile || _isFollowing)
-                                ? BorderSide(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.2),
-                                  )
-                                : BorderSide.none,
-                          ),
-                        ),
-                        child: Text(
-                          _isOwnProfile
-                              ? "Edit Profile"
-                              : _isFollowing
-                              ? "Following"
-                              : "Follow",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _SliverTabBarDelegate(
-                    TabBar(
-                      controller: _tabController,
-                      labelColor: Theme.of(context).colorScheme.primary,
-                      unselectedLabelColor: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      indicatorColor: Theme.of(context).colorScheme.primary,
-                      indicatorWeight: 3,
-                      tabs: [
-                        Tab(text: "Quizzes"),
-                        Tab(text: "Sessions"),
-                        Tab(text: "Posts"),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  ProfileTabsContent.buildQuizzesTab(
-                    context,
-                    quizzes,
-                    _refreshProfile,
-                  ),
-                  ProfileTabsContent.buildSessionsTab(
-                    context,
-                    sessions,
-                    _refreshProfile,
-                  ),
-                  ProfileTabsContent.buildPostsTab(
-                    context,
-                    posts,
-                    fullName,
-                    avatarUrl,
-                    _refreshProfile,
-                  ),
-                ],
+          return Column(
+            children: [
+              ProfileHeader(
+                fullName: fullName,
+                username: username,
+                avatarUrl: avatarUrl,
               ),
-            ),
+              ProfileStats(
+                stats: stats,
+                onFollowersPressed: () {
+                  context.push(
+                    "/profile/followers-following?userId=${widget.userId}&initialTab=0",
+                  );
+                },
+                onFollowingPressed: () {
+                  context.push(
+                    "/profile/followers-following?userId=${widget.userId}&initialTab=1",
+                  );
+                },
+                onQuizzesPressed: () {
+                  _tabController.animateTo(0);
+                },
+                onSessionsPressed: () {
+                  _tabController.animateTo(1);
+                },
+              ),
+              if (bio.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 4.0,
+                  ),
+                  child: Text(
+                    bio,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 12.0,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isOwnProfile
+                        ? () async {
+                            final result = await context.push<bool>(
+                              "/edit-profile",
+                            );
+                            if (result == true) {
+                              setState(() {
+                                _profileFuture = _loadProfile();
+                              });
+                            }
+                          }
+                        : _toggleFollow,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isOwnProfile
+                          ? Theme.of(context).colorScheme.surface
+                          : _isFollowing
+                          ? Theme.of(context).colorScheme.surface
+                          : Theme.of(context).colorScheme.primary,
+                      foregroundColor: _isOwnProfile
+                          ? Theme.of(context).colorScheme.onSurface
+                          : _isFollowing
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: (_isOwnProfile || _isFollowing)
+                            ? BorderSide(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.2),
+                              )
+                            : BorderSide.none,
+                      ),
+                    ),
+                    child: Text(
+                      _isOwnProfile
+                          ? "Edit Profile"
+                          : _isFollowing
+                          ? "Following"
+                          : "Follow",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: Theme.of(context).colorScheme.primary,
+                  unselectedLabelColor: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  indicatorColor: Theme.of(context).colorScheme.primary,
+                  indicatorWeight: 3,
+                  tabs: [
+                    Tab(text: "Quizzes"),
+                    Tab(text: "Sessions"),
+                    Tab(text: "Posts"),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    ProfileTabsContent.buildQuizzesTab(
+                      context,
+                      quizzes,
+                      _refreshProfile,
+                    ),
+                    ProfileTabsContent.buildSessionsTab(
+                      context,
+                      sessions,
+                      _refreshProfile,
+                    ),
+                    ProfileTabsContent.buildPostsTab(
+                      context,
+                      posts,
+                      fullName,
+                      avatarUrl,
+                      _refreshProfile,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),
     );
-  }
-}
-
-class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar _tabBar;
-
-  _SliverTabBarDelegate(this._tabBar);
-
-  @override
-  double get minExtent => _tabBar.preferredSize.height;
-
-  @override
-  double get maxExtent => _tabBar.preferredSize.height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: _tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
-    return false;
   }
 }
