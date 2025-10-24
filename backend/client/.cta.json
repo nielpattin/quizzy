@@ -1,5 +1,5 @@
 {
-  "projectName": "web",
+  "projectName": "client",
   "mode": "file-router",
   "typescript": true,
   "tailwind": true,
@@ -12,6 +12,10 @@
     "biome",
     "form",
     "shadcn",
-    "tanstack-query"
+    "table",
+    "store",
+    "tanstack-query",
+    "tanchat",
+    "start"
   ]
 }
