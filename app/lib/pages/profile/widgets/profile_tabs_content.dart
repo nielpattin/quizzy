@@ -24,80 +24,110 @@ class ProfileTabsContent extends StatelessWidget {
     return SizedBox.shrink();
   }
 
-  static Widget buildQuizzesTab(BuildContext context, List<dynamic> quizzes) {
+  static Widget buildQuizzesTab(
+    BuildContext context,
+    List<dynamic> quizzes,
+    Future<void> Function() onRefresh,
+  ) {
     if (quizzes.isEmpty) {
-      return Center(
-        child: Text(
-          "No quizzes yet",
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: 400,
+            alignment: Alignment.center,
+            child: Text(
+              "No quizzes yet",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
           ),
         ),
       );
     }
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.75,
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.75,
+        ),
+        itemCount: quizzes.length,
+        itemBuilder: (context, index) {
+          final quiz = quizzes[index];
+          return _QuizCard(
+            id: quiz["id"],
+            title: quiz["title"],
+            category: quiz["category"] ?? "General",
+            plays: quiz["playCount"] ?? 0,
+            questionCount: quiz["questionCount"] ?? 0,
+            imageUrl: quiz["imageUrl"],
+            color: Colors.primaries[index % Colors.primaries.length],
+          );
+        },
       ),
-      itemCount: quizzes.length,
-      itemBuilder: (context, index) {
-        final quiz = quizzes[index];
-        return _QuizCard(
-          id: quiz["id"],
-          title: quiz["title"],
-          category: quiz["category"] ?? "General",
-          plays: quiz["playCount"] ?? 0,
-          questionCount: quiz["questionCount"] ?? 0,
-          imageUrl: quiz["imageUrl"],
-          color: Colors.primaries[index % Colors.primaries.length],
-        );
-      },
     );
   }
 
-  static Widget buildSessionsTab(BuildContext context, List<dynamic> sessions) {
+  static Widget buildSessionsTab(
+    BuildContext context,
+    List<dynamic> sessions,
+    Future<void> Function() onRefresh,
+  ) {
     if (sessions.isEmpty) {
-      return Center(
-        child: Text(
-          "No sessions yet",
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: 400,
+            alignment: Alignment.center,
+            child: Text(
+              "No sessions yet",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
           ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: sessions.length,
-      itemBuilder: (context, index) {
-        final session = sessions[index];
-        final totalPlayers = session["joinedCount"] ?? 0;
-        final startedAt = session["startedAt"];
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: sessions.length,
+        itemBuilder: (context, index) {
+          final session = sessions[index];
+          final totalPlayers = session["joinedCount"] ?? 0;
+          final startedAt = session["startedAt"];
 
-        String date = "Unknown date";
-        if (startedAt != null) {
-          final dateTime = DateTime.parse(startedAt).toLocal();
-          date = "${dateTime.day}/${dateTime.month}/${dateTime.year}";
-        }
+          String date = "Unknown date";
+          if (startedAt != null) {
+            final dateTime = DateTime.parse(startedAt).toLocal();
+            date = "${dateTime.day}/${dateTime.month}/${dateTime.year}";
+          }
 
-        return _SessionCard(
-          title: session["title"] ?? "Untitled Session",
-          date: date,
-          score: "-",
-          rank: "-",
-          totalPlayers: "$totalPlayers",
-        );
-      },
+          return _SessionCard(
+            title: session["title"] ?? "Untitled Session",
+            date: date,
+            score: "-",
+            rank: "-",
+            totalPlayers: "$totalPlayers",
+          );
+        },
+      ),
     );
   }
 
@@ -106,59 +136,71 @@ class ProfileTabsContent extends StatelessWidget {
     List<dynamic> posts,
     String? fullName,
     String? avatarUrl,
+    Future<void> Function() onRefresh,
   ) {
     if (posts.isEmpty) {
-      return Center(
-        child: Text(
-          "No posts yet",
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: 400,
+            alignment: Alignment.center,
+            child: Text(
+              "No posts yet",
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
           ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: posts.length,
-      itemBuilder: (context, index) {
-        final post = posts[index];
-        final likes = post["likesCount"] ?? 0;
-        final comments = post["commentsCount"] ?? 0;
-        final createdAt = post["createdAt"];
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: posts.length,
+        itemBuilder: (context, index) {
+          final post = posts[index];
+          final likes = post["likesCount"] ?? 0;
+          final comments = post["commentsCount"] ?? 0;
+          final createdAt = post["createdAt"];
 
-        String time = "Unknown time";
-        if (createdAt != null) {
-          final dateTime = DateTime.parse(createdAt).toLocal();
-          final now = DateTime.now();
-          final difference = now.difference(dateTime);
+          String time = "Unknown time";
+          if (createdAt != null) {
+            final dateTime = DateTime.parse(createdAt).toLocal();
+            final now = DateTime.now();
+            final difference = now.difference(dateTime);
 
-          if (difference.inDays == 0) {
-            if (difference.inHours == 0) {
-              time = "${difference.inMinutes}m ago";
+            if (difference.inDays == 0) {
+              if (difference.inHours == 0) {
+                time = "${difference.inMinutes}m ago";
+              } else {
+                time = "${difference.inHours}h ago";
+              }
+            } else if (difference.inDays == 1) {
+              time = "Yesterday";
+            } else if (difference.inDays < 7) {
+              time = "${difference.inDays}d ago";
             } else {
-              time = "${difference.inHours}h ago";
+              time = "${dateTime.day}/${dateTime.month}/${dateTime.year}";
             }
-          } else if (difference.inDays == 1) {
-            time = "Yesterday";
-          } else if (difference.inDays < 7) {
-            time = "${difference.inDays}d ago";
-          } else {
-            time = "${dateTime.day}/${dateTime.month}/${dateTime.year}";
           }
-        }
 
-        return _PostCard(
-          text: post["text"] ?? "",
-          likes: likes,
-          comments: comments,
-          time: time,
-          fullName: fullName ?? "User",
-          avatarUrl: avatarUrl,
-        );
-      },
+          return _PostCard(
+            text: post["text"] ?? "",
+            likes: likes,
+            comments: comments,
+            time: time,
+            fullName: fullName ?? "User",
+            avatarUrl: avatarUrl,
+          );
+        },
+      ),
     );
   }
 }

@@ -110,6 +110,13 @@ class _ProfilePageState extends State<ProfilePage>
     };
   }
 
+  Future<void> _refreshProfile() async {
+    setState(() {
+      _profileFuture = _loadProfile();
+    });
+    await _profileFuture;
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -177,93 +184,140 @@ class _ProfilePageState extends State<ProfilePage>
           final posts = data['posts'] as List<dynamic>;
           final stats = data['stats'] as Map<String, dynamic>;
 
-          return Column(
-            children: [
-              ProfileHeader(
-                fullName: fullName,
-                username: username,
-                avatarUrl: avatarUrl,
-              ),
-              ProfileStats(
-                stats: stats,
-                onFollowersPressed: () {
-                  final currentUserId =
-                      Supabase.instance.client.auth.currentUser?.id;
-                  if (currentUserId != null) {
-                    context.push(
-                      "/profile/followers-following?userId=$currentUserId&initialTab=0",
-                    );
-                  }
-                },
-                onFollowingPressed: () {
-                  final currentUserId =
-                      Supabase.instance.client.auth.currentUser?.id;
-                  if (currentUserId != null) {
-                    context.push(
-                      "/profile/followers-following?userId=$currentUserId&initialTab=1",
-                    );
-                  }
-                },
-                onQuizzesPressed: () {
-                  _tabController.animateTo(0);
-                },
-                onSessionsPressed: () {
-                  _tabController.animateTo(1);
-                },
-              ),
-              if (bio.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 4.0,
-                  ),
-                  child: Text(
-                    bio,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 13,
-                      height: 1.3,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+          return RefreshIndicator(
+            onRefresh: _refreshProfile,
+            child: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverToBoxAdapter(
+                  child: ProfileHeader(
+                    fullName: fullName,
+                    username: username,
+                    avatarUrl: avatarUrl,
                   ),
                 ),
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TabBar(
-                  controller: _tabController,
-                  labelColor: Theme.of(context).colorScheme.primary,
-                  unselectedLabelColor: Theme.of(
+                SliverToBoxAdapter(
+                  child: ProfileStats(
+                    stats: stats,
+                    onFollowersPressed: () {
+                      final currentUserId =
+                          Supabase.instance.client.auth.currentUser?.id;
+                      if (currentUserId != null) {
+                        context.push(
+                          "/profile/followers-following?userId=$currentUserId&initialTab=0",
+                        );
+                      }
+                    },
+                    onFollowingPressed: () {
+                      final currentUserId =
+                          Supabase.instance.client.auth.currentUser?.id;
+                      if (currentUserId != null) {
+                        context.push(
+                          "/profile/followers-following?userId=$currentUserId&initialTab=1",
+                        );
+                      }
+                    },
+                    onQuizzesPressed: () {
+                      _tabController.animateTo(0);
+                    },
+                    onSessionsPressed: () {
+                      _tabController.animateTo(1);
+                    },
+                  ),
+                ),
+                if (bio.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 4.0,
+                      ),
+                      child: Text(
+                        bio,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 13,
+                          height: 1.3,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverTabBarDelegate(
+                    TabBar(
+                      controller: _tabController,
+                      labelColor: Theme.of(context).colorScheme.primary,
+                      unselectedLabelColor: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      indicatorColor: Theme.of(context).colorScheme.primary,
+                      indicatorWeight: 3,
+                      tabs: [
+                        Tab(text: "Quizzes"),
+                        Tab(text: "Sessions"),
+                        Tab(text: "Posts"),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  ProfileTabsContent.buildQuizzesTab(
                     context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  indicatorColor: Theme.of(context).colorScheme.primary,
-                  indicatorWeight: 3,
-                  tabs: [
-                    Tab(text: "Quizzes"),
-                    Tab(text: "Sessions"),
-                    Tab(text: "Posts"),
-                  ],
-                ),
+                    quizzes,
+                    _refreshProfile,
+                  ),
+                  ProfileTabsContent.buildSessionsTab(
+                    context,
+                    sessions,
+                    _refreshProfile,
+                  ),
+                  ProfileTabsContent.buildPostsTab(
+                    context,
+                    posts,
+                    fullName,
+                    avatarUrl,
+                    _refreshProfile,
+                  ),
+                ],
               ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    ProfileTabsContent.buildQuizzesTab(context, quizzes),
-                    ProfileTabsContent.buildSessionsTab(context, sessions),
-                    ProfileTabsContent.buildPostsTab(
-                      context,
-                      posts,
-                      fullName,
-                      avatarUrl,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           );
         },
       ),
     );
+  }
+}
+
+class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar _tabBar;
+
+  _SliverTabBarDelegate(this._tabBar);
+
+  @override
+  double get minExtent => _tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => _tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: _tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
+    return false;
   }
 }

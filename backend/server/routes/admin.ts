@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../db/index'
-import { users, quizzes, gameSessions } from '../db/schema'
+import { users, quizzes, gameSessions, collections } from '../db/schema'
 import { eq, desc, sql, and, or, ilike, count } from 'drizzle-orm'
 import { authMiddleware, type AuthContext } from '../middleware/auth'
 
@@ -291,6 +291,316 @@ adminRoutes.post('/users', async (c) => {
   } catch (error) {
     console.error('[BACKEND] Error creating user:', error)
     return c.json({ error: 'Failed to create user' }, 500)
+  }
+})
+
+adminRoutes.get('/quizzes/stats', async (c) => {
+  try {
+    const [totalQuizzes] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(quizzes)
+      .where(eq(quizzes.isDeleted, false))
+    
+    const [publishedQuizzes] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(quizzes)
+      .where(and(eq(quizzes.isPublic, true), eq(quizzes.isDeleted, false)))
+    
+    const [draftQuizzes] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(quizzes)
+      .where(and(eq(quizzes.isPublic, false), eq(quizzes.isDeleted, false)))
+    
+    const [totalQuestionsResult] = await db
+      .select({ sum: sql<number>`cast(sum(${quizzes.questionCount}) as int)` })
+      .from(quizzes)
+      .where(eq(quizzes.isDeleted, false))
+
+    return c.json({
+      totalQuizzes: totalQuizzes?.count || 0,
+      published: publishedQuizzes?.count || 0,
+      drafts: draftQuizzes?.count || 0,
+      totalQuestions: totalQuestionsResult?.sum || 0,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching quiz stats:', error)
+    return c.json({ error: 'Failed to fetch quiz stats' }, 500)
+  }
+})
+
+adminRoutes.get('/quizzes', async (c) => {
+  try {
+    const search = c.req.query('search') || ''
+    const category = c.req.query('category') || ''
+    const status = c.req.query('status') || ''
+    const page = Number.parseInt(c.req.query('page') || '1', 10)
+    const limit = Number.parseInt(c.req.query('limit') || '10', 10)
+    const offset = (page - 1) * limit
+
+    let conditions = [eq(quizzes.isDeleted, false)]
+    
+    if (search) {
+      conditions.push(
+        or(
+          ilike(quizzes.title, `%${search}%`),
+          ilike(quizzes.description, `%${search}%`)
+        )
+      )
+    }
+    
+    if (category) {
+      conditions.push(eq(quizzes.category, category))
+    }
+    
+    if (status === 'published') {
+      conditions.push(eq(quizzes.isPublic, true))
+    } else if (status === 'draft') {
+      conditions.push(eq(quizzes.isPublic, false))
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    const allQuizzes = await db
+      .select({
+        id: quizzes.id,
+        title: quizzes.title,
+        description: quizzes.description,
+        category: quizzes.category,
+        imageUrl: quizzes.imageUrl,
+        questionCount: quizzes.questionCount,
+        playCount: quizzes.playCount,
+        favoriteCount: quizzes.favoriteCount,
+        isPublic: quizzes.isPublic,
+        createdAt: quizzes.createdAt,
+        updatedAt: quizzes.updatedAt,
+        collectionId: quizzes.collectionId,
+        userId: quizzes.userId,
+        user: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+        collection: {
+          id: collections.id,
+          title: collections.title,
+        },
+      })
+      .from(quizzes)
+      .leftJoin(users, eq(quizzes.userId, users.id))
+      .leftJoin(collections, eq(quizzes.collectionId, collections.id))
+      .where(whereClause)
+      .orderBy(desc(quizzes.updatedAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [totalCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(quizzes)
+      .where(whereClause)
+
+    const quizzesWithStatus = allQuizzes.map(quiz => ({
+      ...quiz,
+      status: quiz.isPublic ? 'published' : 'draft',
+    }))
+
+    return c.json({
+      quizzes: quizzesWithStatus,
+      total: totalCount?.count || 0,
+      page,
+      limit,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching quizzes:', error)
+    return c.json({ error: 'Failed to fetch quizzes' }, 500)
+  }
+})
+
+adminRoutes.delete('/quizzes/:id', async (c) => {
+  const quizId = c.req.param('id')
+
+  try {
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(and(eq(quizzes.id, quizId), eq(quizzes.isDeleted, false)))
+
+    if (!quiz) {
+      return c.json({ error: 'Quiz not found' }, 404)
+    }
+
+    await db
+      .update(quizzes)
+      .set({ 
+        isDeleted: true, 
+        deletedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(quizzes.id, quizId))
+
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('[BACKEND] Error deleting quiz:', error)
+    return c.json({ error: 'Failed to delete quiz' }, 500)
+  }
+})
+
+adminRoutes.post('/quizzes/:id/duplicate', async (c) => {
+  const quizId = c.req.param('id')
+  const { userId } = c.get('user') as AuthContext
+
+  try {
+    const [originalQuiz] = await db
+      .select()
+      .from(quizzes)
+      .where(and(eq(quizzes.id, quizId), eq(quizzes.isDeleted, false)))
+
+    if (!originalQuiz) {
+      return c.json({ error: 'Quiz not found' }, 404)
+    }
+
+    const [newQuiz] = await db
+      .insert(quizzes)
+      .values({
+        userId,
+        collectionId: originalQuiz.collectionId,
+        title: `${originalQuiz.title} (Copy)`,
+        description: originalQuiz.description,
+        category: originalQuiz.category,
+        imageUrl: originalQuiz.imageUrl,
+        isPublic: false,
+        questionsVisible: originalQuiz.questionsVisible,
+      })
+      .returning()
+
+    return c.json({ success: true, quiz: newQuiz })
+  } catch (error) {
+    console.error('[BACKEND] Error duplicating quiz:', error)
+    return c.json({ error: 'Failed to duplicate quiz' }, 500)
+  }
+})
+
+adminRoutes.get('/collections', async (c) => {
+  try {
+    const search = c.req.query('search') || ''
+    const page = Number.parseInt(c.req.query('page') || '1', 10)
+    const limit = Number.parseInt(c.req.query('limit') || '10', 10)
+    const offset = (page - 1) * limit
+
+    let conditions = []
+    
+    if (search) {
+      conditions.push(
+        or(
+          ilike(collections.title, `%${search}%`),
+          ilike(collections.description, `%${search}%`)
+        )
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    const allCollections = await db
+      .select({
+        id: collections.id,
+        title: collections.title,
+        description: collections.description,
+        imageUrl: collections.imageUrl,
+        quizCount: collections.quizCount,
+        isPublic: collections.isPublic,
+        createdAt: collections.createdAt,
+        updatedAt: collections.updatedAt,
+        userId: collections.userId,
+        user: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+      })
+      .from(collections)
+      .leftJoin(users, eq(collections.userId, users.id))
+      .where(whereClause)
+      .orderBy(desc(collections.updatedAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [totalCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(collections)
+      .where(whereClause)
+
+    return c.json({
+      collections: allCollections,
+      total: totalCount?.count || 0,
+      page,
+      limit,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching collections:', error)
+    return c.json({ error: 'Failed to fetch collections' }, 500)
+  }
+})
+
+adminRoutes.put('/collections/:id', async (c) => {
+  const collectionId = c.req.param('id')
+  const body = await c.req.json()
+
+  try {
+    const [existingCollection] = await db
+      .select()
+      .from(collections)
+      .where(eq(collections.id, collectionId))
+
+    if (!existingCollection) {
+      return c.json({ error: 'Collection not found' }, 404)
+    }
+
+    const [updatedCollection] = await db
+      .update(collections)
+      .set({
+        title: body.title,
+        description: body.description,
+        imageUrl: body.imageUrl,
+        isPublic: body.isPublic,
+        updatedAt: new Date(),
+      })
+      .where(eq(collections.id, collectionId))
+      .returning()
+
+    return c.json({ success: true, collection: updatedCollection })
+  } catch (error) {
+    console.error('[BACKEND] Error updating collection:', error)
+    return c.json({ error: 'Failed to update collection' }, 500)
+  }
+})
+
+adminRoutes.delete('/collections/:id', async (c) => {
+  const collectionId = c.req.param('id')
+
+  try {
+    const [collection] = await db
+      .select()
+      .from(collections)
+      .where(eq(collections.id, collectionId))
+
+    if (!collection) {
+      return c.json({ error: 'Collection not found' }, 404)
+    }
+
+    await db
+      .update(quizzes)
+      .set({ collectionId: null })
+      .where(eq(quizzes.collectionId, collectionId))
+
+    await db
+      .delete(collections)
+      .where(eq(collections.id, collectionId))
+
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('[BACKEND] Error deleting collection:', error)
+    return c.json({ error: 'Failed to delete collection' }, 500)
   }
 })
 

@@ -2,28 +2,28 @@
       "version": "0.2.0",
       "configurations": [
         {
-            "name": "Flutter-All",
-            "preLaunchTask": "Launch-All-Emulators",
-            "type": "dart",
-            "request": "launch"
-        },
-        {
-          "name": "Flutter-Emulator-5556 2",
-          "request": "launch",
+          "name": "Flutter-All",
+          "preLaunchTask": "Launch-All-Emulators",
           "type": "dart",
-          "deviceId": "emulator-5556" // Replace with your other emulator's deviceId
+          "request": "launch"
         },
         {
-          "name": "Flutter-Emulator-5554",
-          "request": "launch",
+          "name": "5554-Emulator",
+          "preLaunchTask": "5554-Emulator",
           "type": "dart",
-          "deviceId": "emulator-5554" // Replace with your emulator's deviceId
+          "request": "launch"
         },
         {
-            "name": "5554 App",
-            "cwd": "app",
-            "request": "launch",
-            "type": "dart"
+          "name": "5556-Emulator",
+          "preLaunchTask": "5556-Emulator",
+          "type": "dart",
+          "request": "launch"
+        },
+        {
+          "name": "5554 App",
+          "cwd": "app",
+          "request": "launch",
+          "type": "dart"
         },
       ],
     }
