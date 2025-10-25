@@ -10,6 +10,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE_URL } from "@/lib/constants";
 
 interface Quiz {
 	id: string;
@@ -41,7 +42,7 @@ async function fetchCollectionWithQuizzes(
 	collectionId: string,
 ): Promise<Collection> {
 	const response = await fetch(
-		`http://localhost:8000/api/collection/${collectionId}`,
+		`${API_BASE_URL}/api/collection/${collectionId}`,
 		{
 			headers: {
 				Authorization: `Bearer ${token}`,

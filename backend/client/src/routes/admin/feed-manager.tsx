@@ -15,6 +15,7 @@ import { Search, Flag, CheckCircle2, Clock } from "lucide-react";
 import PostsList from "@/components/admin/feed-manager/PostsList";
 import StatsCards from "@/components/admin/feed-manager/StatsCards";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE_URL } from "@/lib/constants";
 
 export const Route = createFileRoute("/admin/feed-manager")({
 	component: FeedManager,
@@ -32,14 +33,11 @@ function FeedManager() {
 	const { data: stats } = useQuery({
 		queryKey: ["admin", "posts", "stats"],
 		queryFn: async () => {
-			const response = await fetch(
-				"http://localhost:8000/api/admin/posts/stats",
-				{
-					headers: {
-						Authorization: `Bearer ${token}`,
-					},
+			const response = await fetch(`${API_BASE_URL}/api/admin/posts/stats`, {
+				headers: {
+					Authorization: `Bearer ${token}`,
 				},
-			);
+			});
 			if (!response.ok) throw new Error("Failed to fetch stats");
 			return response.json();
 		},
@@ -57,7 +55,7 @@ function FeedManager() {
 			if (activeTab !== "all") params.append("status", activeTab);
 
 			const response = await fetch(
-				`http://localhost:8000/api/admin/posts?${params}`,
+				`${API_BASE_URL}/api/admin/posts?${params}`,
 				{
 					headers: {
 						Authorization: `Bearer ${token}`,
@@ -78,7 +76,7 @@ function FeedManager() {
 			status: string;
 		}) => {
 			const response = await fetch(
-				`http://localhost:8000/api/admin/posts/${postId}/moderate`,
+				`${API_BASE_URL}/api/admin/posts/${postId}/moderate`,
 				{
 					method: "PUT",
 					headers: {
@@ -99,7 +97,7 @@ function FeedManager() {
 	const deleteMutation = useMutation({
 		mutationFn: async (postId: string) => {
 			const response = await fetch(
-				`http://localhost:8000/api/admin/posts/${postId}`,
+				`${API_BASE_URL}/api/admin/posts/${postId}`,
 				{
 					method: "DELETE",
 					headers: {

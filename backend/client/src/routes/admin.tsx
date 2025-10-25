@@ -1,33 +1,21 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { supabase } from "../lib/supabase";
 import { AdminLayout } from "../layouts/AdminLayout";
 
 export const Route = createFileRoute("/admin")({
-	component: AdminLayoutComponent,
-});
+	beforeLoad: async () => {
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
 
-function AdminLayoutComponent() {
-	const { session, loading } = useAuth();
-	const navigate = useNavigate();
-
-	useEffect(() => {
-		if (!loading && !session) {
-			navigate({ to: "/login" });
+		// Simple check: if no session exists, redirect to login
+		// Session validation happens in AuthContext
+		if (!session) {
+			throw redirect({
+				to: "/login",
+				replace: true,
+			});
 		}
-	}, [session, loading, navigate]);
-
-	if (loading) {
-		return (
-			<div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-				<div className="text-white text-lg">Loading...</div>
-			</div>
-		);
-	}
-
-	if (!session) {
-		return null;
-	}
-
-	return <AdminLayout />;
-}
+	},
+	component: AdminLayout,
+});

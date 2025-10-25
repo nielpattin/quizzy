@@ -6,6 +6,7 @@ import * as schema from './schema';
 import { SEED_USERS, SEED_USERS_COUNT, getRegularUserCounts } from './seed-data';
 import {
 	uploadAllSeedImages,
+	seedAdminUser,
 	seedFixedUsers,
 	seedFixedUsersData,
 	seedSpecificUsers,
@@ -49,6 +50,7 @@ const main = async () => {
 
 	const startTime = Date.now();
 
+	await seedAdminUser(db);
 	await seedFixedUsers(db);
 	await seedSpecificUsers(db);
 

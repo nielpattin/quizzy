@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, Lock, Mail, User } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { API_BASE_URL } from "../lib/constants";
 import { supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/login")({
@@ -34,9 +35,7 @@ function LoginPage() {
 
 	const checkAdminExists = useCallback(async () => {
 		try {
-			const response = await fetch(
-				"http://localhost:8000/api/auth/check-admin",
-			);
+			const response = await fetch(`${API_BASE_URL}/api/auth/check-admin`);
 			const data = await response.json();
 			setHasAdmin(data.hasAdmin);
 			setIsSignup(!data.hasAdmin);
@@ -69,7 +68,7 @@ function LoginPage() {
 
 		try {
 			const response = await fetch(
-				"http://localhost:8000/api/auth/create-first-admin",
+				`${API_BASE_URL}/api/auth/create-first-admin`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },

@@ -17,6 +17,7 @@ const getRequiredNumberEnv = (key: string): number => {
 	return num;
 };
 
+export const SEED_ADMIN = process.env.SEED_ADMIN || '';
 export const SEED_USERS = process.env.SEED_USERS?.split(',').map((email) => email.trim()) || [];
 export const SEED_USERS_COUNT = getRequiredNumberEnv('SEED_USERS_COUNT');
 export const SEED_COLLECTIONS_COUNT_PER_USER = getRequiredNumberEnv('SEED_COLLECTIONS_COUNT_PER_USER');
@@ -34,16 +35,16 @@ export const SEED_FOLLOWS_COUNT_PER_USER = getRequiredNumberEnv('SEED_FOLLOWS_CO
 export const SEED_NOTIFICATIONS_COUNT_PER_POST = getRequiredNumberEnv('SEED_NOTIFICATIONS_COUNT_PER_POST');
 
 export const categories = [
-	'Science',
-	'History',
-	'Geography',
-	'Mathematics',
-	'Literature',
-	'Technology',
-	'Sports',
-	'Music',
-	'Art',
-	'Business',
+	'Khoa học',
+	'Lịch sử',
+	'Địa lý',
+	'Toán học',
+	'Văn học',
+	'Công nghệ',
+	'Thể thao',
+	'Âm nhạc',
+	'Nghệ thuật',
+	'Kinh doanh',
 ];
 
 export const questionTypes: string[] = [
@@ -55,17 +56,25 @@ export const questionTypes: string[] = [
 	'drop_pin',
 ];
 
-export const accountTypes = ['user', 'employee', 'admin'];
+export const accountTypes = ['user', 'employee'];
 
 export const bios = [
-	'Quiz enthusiast and educator',
-	'Learning something new every day 📚',
-	'Creating engaging educational content',
-	'Passionate about knowledge sharing',
-	'Making learning fun for everyone',
-	'Teacher by day, quiz creator by night',
-	'Building better learning experiences',
-	'Education technology advocate',
+	'Đam mê quiz và giáo dục 📚',
+	'Học cái gì cũng thích 🎓',
+	'Tạo nội dung giáo dục hấp dẫn',
+	'Yêu thích chia sẻ kiến thức',
+	'Làm cho học tập trở nên vui vẻ',
+	'Giáo viên ban ngày, tác giả quiz ban đêm',
+	'Xây dựng trải nghiệm học tập tốt hơn',
+	'Người ủng hộ công nghệ giáo dục',
+];
+
+export const vietnameseNames = [
+	'Nguyễn Văn An', 'Trần Thị Bình', 'Lê Hoàng Cường', 'Phạm Thị Dung', 
+	'Hoàng Văn Em', 'Đặng Thị Phương', 'Võ Minh Giang', 'Bùi Thị Hương',
+	'Đỗ Văn Hùng', 'Ngô Thị Lan', 'Dương Văn Khoa', 'Lý Thị Linh',
+	'Mai Văn Minh', 'Phan Thị Nga', 'Trương Văn Ơn', 'Hồ Thị Phượng',
+	'Tô Văn Quang', 'Đinh Thị Như', 'Vũ Văn Sơn', 'Cao Thị Tâm',
 ];
 
 export const notificationTypes = ['like', 'comment', 'follow', 'quiz_share', 'game_invite'];
@@ -74,7 +83,7 @@ export const generateQuestionData = (type: string) => {
 	const baseData = {
 		timeLimit: 15 + Math.floor(Math.random() * 46),
 		points: [50, 100, 150][Math.floor(Math.random() * 3)],
-		explanation: 'This question tests your understanding of the topic.',
+		explanation: 'Câu hỏi này kiểm tra sự hiểu biết của bạn về chủ đề.',
 	};
 	
 	switch (type) {
@@ -82,20 +91,20 @@ export const generateQuestionData = (type: string) => {
 			return {
 				...baseData,
 				options: [
-					{ text: 'Option A', isCorrect: false },
-					{ text: 'Option B', isCorrect: true },
-					{ text: 'Option C', isCorrect: false },
-					{ text: 'Option D', isCorrect: false },
+					{ text: 'Phương án A', isCorrect: false },
+					{ text: 'Phương án B', isCorrect: true },
+					{ text: 'Phương án C', isCorrect: false },
+					{ text: 'Phương án D', isCorrect: false },
 				],
 			};
 		case 'checkbox':
 			return {
 				...baseData,
 				options: [
-					{ text: 'Option A', isCorrect: true },
-					{ text: 'Option B', isCorrect: true },
-					{ text: 'Option C', isCorrect: false },
-					{ text: 'Option D', isCorrect: false },
+					{ text: 'Phương án A', isCorrect: true },
+					{ text: 'Phương án B', isCorrect: true },
+					{ text: 'Phương án C', isCorrect: false },
+					{ text: 'Phương án D', isCorrect: false },
 				],
 			};
 		case 'true_false':
@@ -106,22 +115,22 @@ export const generateQuestionData = (type: string) => {
 		case 'type_answer':
 			return {
 				...baseData,
-				correctAnswer: 'type this answer',
+				correctAnswer: 'gõ câu trả lời',
 				caseSensitive: false,
 			};
 		case 'reorder':
 			return {
 				...baseData,
 				items: [
-					{ id: 1, text: 'First item', correctOrder: 0 },
-					{ id: 2, text: 'Second item', correctOrder: 1 },
-					{ id: 3, text: 'Third item', correctOrder: 2 },
+					{ id: 1, text: 'Mục thứ nhất', correctOrder: 0 },
+					{ id: 2, text: 'Mục thứ hai', correctOrder: 1 },
+					{ id: 3, text: 'Mục thứ ba', correctOrder: 2 },
 				],
 			};
 		case 'drop_pin':
 			return {
 				...baseData,
-				correctLocation: { lat: 40.7128, lng: -74.0060 },
+				correctLocation: { lat: 21.0285, lng: 105.8542 }, // Hanoi coordinates
 				tolerance: 0.1,
 			};
 		default:
@@ -131,42 +140,42 @@ export const generateQuestionData = (type: string) => {
 
 export const generateQuizTitle = (category: string) => {
 	const templates = [
-		`${category} Essentials`,
-		`Mastering ${category}`,
-		`${category} Fundamentals`,
-		`${category} Challenge`,
-		`Intro to ${category}`,
+		`Bộ đề ${category} cơ bản`,
+		`Làm chủ ${category}`,
+		`Nền tảng ${category}`,
+		`Thử thách ${category}`,
+		`Nhập môn ${category}`,
 	];
 	return templates[Math.floor(Math.random() * templates.length)];
 };
 
 export const generateQuizDescription = (category: string) => {
 	const templates = [
-		`Test your core knowledge of ${category} with balanced difficulty questions.`,
-		`A curated set of ${category} questions to help you practice effectively.`,
-		`Explore key concepts in ${category} with clear, focused questions.`,
-		`Sharpen your ${category} skills with this engaging quiz.`,
+		`Kiểm tra kiến thức cốt lõi của bạn về ${category} với các câu hỏi cân bằng độ khó.`,
+		`Bộ câu hỏi ${category} được tuyển chọn giúp bạn luyện tập hiệu quả.`,
+		`Khám phá các khái niệm chính trong ${category} với các câu hỏi rõ ràng, tập trung.`,
+		`Trau dồi kỹ năng ${category} của bạn với bài quiz hấp dẫn này.`,
 	];
 	return templates[Math.floor(Math.random() * templates.length)];
 };
 
 export const generateQuestionText = (category: string | null, type: string, index: number) => {
-	const base = category ?? 'General Knowledge';
+	const base = category ?? 'Kiến thức chung';
 	switch (type) {
 		case 'single_choice':
-			return `(${index + 1}) Which statement about ${base} is correct?`;
+			return `(${index + 1}) Câu nào đúng về ${base}?`;
 		case 'checkbox':
-			return `(${index + 1}) Select all that apply for ${base}.`;
+			return `(${index + 1}) Chọn tất cả câu trả lời đúng về ${base}.`;
 		case 'true_false':
-			return `(${index + 1}) True or False: A common fact in ${base}.`;
+			return `(${index + 1}) Đúng hay Sai: Một sự thật phổ biến về ${base}.`;
 		case 'type_answer':
-			return `(${index + 1}) Type the correct term from ${base}.`;
+			return `(${index + 1}) Gõ thuật ngữ chính xác về ${base}.`;
 		case 'reorder':
-			return `(${index + 1}) Arrange these ${base} steps in order.`;
+			return `(${index + 1}) Sắp xếp các bước ${base} theo đúng thứ tự.`;
 		case 'drop_pin':
-			return `(${index + 1}) Locate the relevant place related to ${base}.`;
+			return `(${index + 1}) Xác định vị trí liên quan đến ${base}.`;
 		default:
-			return `(${index + 1}) Question about ${base}.`;
+			return `(${index + 1}) Câu hỏi về ${base}.`;
 	}
 };
 
@@ -178,85 +187,85 @@ export interface SeedImageUrls {
 
 export const FIXED_USERS: Array<typeof schema.users.$inferInsert> = [
   {
-    email: 'alice@quizzy.dev',
-    fullName: 'Alice Johnson',
-    username: 'alice',
-    bio: 'Curates quality quizzes and study packs',
+    email: 'nguyen.van.an@quizzy.dev',
+    fullName: 'Nguyễn Văn An',
+    username: 'nguyenvanan',
+    bio: 'Tuyển chọn các bộ quiz chất lượng cao',
     accountType: 'employee',
     isSetupComplete: true,
     profilePictureUrl: 'https://avatars.githubusercontent.com/u/000001?v=4',
   },
   {
-    email: 'bob@quizzy.dev',
-    fullName: 'Bob Martinez',
-    username: 'bmart',
-    bio: 'Learning something new every day',
-    accountType: 'user',
+    email: 'tran.thi.binh@quizzy.dev',
+    fullName: 'Trần Thị Bình',
+    username: 'tranthibinh',
+    bio: 'Học mỗi ngày một chút 📚',
+    accountType: 'employee',
     isSetupComplete: true,
     profilePictureUrl: 'https://avatars.githubusercontent.com/u/000002?v=4',
   },
   {
-    email: 'carol@quizzy.dev',
-    fullName: 'Carol Nguyen',
-    username: 'caroln',
-    bio: 'Making learning fun for everyone',
+    email: 'le.hoang.cuong@quizzy.dev',
+    fullName: 'Lê Hoàng Cường',
+    username: 'lehoangcuong',
+    bio: 'Làm cho học tập trở nên vui vẻ hơn',
     accountType: 'employee',
     isSetupComplete: true,
     profilePictureUrl: 'https://avatars.githubusercontent.com/u/000003?v=4',
   },
   {
-    email: 'dave@quizzy.dev',
-    fullName: 'Dave Patel',
-    username: 'davep',
-    bio: 'Quiz enthusiast and educator',
-    accountType: 'admin',
+    email: 'pham.thi.dung@quizzy.dev',
+    fullName: 'Phạm Thị Dung',
+    username: 'phamthidung',
+    bio: 'Đam mê quiz và giáo dục',
+    accountType: 'employee',
     isSetupComplete: true,
     profilePictureUrl: 'https://avatars.githubusercontent.com/u/000004?v=4',
   },
   {
-    email: 'eve@quizzy.dev',
-    fullName: 'Eve Walker',
-    username: 'evew',
-    bio: 'Creating engaging educational content',
-    accountType: 'user',
+    email: 'hoang.van.em@quizzy.dev',
+    fullName: 'Hoàng Văn Em',
+    username: 'hoangvanem',
+    bio: 'Tạo nội dung giáo dục hấp dẫn',
+    accountType: 'employee',
     isSetupComplete: true,
     profilePictureUrl: 'https://avatars.githubusercontent.com/u/000005?v=4',
   },
   {
-    email: 'frank@quizzy.dev',
-    fullName: 'Frank Zhao',
-    username: 'frankz',
-    bio: 'Building better learning experiences',
-    accountType: 'admin',
+    email: 'dang.thi.phuong@quizzy.dev',
+    fullName: 'Đặng Thị Phương',
+    username: 'dangthiphuong',
+    bio: 'Xây dựng trải nghiệm học tập tốt hơn',
+    accountType: 'employee',
     isSetupComplete: true,
     profilePictureUrl: 'https://avatars.githubusercontent.com/u/000006?v=4',
   },
 ];
 
 export const FIXED_USER_COLLECTIONS = [
-  { email: 'alice@quizzy.dev', collections: [
-    { title: 'Science Study Pack', description: 'Comprehensive science resources for students' },
-    { title: 'History Collection', description: 'Key events and timelines in world history' },
-    { title: 'Math Essentials', description: 'Core mathematics concepts and practice' }
+  { email: 'nguyen.van.an@quizzy.dev', collections: [
+    { title: 'Bộ đề Khoa học', description: 'Tài nguyên khoa học toàn diện cho học sinh' },
+    { title: 'Bộ sưu tập Lịch sử', description: 'Các sự kiện và dòng thời gian lịch sử thế giới' },
+    { title: 'Toán học cơ bản', description: 'Các khái niệm toán học cốt lõi và bài tập' }
   ]},
-  { email: 'bob@quizzy.dev', collections: [
-    { title: 'My Favorites', description: 'Quizzes I enjoy practicing' },
-    { title: 'Study Group', description: 'Shared quizzes with classmates' }
+  { email: 'tran.thi.binh@quizzy.dev', collections: [
+    { title: 'Yêu thích của tôi', description: 'Các quiz tôi thích luyện tập' },
+    { title: 'Nhóm học tập', description: 'Chia sẻ quiz với bạn cùng lớp' }
   ]},
-  { email: 'carol@quizzy.dev', collections: [
-    { title: 'Literature Collection', description: 'Classic and modern literature studies' },
-    { title: 'Art & Music', description: 'Creative arts exploration' }
+  { email: 'le.hoang.cuong@quizzy.dev', collections: [
+    { title: 'Bộ sưu tập Văn học', description: 'Nghiên cứu văn học cổ điển và hiện đại' },
+    { title: 'Nghệ thuật & Âm nhạc', description: 'Khám phá nghệ thuật sáng tạo' }
   ]},
-  { email: 'dave@quizzy.dev', collections: [
-    { title: 'Business Essentials', description: 'Core business concepts and strategies' },
-    { title: 'Technology Trends', description: 'Latest in tech and innovation' }
+  { email: 'pham.thi.dung@quizzy.dev', collections: [
+    { title: 'Kinh doanh cơ bản', description: 'Các khái niệm và chiến lược kinh doanh cốt lõi' },
+    { title: 'Xu hướng Công nghệ', description: 'Mới nhất về công nghệ và đổi mới' }
   ]},
-  { email: 'eve@quizzy.dev', collections: [
-    { title: 'Practice Quizzes', description: 'Daily practice and review materials' }
+  { email: 'hoang.van.em@quizzy.dev', collections: [
+    { title: 'Quiz luyện tập', description: 'Tài liệu luyện tập và ôn tập hàng ngày' }
   ]},
-  { email: 'frank@quizzy.dev', collections: [
-    { title: 'Professional Development', description: 'Career growth and skill building' },
-    { title: 'Skills Training', description: 'Hands-on technical training resources' }
+  { email: 'dang.thi.phuong@quizzy.dev', collections: [
+    { title: 'Phát triển chuyên nghiệp', description: 'Phát triển sự nghiệp và xây dựng kỹ năng' },
+    { title: 'Đào tạo Kỹ năng', description: 'Tài nguyên đào tạo kỹ thuật thực hành' }
   ]}
 ];
 

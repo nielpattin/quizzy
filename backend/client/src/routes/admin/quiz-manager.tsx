@@ -13,6 +13,7 @@ import { ViewCollectionQuizzesDialog } from "@/components/admin/quiz-manager/Vie
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE_URL } from "@/lib/constants";
 
 export const Route = createFileRoute("/admin/quiz-manager")({
 	component: QuizManagerPage,
@@ -86,7 +87,7 @@ async function fetchAdminQuizzes(
 	if (params.limit) searchParams.append("limit", params.limit.toString());
 
 	const response = await fetch(
-		`http://localhost:8000/api/admin/quizzes?${searchParams}`,
+		`${API_BASE_URL}/api/admin/quizzes?${searchParams}`,
 		{
 			headers: {
 				Authorization: `Bearer ${token}`,
@@ -102,15 +103,12 @@ async function fetchAdminQuizzes(
 }
 
 async function deleteQuiz(token: string, quizId: string): Promise<void> {
-	const response = await fetch(
-		`http://localhost:8000/api/admin/quizzes/${quizId}`,
-		{
-			method: "DELETE",
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
+	const response = await fetch(`${API_BASE_URL}/api/admin/quizzes/${quizId}`, {
+		method: "DELETE",
+		headers: {
+			Authorization: `Bearer ${token}`,
 		},
-	);
+	});
 
 	if (!response.ok) {
 		throw new Error("Failed to delete quiz");
@@ -119,7 +117,7 @@ async function deleteQuiz(token: string, quizId: string): Promise<void> {
 
 async function duplicateQuiz(token: string, quizId: string): Promise<void> {
 	const response = await fetch(
-		`http://localhost:8000/api/admin/quizzes/${quizId}/duplicate`,
+		`${API_BASE_URL}/api/admin/quizzes/${quizId}/duplicate`,
 		{
 			method: "POST",
 			headers: {
@@ -137,7 +135,7 @@ async function createCollection(
 	token: string,
 	data: { title: string; description: string; isPublic: boolean },
 ): Promise<void> {
-	const response = await fetch("http://localhost:8000/api/collection", {
+	const response = await fetch(`${API_BASE_URL}/api/collection`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -165,7 +163,7 @@ async function fetchAdminCollections(
 	if (params.limit) searchParams.append("limit", params.limit.toString());
 
 	const response = await fetch(
-		`http://localhost:8000/api/admin/collections?${searchParams}`,
+		`${API_BASE_URL}/api/admin/collections?${searchParams}`,
 		{
 			headers: {
 				Authorization: `Bearer ${token}`,
@@ -186,7 +184,7 @@ async function updateCollection(
 	data: { title: string; description: string; isPublic: boolean },
 ): Promise<void> {
 	const response = await fetch(
-		`http://localhost:8000/api/admin/collections/${collectionId}`,
+		`${API_BASE_URL}/api/admin/collections/${collectionId}`,
 		{
 			method: "PUT",
 			headers: {
@@ -207,7 +205,7 @@ async function deleteCollection(
 	collectionId: string,
 ): Promise<void> {
 	const response = await fetch(
-		`http://localhost:8000/api/admin/collections/${collectionId}`,
+		`${API_BASE_URL}/api/admin/collections/${collectionId}`,
 		{
 			method: "DELETE",
 			headers: {
@@ -227,7 +225,7 @@ async function removeQuizFromCollection(
 	quizId: string,
 ): Promise<void> {
 	const response = await fetch(
-		`http://localhost:8000/api/collection/${collectionId}/remove-quiz/${quizId}`,
+		`${API_BASE_URL}/api/collection/${collectionId}/remove-quiz/${quizId}`,
 		{
 			method: "DELETE",
 			headers: {

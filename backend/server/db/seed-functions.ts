@@ -1,5 +1,5 @@
 import { seed } from 'drizzle-seed';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import { getS3File, BUCKETS, type BucketName } from '../lib/s3';
 import { supabaseAdmin } from '../lib/supabase';
@@ -13,6 +13,7 @@ import {
 	questionTypes,
 	accountTypes,
 	bios,
+	vietnameseNames,
 	notificationTypes,
 	generateQuizTitle,
 	generateQuizDescription,
@@ -141,6 +142,78 @@ export const seedFixedUsers = async (db: any) => {
 			})
 			.onConflictDoNothing({ target: schema.users.email });
 	}
+};
+
+export const seedAdminUser = async (db: any) => {
+	const SEED_ADMIN = process.env.SEED_ADMIN;
+	
+	if (!SEED_ADMIN) {
+		console.log('ℹ️  No SEED_ADMIN specified, skipping admin user creation');
+		return;
+	}
+
+	console.log('\n🔑 Creating admin user from SEED_ADMIN...');
+
+	if (!supabaseAdmin) {
+		console.error('❌ Supabase Admin client not configured. Set SUPABASE_SERVICE_ROLE_KEY in .env');
+		console.log('⚠️  Cannot create admin user without Supabase access');
+		return;
+	}
+
+	console.log(`🔍 Looking up Supabase user: ${SEED_ADMIN}`);
+	const { data: supabaseUsers, error } = await supabaseAdmin.auth.admin.listUsers();
+
+	if (error) {
+		console.error('❌ Failed to fetch Supabase users:', error);
+		return;
+	}
+
+	const supabaseUser = supabaseUsers.users.find(
+		(u) => u.email?.toLowerCase() === SEED_ADMIN.toLowerCase()
+	);
+
+	if (!supabaseUser || !supabaseUser.email) {
+		console.error(`❌ User ${SEED_ADMIN} not found in Supabase Auth`);
+		console.log('💡 Tip: Create this user in Supabase first, then run db:seed');
+		return;
+	}
+
+	console.log(`✅ Found Supabase user: ${supabaseUser.email} (UID: ${supabaseUser.id})`);
+
+	const fullName = supabaseUser.user_metadata?.full_name || 
+	                 supabaseUser.user_metadata?.name || 
+	                 'Admin User';
+	const username = SEED_ADMIN.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+
+	const adminUser = {
+		id: supabaseUser.id,
+		email: supabaseUser.email,
+		fullName,
+		username,
+		accountType: 'admin' as const,
+		status: 'active' as const,
+		isSetupComplete: true,
+		bio: 'Platform Administrator',
+		profilePictureUrl: supabaseUser.user_metadata?.avatar_url || 
+		                   supabaseUser.user_metadata?.picture || null,
+	};
+
+	await db
+		.insert(schema.users)
+		.values(adminUser)
+		.onConflictDoUpdate({
+			target: schema.users.id,
+			set: {
+				accountType: 'admin',
+				status: 'active',
+				updatedAt: new Date(),
+			},
+		});
+
+	console.log(`✅ Admin user created/updated: ${supabaseUser.email}`);
+	console.log(`   - User ID: ${supabaseUser.id}`);
+	console.log(`   - Account Type: admin`);
+	console.log(`   - Status: active\n`);
 };
 
 export const seedFixedUsersData = async (db: any) => {
@@ -288,8 +361,8 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		users: {
 			count: SEED_USERS_COUNT,
 			columns: {
-				fullName: f.fullName(),
-				email: f.email(),
+				fullName: f.valuesFromArray({ values: vietnameseNames }),
+				email: f.email({ provider: 'gmail.com' }),
 				username: f.string({ isUnique: true }),
 				dob: f.date({ minDate: '1990-01-01', maxDate: '2005-12-31' }),
 				bio: f.valuesFromArray({ values: bios }),
@@ -302,8 +375,8 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		collections: {
 			count: counts.collections,
 			columns: {
-				title: f.valuesFromArray({ values: categories.map((c) => `${c} Study Pack`) }),
-				description: f.valuesFromArray({ values: categories.map((c) => `Curated ${c} materials and practice sets`) }),
+				title: f.valuesFromArray({ values: categories.map((c) => `Bộ đề ${c}`) }),
+				description: f.valuesFromArray({ values: categories.map((c) => `Tài liệu và bài tập ${c} được tuyển chọn`) }),
 				quizCount: f.int({ minValue: 0, maxValue: 20 }),
 				isPublic: f.boolean(),
 			},
@@ -374,7 +447,7 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		posts: {
 			count: counts.posts,
 			columns: {
-				text: f.valuesFromArray({ values: categories.map((c) => `Sharing a new ${c} quiz – feedback welcome!`) }),
+				text: f.valuesFromArray({ values: categories.map((c) => `Chia sẻ bộ quiz ${c} mới – rất mong nhận phản hồi!`) }),
 				postType: f.valuesFromArray({ values: ['text', 'text', 'text', 'image', 'quiz'] }),
 				imageUrl: undefined,
 				questionType: undefined,
@@ -399,10 +472,53 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		},
 	}));
 
+	// Fix emails to all be @gmail.com for regular users (not employees)
+	console.log('📧 Updating emails and usernames for regular users...');
+	const allUsers = await db.select().from(schema.users);
+	const usedUsernames = new Set<string>();
+	
+	for (const user of allUsers) {
+		// Skip employees (@quizzy.dev) and SEED_USERS
+		if (user.email.endsWith('@quizzy.dev') || SEED_USERS.includes(user.email)) {
+			usedUsernames.add(user.username || '');
+			continue;
+		}
+		
+		// Convert email to gmail.com
+		const emailUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+		const newEmail = `${emailUsername}@gmail.com`;
+		
+		// Generate username from full name (Vietnamese-friendly)
+		// Remove diacritics and convert to lowercase ASCII
+		const nameSlug = user.fullName
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+			.toLowerCase()
+			.replace(/đ/g, 'd') // Replace đ with d
+			.replace(/[^a-z0-9\s]/g, '') // Remove special chars
+			.trim()
+			.replace(/\s+/g, ''); // Remove spaces
+		
+		// Ensure uniqueness by adding numbers if needed
+		let newUsername = nameSlug;
+		let counter = 1;
+		while (usedUsernames.has(newUsername)) {
+			newUsername = `${nameSlug}${counter}`;
+			counter++;
+		}
+		usedUsernames.add(newUsername);
+		
+		await db.update(schema.users).set({ 
+			email: newEmail,
+			username: newUsername 
+		}).where(eq(schema.users.id, user.id));
+	}
+	console.log('✅ Updated emails and usernames');
+
 	const quizzes = await db.select().from(schema.quizzes);
 	for (const q of quizzes) {
-		const title = generateQuizTitle(q.category ?? 'General');
-		const description = generateQuizDescription(q.category ?? 'General');
+		const title = generateQuizTitle(q.category ?? 'Kiến thức chung');
+		const description = generateQuizDescription(q.category ?? 'Kiến thức chung');
 		await db.update(schema.quizzes).set({ title, description }).where(eq(schema.quizzes.id, q.id));
 	}
 
@@ -427,8 +543,8 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 
 	const quizSnapshots = await db.select().from(schema.quizSnapshots);
 	for (const s of quizSnapshots) {
-		const title = generateQuizTitle(s.category ?? 'General');
-		const description = generateQuizDescription(s.category ?? 'General');
+		const title = generateQuizTitle(s.category ?? 'Kiến thức chung');
+		const description = generateQuizDescription(s.category ?? 'Kiến thức chung');
 		await db.update(schema.quizSnapshots).set({ title, description }).where(eq(schema.quizSnapshots.id, s.id));
 	}
 
@@ -459,10 +575,20 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 
 		for (let i = 0; i < commentCount; i++) {
 			const randomUser = users[Math.floor(Math.random() * users.length)];
+			const commentTexts = [
+				'Hay quá! 👍',
+				'Bài quiz rất thú vị',
+				'Cảm ơn bạn đã chia sẻ',
+				'Mình đã học được nhiều điều',
+				'Quiz này khó quá 😅',
+				'Rất hữu ích cho việc học',
+				'Câu hỏi hay và logic',
+				'Chờ bài mới của bạn!',
+			];
 			await db.insert(schema.comments).values({
 				postId: post.id,
 				userId: randomUser.id,
-				content: `Comment ${i + 1} on this post`,
+				content: commentTexts[i % commentTexts.length],
 				likesCount: Math.floor(Math.random() * 10),
 			});
 		}
@@ -472,44 +598,90 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		}
 	}
 
-	if (seedImageUrls?.posts && seedImageUrls.posts.length > 0) {
-		const imagePosts = posts.filter((p: any) => p.postType === 'image');
-		console.log(`  🖼️  Assigning URLs to ${imagePosts.length} image posts...`);
-
-		for (let i = 0; i < imagePosts.length; i++) {
-			const imageUrl = seedImageUrls.posts[i % seedImageUrls.posts.length];
-			await db.update(schema.posts).set({ imageUrl }).where(eq(schema.posts.id, imagePosts[i].id));
+	// Process image posts: assign proper image URLs
+	console.log('  🖼️  Processing image posts...');
+	const imagePosts = posts.filter((p: any) => p.postType === 'image');
+	
+	for (let i = 0; i < imagePosts.length; i++) {
+		const post = imagePosts[i];
+		let imageUrl = null;
+		
+		// Assign actual image URL if available
+		if (seedImageUrls?.posts && seedImageUrls.posts.length > 0) {
+			imageUrl = seedImageUrls.posts[i % seedImageUrls.posts.length];
 		}
+		
+		// Clean up any garbage values
+		await db.update(schema.posts).set({ 
+			imageUrl,
+			questionType: null,
+			questionText: null,
+			questionData: null
+		}).where(eq(schema.posts.id, post.id));
 	}
+	console.log(`  ✅ Processed ${imagePosts.length} image posts`);
 
-	if (seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0) {
-		const quizPosts = posts.filter((p: any) => p.postType === 'quiz');
-		console.log(`  🧩 Assigning URLs to quiz posts with images...`);
-
-		let assignedCount = 0;
-		for (let i = 0; i < quizPosts.length; i++) {
-			if (Math.random() < 0.3) {
-				const imageUrl = seedImageUrls.quizzes[i % seedImageUrls.quizzes.length];
-				await db.update(schema.posts).set({ imageUrl }).where(eq(schema.posts.id, quizPosts[i].id));
-				assignedCount++;
-			}
+	// Process quiz posts: assign proper question data and clean up garbage values
+	console.log('  🧩 Processing quiz posts...');
+	const quizPosts = posts.filter((p: any) => p.postType === 'quiz');
+	
+	for (let i = 0; i < quizPosts.length; i++) {
+		const post = quizPosts[i];
+		
+		// Generate proper question data for quiz posts
+		const questionType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+		const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+		const questionText = generateQuestionText(randomCategory, questionType, i);
+		const questionData = generateQuestionData(questionType);
+		
+		// Assign image URL to 30% of quiz posts
+		let imageUrl = null;
+		if (seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0 && Math.random() < 0.3) {
+			imageUrl = seedImageUrls.quizzes[i % seedImageUrls.quizzes.length];
 		}
-		console.log(`  ✅ Assigned images to ${assignedCount} quiz posts`);
+		
+		await db.update(schema.posts).set({ 
+			imageUrl,
+			questionType: questionType as any,
+			questionText,
+			questionData
+		}).where(eq(schema.posts.id, post.id));
 	}
+	console.log(`  ✅ Processed ${quizPosts.length} quiz posts with proper question data`);
 
-	if (seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0) {
-		console.log(`  📚 Assigning cover images to quizzes...`);
+	// Clean up text posts: ensure no garbage values
+	console.log('  📝 Cleaning up text posts...');
+	const textPosts = posts.filter((p: any) => p.postType === 'text');
+	
+	for (const post of textPosts) {
+		await db.update(schema.posts).set({ 
+			imageUrl: null,
+			questionType: null,
+			questionText: null,
+			questionData: null
+		}).where(eq(schema.posts.id, post.id));
+	}
+	console.log(`  ✅ Cleaned ${textPosts.length} text posts`);
 
-		let assignedQuizCount = 0;
-		for (let i = 0; i < quizzes.length; i++) {
-			if (Math.random() < 0.3) {
-				const imageUrl = seedImageUrls.quizzes[i % seedImageUrls.quizzes.length];
-				await db.update(schema.quizzes).set({ imageUrl }).where(eq(schema.quizzes.id, quizzes[i].id));
-				assignedQuizCount++;
-			}
+	// Clean up and assign quiz cover images
+	console.log('  📚 Processing quiz cover images...');
+	
+	for (let i = 0; i < quizzes.length; i++) {
+		let imageUrl = null;
+		
+		// Assign image to 30% of quizzes
+		if (seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0 && Math.random() < 0.3) {
+			imageUrl = seedImageUrls.quizzes[i % seedImageUrls.quizzes.length];
 		}
-		console.log(`  ✅ Assigned cover images to ${assignedQuizCount} quizzes`);
+		
+		await db.update(schema.quizzes).set({ imageUrl }).where(eq(schema.quizzes.id, quizzes[i].id));
 	}
+	
+	const [quizzesWithImagesCount] = await db
+		.select({ count: sql<number>`cast(count(*) as int)` })
+		.from(schema.quizzes)
+		.where(sql`image_url IS NOT NULL`);
+	console.log(`  ✅ Assigned cover images to ${quizzesWithImagesCount?.count || 0} quizzes`);
 
 	if (seedImageUrls?.profiles && seedImageUrls.profiles.length > 0) {
 		console.log(`  👤 Assigning profile pictures to users...`);

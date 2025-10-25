@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
 	ChevronDown,
 	Plus,
@@ -9,10 +9,12 @@ import {
 	UserPlus,
 	Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StatsCard } from "../../components/admin/StatsCard";
 import { UserActionsMenu } from "../../components/admin/UserActionsMenu";
 import { useAuth } from "../../contexts/AuthContext";
+import { AuthError, apiGet } from "../../lib/api-client";
+import { API_BASE_URL } from "../../lib/constants";
 
 export const Route = createFileRoute("/admin/users")({
 	component: UsersPage,
@@ -39,22 +41,11 @@ interface UserStats {
 	avgCompletion: number;
 }
 
-async function fetchUserStats(token: string): Promise<UserStats> {
-	const response = await fetch("http://localhost:8000/api/admin/users/stats", {
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
-	});
-
-	if (!response.ok) {
-		throw new Error("Failed to fetch user stats");
-	}
-
-	return response.json();
+async function fetchUserStats(): Promise<UserStats> {
+	return apiGet<UserStats>(`${API_BASE_URL}/api/admin/users/stats`);
 }
 
 async function fetchUsers(
-	token: string,
 	search: string,
 	role: string,
 	status: string,
@@ -64,45 +55,61 @@ async function fetchUsers(
 	if (role) params.append("role", role);
 	if (status) params.append("status", status);
 
-	const response = await fetch(
-		`http://localhost:8000/api/admin/users?${params}`,
-		{
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
-		},
+	return apiGet<{ users: User[]; total: number }>(
+		`${API_BASE_URL}/api/admin/users?${params}`,
 	);
-
-	if (!response.ok) {
-		throw new Error("Failed to fetch users");
-	}
-
-	return response.json();
 }
 
 function UsersPage() {
 	const { session } = useAuth();
+	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [roleFilter, setRoleFilter] = useState("");
 	const [statusFilter, setStatusFilter] = useState("");
 
-	const { data: stats } = useQuery({
+	const {
+		data: stats,
+		error: statsError,
+		isError: isStatsError,
+	} = useQuery({
 		queryKey: ["admin", "users", "stats"],
-		queryFn: () => fetchUserStats(session?.access_token || ""),
-		enabled: !!session?.access_token,
+		queryFn: fetchUserStats,
+		enabled: !!session,
+		retry: false,
 	});
 
-	const { data: usersData, isLoading } = useQuery({
+	const {
+		data: usersData,
+		isLoading,
+		error: usersError,
+		isError: isUsersError,
+	} = useQuery({
 		queryKey: ["admin", "users", searchQuery, roleFilter, statusFilter],
-		queryFn: () =>
-			fetchUsers(
-				session?.access_token || "",
-				searchQuery,
-				roleFilter,
-				statusFilter,
-			),
-		enabled: !!session?.access_token,
+		queryFn: () => fetchUsers(searchQuery, roleFilter, statusFilter),
+		enabled: !!session,
+		retry: false,
 	});
+
+	// Redirect to login on auth errors
+	useEffect(() => {
+		if (
+			isStatsError &&
+			statsError instanceof AuthError &&
+			(statsError.status === 401 || statsError.status === 403)
+		) {
+			console.error("[AUTH ERROR] Redirecting to login:", statsError.message);
+			navigate({ to: "/login" });
+		}
+
+		if (
+			isUsersError &&
+			usersError instanceof AuthError &&
+			(usersError.status === 401 || usersError.status === 403)
+		) {
+			console.error("[AUTH ERROR] Redirecting to login:", usersError.message);
+			navigate({ to: "/login" });
+		}
+	}, [isStatsError, statsError, isUsersError, usersError, navigate]);
 
 	const users = usersData?.users || [];
 
@@ -342,7 +349,7 @@ function UsersPage() {
 												{user.quizCount}
 											</td>
 											<td className="px-2 py-4 text-[#cad5e2] text-sm">
-												{user.avgScore.toFixed(1)}%
+												{Number(user.avgScore || 0).toFixed(1)}%
 											</td>
 											<td className="px-2 py-4 text-[#cad5e2] text-sm">
 												{formatDate(user.createdAt)}

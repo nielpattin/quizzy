@@ -168,7 +168,7 @@ adminRoutes.get('/users', async (c) => {
     const usersWithStats = allUsers.map(user => ({
       ...user,
       quizCount: quizCountMap.get(user.id) || 0,
-      avgScore: sessionStatsMap.get(user.id) || 0,
+      avgScore: Number(sessionStatsMap.get(user.id) || 0),
     }))
 
     return c.json({
@@ -620,28 +620,26 @@ adminRoutes.get('/posts/stats', async (c) => {
       .from(posts)
       .where(eq(posts.moderationStatus, 'flagged'))
     
-    const engagementResult = await db
+    // Get total likes and comments for engagement calculation
+    const [engagementData] = await db
       .select({
-        avgEngagement: sql<number>`
-          CASE 
-            WHEN COUNT(*) > 0 
-            THEN CAST(
-              (SUM(${posts.likesCount}) + SUM(${posts.commentsCount})) * 100.0 / 
-              NULLIF(COUNT(*), 0) 
-              AS NUMERIC(5,1)
-            )
-            ELSE 0 
-          END
-        `,
+        totalLikes: sql<number>`cast(coalesce(sum(${posts.likesCount}), 0) as int)`,
+        totalComments: sql<number>`cast(coalesce(sum(${posts.commentsCount}), 0) as int)`,
+        postCount: sql<number>`cast(count(*) as int)`,
       })
       .from(posts)
     
-    const engagementRate = Number(engagementResult[0]?.avgEngagement || 0)
+    // Calculate engagement rate in JavaScript for better control
+    let engagementRate = 0
+    if (engagementData && engagementData.postCount > 0) {
+      const totalEngagement = (engagementData.totalLikes || 0) + (engagementData.totalComments || 0)
+      engagementRate = Number((totalEngagement / engagementData.postCount).toFixed(1))
+    }
 
     return c.json({
       totalPosts: totalPosts?.count || 0,
       pendingReview: pendingReview?.count || 0,
-      engagementRate: Number(engagementRate.toFixed(1)),
+      engagementRate,
       flaggedContent: flaggedContent?.count || 0,
     })
   } catch (error) {
