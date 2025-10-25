@@ -8,7 +8,6 @@ export const BUCKETS = {
   PROFILES: 'user-profiles',
   POSTS: 'post-images',
   QUIZZES: 'quiz-images',
-  DEFAULT: 'quizzy-images'
 } as const
 
 export type BucketName = typeof BUCKETS[keyof typeof BUCKETS]
@@ -57,21 +56,13 @@ export function getMimeTypeFromExtension(filename: string): string {
   return mimeTypes[ext || ''] || 'image/jpeg'
 }
 
-export function getS3File(filename: string, bucket: BucketName = BUCKETS.DEFAULT) {
+export function getS3File(filename: string, bucket: BucketName = BUCKETS.QUIZZES) {
   const credentials = {
     bucket,
-    accessKeyId: Bun.env.S3_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY_ID,
-    secretAccessKey: Bun.env.S3_SECRET_ACCESS_KEY || process.env.S3_SECRET_ACCESS_KEY,
-    endpoint: Bun.env.S3_ENDPOINT || process.env.S3_ENDPOINT,
+    accessKeyId: Bun.env.S3_ACCESS_KEY_ID,
+    secretAccessKey: Bun.env.S3_SECRET_ACCESS_KEY,
+    endpoint: Bun.env.S3_ENDPOINT,
   }
-  
-  console.log('🔑 S3 Credentials check:', {
-    hasAccessKey: !!credentials.accessKeyId,
-    hasSecretKey: !!credentials.secretAccessKey,
-    hasEndpoint: !!credentials.endpoint,
-    hasBucket: !!credentials.bucket,
-    endpoint: credentials.endpoint
-  })
   
   if (!credentials.accessKeyId || !credentials.secretAccessKey || !credentials.endpoint) {
     throw new Error('Missing S3 credentials in environment variables')

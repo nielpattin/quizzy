@@ -18,6 +18,8 @@ export const accountTypeEnum = pgEnum('account_type', ['admin', 'employee', 'use
 
 export const statusEnum = pgEnum('status', ['active', 'inactive']);
 
+export const searchFilterTypeEnum = pgEnum('search_filter_type', ['quiz', 'user', 'collection', 'post']);
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
@@ -157,15 +159,15 @@ export const gameSessionParticipants = pgTable('game_session_participants', {
   index('game_session_participants_user_id_idx').on(table.userId),
 ]);
 
-export const savedQuizzes = pgTable('saved_quizzes', {
+export const favoriteQuizzes = pgTable('favorite_quizzes', {
    id: uuid('id').primaryKey().defaultRandom(),
    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-   quizSnapshotId: uuid('quiz_snapshot_id').notNull().references(() => quizSnapshots.id, { onDelete: 'cascade' }),
-   savedAt: timestamp('saved_at', { withTimezone: true }).defaultNow().notNull(),
+   quizId: uuid('quiz_id').notNull().references(() => quizzes.id, { onDelete: 'cascade' }),
+   favoritedAt: timestamp('favorited_at', { withTimezone: true }).defaultNow().notNull(),
  }, (table) => [
-   index('saved_quizzes_user_id_idx').on(table.userId),
-   index('saved_quizzes_quiz_snapshot_id_idx').on(table.quizSnapshotId),
-   index('saved_quizzes_user_id_quiz_snapshot_id_idx').on(table.userId, table.quizSnapshotId),
+   index('favorite_quizzes_user_id_idx').on(table.userId),
+   index('favorite_quizzes_quiz_id_idx').on(table.quizId),
+   unique('favorite_quizzes_user_quiz_unique').on(table.userId, table.quizId),
  ]);
 
 export const postLikes = pgTable('post_likes', {
@@ -235,7 +237,7 @@ export const images = pgTable('images', {
   originalName: text('original_name').notNull(),
   mimeType: text('mime_type').notNull(),
   size: integer('size').notNull(),
-  bucket: text('bucket').notNull().default('quizzy-images'),
+  bucket: text('bucket').notNull().default('quiz-images'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
@@ -304,7 +306,7 @@ export const notifications = pgTable('notifications', {
 //   quizzes: many(quizzes),
 //   collections: many(collections),
 //   hostedSessions: many(gameSessions),
-//   savedQuizzes: many(savedQuizzes),
+//   favoriteQuizzes: many(favoriteQuizzes),
 //   posts: many(posts),
 //   followers: many(follows, { relationName: 'following' }),
 //   following: many(follows, { relationName: 'follower' }),
@@ -348,7 +350,6 @@ export const quizSnapshotsRelations = relations(quizSnapshots, ({ one, many }) =
    }),
    questions: many(questionsSnapshots),
    gameSessions: many(gameSessions),
-   savedBy: many(savedQuizzes),
  }));
 
 export const questionsSnapshotsRelations = relations(questionsSnapshots, ({ one, many }) => ({
@@ -384,14 +385,14 @@ export const gameSessionParticipantsRelations = relations(gameSessionParticipant
   questionTimings: many(questionTimings),
 }));
 
-export const savedQuizzesRelations = relations(savedQuizzes, ({ one }) => ({
+export const favoriteQuizzesRelations = relations(favoriteQuizzes, ({ one }) => ({
    user: one(users, {
-     fields: [savedQuizzes.userId],
+     fields: [favoriteQuizzes.userId],
      references: [users.id],
    }),
-   quizSnapshot: one(quizSnapshots, {
-     fields: [savedQuizzes.quizSnapshotId],
-     references: [quizSnapshots.id],
+   quiz: one(quizzes, {
+     fields: [favoriteQuizzes.quizId],
+     references: [quizzes.id],
    }),
  }));
 
@@ -509,3 +510,14 @@ export const postReportsRelations = relations(postReports, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const searchHistory = pgTable('search_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  query: text('query').notNull(),
+  filterType: searchFilterTypeEnum('filter_type'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('search_history_user_id_idx').on(table.userId),
+  index('search_history_created_at_idx').on(table.createdAt),
+]);

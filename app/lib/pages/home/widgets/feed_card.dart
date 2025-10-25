@@ -6,6 +6,7 @@ import "../../../widgets/user_avatar.dart";
 class FeedCard extends StatefulWidget {
   final String postId;
   final String author;
+  final String? username;
   final String? profilePictureUrl;
   final String text;
   final PostType postType;
@@ -16,6 +17,9 @@ class FeedCard extends StatefulWidget {
   final int comments;
   final bool isLiked;
   final bool isOwner;
+  final String authorId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
   final VoidCallback onLike;
   final VoidCallback? onTap;
   final VoidCallback? onComment;
@@ -27,6 +31,7 @@ class FeedCard extends StatefulWidget {
     super.key,
     required this.postId,
     required this.author,
+    this.username,
     this.profilePictureUrl,
     required this.text,
     this.postType = PostType.text,
@@ -37,6 +42,9 @@ class FeedCard extends StatefulWidget {
     required this.comments,
     required this.isLiked,
     this.isOwner = false,
+    required this.authorId,
+    required this.createdAt,
+    required this.updatedAt,
     required this.onLike,
     this.onTap,
     this.onComment,
@@ -92,6 +100,72 @@ class _FeedCardState extends State<FeedCard>
     }
   }
 
+  void _showPostInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Post Information'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildInfoRow('Post ID', widget.postId),
+              _buildInfoRow('Post Type', widget.postType.toJson()),
+              if (widget.imageUrl != null)
+                _buildInfoRow('Image URL', widget.imageUrl!, isUrl: true),
+              if (widget.postType == PostType.quiz &&
+                  widget.questionText != null)
+                _buildInfoRow('Question', widget.questionText!),
+              _buildInfoRow('Author ID', widget.authorId),
+              _buildInfoRow('Author Name', widget.author),
+              if (widget.username != null)
+                _buildInfoRow('Username', '@${widget.username}'),
+              _buildInfoRow('Likes', widget.likes.toString()),
+              _buildInfoRow('Comments', widget.comments.toString()),
+              _buildInfoRow(
+                'Created At',
+                widget.createdAt.toLocal().toString().split('.')[0],
+              ),
+              _buildInfoRow(
+                'Updated At',
+                widget.updatedAt.toLocal().toString().split('.')[0],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, {bool isUrl = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(fontSize: 13, color: isUrl ? Colors.blue : null),
+            maxLines: isUrl ? 2 : null,
+            overflow: isUrl ? TextOverflow.ellipsis : null,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -112,23 +186,50 @@ class _FeedCardState extends State<FeedCard>
                   UserAvatar(imageUrl: widget.profilePictureUrl, radius: 20),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      widget.author,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.author,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (widget.username != null)
+                          Text(
+                            '@${widget.username}',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 14,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  if (widget.isOwner && widget.onDelete != null)
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'delete') {
-                          widget.onDelete!();
-                        }
-                      },
-                      itemBuilder: (context) => [
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'info') {
+                        _showPostInfo(context);
+                      } else if (value == 'delete') {
+                        widget.onDelete!();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'info',
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 20),
+                            SizedBox(width: 8),
+                            Text('Post Info'),
+                          ],
+                        ),
+                      ),
+                      if (widget.isOwner && widget.onDelete != null)
                         const PopupMenuItem(
                           value: 'delete',
                           child: Row(
@@ -142,14 +243,14 @@ class _FeedCardState extends State<FeedCard>
                             ],
                           ),
                         ),
-                      ],
-                      icon: Icon(
-                        Icons.more_vert,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
+                    ],
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
+                  ),
                 ],
               ),
             ),

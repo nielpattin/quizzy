@@ -327,6 +327,7 @@ class _FeedyTabState extends State<FeedyTab> {
                   child: FeedCard(
                     postId: post.id,
                     author: post.user.fullName ?? "Unknown",
+                    username: post.user.username,
                     profilePictureUrl: post.user.profilePictureUrl,
                     text: post.text,
                     postType: post.postType,
@@ -337,6 +338,9 @@ class _FeedyTabState extends State<FeedyTab> {
                     comments: post.commentsCount,
                     isLiked: post.isLiked,
                     isOwner: isOwner,
+                    authorId: post.user.id,
+                    createdAt: post.createdAt,
+                    updatedAt: post.updatedAt,
                     onLike: () => _toggleLike(post.id, post.isLiked),
                     onComment: () {
                       context.push("/post/details", extra: post.id);

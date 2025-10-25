@@ -45,7 +45,7 @@ uploadRoutes.post('/image', authMiddleware, async (c) => {
       originalName: file.name,
       mimeType: mimeType,
       size: file.size,
-      bucket: BUCKETS.DEFAULT
+      bucket: BUCKETS.QUIZZES
     }).returning()
 
     const url = s3File.presign({

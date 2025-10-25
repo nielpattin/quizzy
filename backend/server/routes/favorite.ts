@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { authMiddleware } from '@/middleware/auth'
 import type { AuthContext } from '@/middleware/auth'
 import { db } from '@/db'
-import { savedQuizzes, quizSnapshots, quizzes, questions, questionsSnapshots } from '@/db/schema'
+import { favoriteQuizzes, quizzes } from '@/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 
 type Variables = {
@@ -10,6 +10,59 @@ type Variables = {
 }
 
 const favoriteRoutes = new Hono<{ Variables: Variables }>()
+
+favoriteRoutes.post('/', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const body = await c.req.json()
+  const quizId = body.quizId
+
+  if (!quizId) {
+    return c.json({ error: 'quizId is required' }, 400)
+  }
+
+  try {
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(and(eq(quizzes.id, quizId), eq(quizzes.isDeleted, false)))
+
+    if (!quiz) {
+      return c.json({ error: 'Quiz not found' }, 404)
+    }
+
+    const [existingFavorite] = await db
+      .select()
+      .from(favoriteQuizzes)
+      .where(and(
+        eq(favoriteQuizzes.userId, userId),
+        eq(favoriteQuizzes.quizId, quizId)
+      ))
+
+    if (existingFavorite) {
+      return c.json({ message: 'Quiz already favorited' }, 200)
+    }
+
+    const [newFavorite] = await db
+      .insert(favoriteQuizzes)
+      .values({
+        userId,
+        quizId,
+      })
+      .returning()
+
+    await db
+      .update(quizzes)
+      .set({
+        favoriteCount: quiz.favoriteCount + 1,
+      })
+      .where(eq(quizzes.id, quizId))
+
+    return c.json(newFavorite, 201)
+  } catch (error) {
+    console.error('Error favoriting quiz:', error)
+    return c.json({ error: 'Failed to favorite quiz' }, 500)
+  }
+})
 
 favoriteRoutes.post('/:quizId', authMiddleware, async (c) => {
   const { userId } = c.get('user') as AuthContext
@@ -25,70 +78,23 @@ favoriteRoutes.post('/:quizId', authMiddleware, async (c) => {
       return c.json({ error: 'Quiz not found' }, 404)
     }
 
-    const [latestSnapshot] = await db
-      .select()
-      .from(quizSnapshots)
-      .where(eq(quizSnapshots.quizId, quizId))
-      .orderBy(desc(quizSnapshots.version))
-      .limit(1)
-
-    let snapshotId: string
-
-    if (latestSnapshot) {
-      snapshotId = latestSnapshot.id
-    } else {
-      const [newSnapshot] = await db
-        .insert(quizSnapshots)
-        .values({
-          quizId: quiz.id,
-          version: quiz.version,
-          title: quiz.title,
-          description: quiz.description,
-          category: quiz.category,
-          questionCount: quiz.questionCount,
-        })
-        .returning()
-
-      snapshotId = newSnapshot.id
-
-      const quizQuestions = await db
-        .select()
-        .from(questions)
-        .where(eq(questions.quizId, quiz.id))
-        .orderBy(questions.orderIndex)
-
-      if (quizQuestions.length > 0) {
-        const snapshotQuestions = quizQuestions.map(q => ({
-          snapshotId: newSnapshot.id,
-          type: q.type,
-          questionText: q.questionText,
-          data: q.data,
-          orderIndex: q.orderIndex,
-        }))
-
-        await db
-          .insert(questionsSnapshots)
-          .values(snapshotQuestions)
-      }
-    }
-
     const [existingFavorite] = await db
       .select()
-      .from(savedQuizzes)
+      .from(favoriteQuizzes)
       .where(and(
-        eq(savedQuizzes.userId, userId),
-        eq(savedQuizzes.quizSnapshotId, snapshotId)
+        eq(favoriteQuizzes.userId, userId),
+        eq(favoriteQuizzes.quizId, quizId)
       ))
 
     if (existingFavorite) {
-      return c.json({ message: 'Quiz already saved' }, 200)
+      return c.json({ message: 'Quiz already favorited' }, 200)
     }
 
     const [newFavorite] = await db
-      .insert(savedQuizzes)
+      .insert(favoriteQuizzes)
       .values({
         userId,
-        quizSnapshotId: snapshotId,
+        quizId,
       })
       .returning()
 
@@ -101,8 +107,8 @@ favoriteRoutes.post('/:quizId', authMiddleware, async (c) => {
 
     return c.json(newFavorite, 201)
   } catch (error) {
-    console.error('Error saving quiz:', error)
-    return c.json({ error: 'Failed to save quiz' }, 500)
+    console.error('Error favoriting quiz:', error)
+    return c.json({ error: 'Failed to favorite quiz' }, 500)
   }
 })
 
@@ -111,34 +117,23 @@ favoriteRoutes.delete('/:quizId', authMiddleware, async (c) => {
   const quizId = c.req.param('quizId')
 
   try {
-    const snapshots = await db
-      .select()
-      .from(quizSnapshots)
-      .where(eq(quizSnapshots.quizId, quizId))
-
-    const snapshotIds = snapshots.map(s => s.id)
-
-    if (snapshotIds.length === 0) {
-      return c.json({ error: 'Quiz not found' }, 404)
-    }
-
     const [existingFavorite] = await db
       .select()
-      .from(savedQuizzes)
+      .from(favoriteQuizzes)
       .where(and(
-        eq(savedQuizzes.userId, userId),
-        eq(savedQuizzes.quizSnapshotId, snapshotIds[0])
+        eq(favoriteQuizzes.userId, userId),
+        eq(favoriteQuizzes.quizId, quizId)
       ))
 
     if (!existingFavorite) {
-      return c.json({ error: 'Quiz not saved' }, 404)
+      return c.json({ error: 'Quiz not favorited' }, 404)
     }
 
     await db
-      .delete(savedQuizzes)
+      .delete(favoriteQuizzes)
       .where(and(
-        eq(savedQuizzes.userId, userId),
-        eq(savedQuizzes.quizSnapshotId, existingFavorite.quizSnapshotId)
+        eq(favoriteQuizzes.userId, userId),
+        eq(favoriteQuizzes.quizId, quizId)
       ))
 
     const [quiz] = await db
@@ -155,10 +150,10 @@ favoriteRoutes.delete('/:quizId', authMiddleware, async (c) => {
         .where(eq(quizzes.id, quizId))
     }
 
-    return c.json({ message: 'Quiz unsaved successfully' })
+    return c.json({ message: 'Favorite removed successfully' })
   } catch (error) {
-    console.error('Error unsaving quiz:', error)
-    return c.json({ error: 'Failed to unsave quiz' }, 500)
+    console.error('Error removing favorite:', error)
+    return c.json({ error: 'Failed to remove favorite' }, 500)
   }
 })
 
@@ -168,23 +163,14 @@ favoriteRoutes.get('/', authMiddleware, async (c) => {
   try {
     const favorites = await db
       .select({
-        id: savedQuizzes.id,
-        savedAt: savedQuizzes.savedAt,
-        quiz: {
-          id: quizSnapshots.quizId,
-          title: quizSnapshots.title,
-          description: quizSnapshots.description,
-          category: quizSnapshots.category,
-          questionCount: quizSnapshots.questionCount,
-          playCount: quizzes.playCount,
-          createdAt: quizSnapshots.createdAt,
-        },
+        id: favoriteQuizzes.id,
+        favoritedAt: favoriteQuizzes.favoritedAt,
+        quiz: quizzes,
       })
-      .from(savedQuizzes)
-      .leftJoin(quizSnapshots, eq(savedQuizzes.quizSnapshotId, quizSnapshots.id))
-      .leftJoin(quizzes, eq(quizSnapshots.quizId, quizzes.id))
-      .where(eq(savedQuizzes.userId, userId))
-      .orderBy(desc(savedQuizzes.savedAt))
+      .from(favoriteQuizzes)
+      .innerJoin(quizzes, eq(favoriteQuizzes.quizId, quizzes.id))
+      .where(eq(favoriteQuizzes.userId, userId))
+      .orderBy(desc(favoriteQuizzes.favoritedAt))
 
     return c.json(favorites)
   } catch (error) {
@@ -198,26 +184,15 @@ favoriteRoutes.get('/check/:quizId', authMiddleware, async (c) => {
   const quizId = c.req.param('quizId')
 
   try {
-    const snapshots = await db
-      .select()
-      .from(quizSnapshots)
-      .where(eq(quizSnapshots.quizId, quizId))
-
-    const snapshotIds = snapshots.map(s => s.id)
-
-    if (snapshotIds.length === 0) {
-      return c.json({ isSaved: false })
-    }
-
     const [existingFavorite] = await db
       .select()
-      .from(savedQuizzes)
+      .from(favoriteQuizzes)
       .where(and(
-        eq(savedQuizzes.userId, userId),
-        eq(savedQuizzes.quizSnapshotId, snapshotIds[0])
+        eq(favoriteQuizzes.userId, userId),
+        eq(favoriteQuizzes.quizId, quizId)
       ))
 
-    return c.json({ isSaved: !!existingFavorite })
+    return c.json({ isFavorited: !!existingFavorite })
   } catch (error) {
     console.error('Error checking favorite status:', error)
     return c.json({ error: 'Failed to check favorite status' }, 500)

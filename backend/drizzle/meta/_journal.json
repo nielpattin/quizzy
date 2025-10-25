@@ -5,85 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1760377695674,
-      "tag": "0000_omniscient_gamora",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1760852401080,
-      "tag": "0001_ambitious_giant_girl",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1760947188766,
-      "tag": "0002_mute_spyke",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1760956018770,
-      "tag": "0003_glamorous_spiral",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1760977094036,
-      "tag": "0004_aberrant_talos",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1761126671101,
-      "tag": "0005_certain_namor",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1761142759757,
-      "tag": "0006_young_titanium_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1761205052434,
-      "tag": "0007_wonderful_screwball",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1761285689593,
-      "tag": "0008_chief_johnny_blaze",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1761285899805,
-      "tag": "0009_mushy_dagger",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1761291308263,
-      "tag": "0010_greedy_greymalkin",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1761304002664,
-      "tag": "0011_red_screwball",
+      "when": 1761325784833,
+      "tag": "0000_fair_lily_hollister",
       "breakpoints": true
     }
   ]
