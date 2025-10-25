@@ -41,6 +41,16 @@ export const users = pgTable('users', {
   index('users_username_idx').on(table.username),
 ]);
 
+export const categories = pgTable('categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+  slug: text('slug').notNull().unique(),
+  description: text('description'),
+  imageUrl: text('image_url'),
+}, (table) => [
+  index('categories_slug_idx').on(table.slug),
+]);
+
 export const collections = pgTable('collections', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -59,9 +69,9 @@ export const quizzes = pgTable('quizzes', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   collectionId: uuid('collection_id').references(() => collections.id, { onDelete: 'set null' }),
+  categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
   description: text('description'),
-  category: text('category'),
   imageUrl: text('image_url'),
   questionCount: integer('question_count').notNull().default(0),
   playCount: integer('play_count').notNull().default(0),
@@ -77,7 +87,7 @@ export const quizzes = pgTable('quizzes', {
 }, (table) => [
   index('quizzes_user_id_idx').on(table.userId),
   index('quizzes_collection_id_idx').on(table.collectionId),
-  index('quizzes_category_idx').on(table.category),
+  index('quizzes_category_id_idx').on(table.categoryId),
   index('quizzes_is_deleted_idx').on(table.isDeleted),
 ]);
 
@@ -116,7 +126,6 @@ export const quizSnapshots = pgTable('quiz_snapshots', {
   version: integer('version').notNull(),
   title: text('title').notNull(),
   description: text('description'),
-  category: text('category'),
   questionCount: integer('question_count').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [

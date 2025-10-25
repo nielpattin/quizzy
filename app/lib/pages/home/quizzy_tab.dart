@@ -39,6 +39,7 @@ class _QuizzyTabState extends State<QuizzyTab>
   Future<Map<String, dynamic>> _loadData() async {
     final featured = await ApiService.getFeaturedQuizzes();
     final trending = await ApiService.getTrendingQuizzes();
+    final categories = await ApiService.getCategories();
     final userId = Supabase.instance.client.auth.currentUser?.id;
 
     List<dynamic> continuePlaying = [];
@@ -53,22 +54,11 @@ class _QuizzyTabState extends State<QuizzyTab>
       }
     }
 
-    final topics = [
-      {"label": "Science", "icon": "science"},
-      {"label": "History", "icon": "history"},
-      {"label": "Geography", "icon": "geography"},
-      {"label": "Technology", "icon": "technology"},
-      {"label": "Sports", "icon": "sports"},
-      {"label": "Music", "icon": "music"},
-      {"label": "Art", "icon": "art"},
-      {"label": "Business", "icon": "business"},
-    ];
-
     return {
       'featured': featured,
       'trending': trending,
       'continuePlaying': continuePlaying,
-      'topics': topics,
+      'categories': categories,
     };
   }
 
@@ -77,33 +67,6 @@ class _QuizzyTabState extends State<QuizzyTab>
     setState(() {
       _dataFuture = _loadData();
     });
-  }
-
-  IconData _getIconFromString(String iconName) {
-    switch (iconName) {
-      case "school":
-        return Icons.school;
-      case "games":
-        return Icons.games;
-      case "business":
-        return Icons.business;
-      case "science":
-        return Icons.science;
-      case "sports":
-        return Icons.sports_soccer;
-      case "music":
-        return Icons.music_note;
-      case "art":
-        return Icons.palette;
-      case "history":
-        return Icons.history_edu;
-      case "geography":
-        return Icons.public;
-      case "technology":
-        return Icons.computer;
-      default:
-        return Icons.category;
-    }
   }
 
   @override
@@ -134,7 +97,7 @@ class _QuizzyTabState extends State<QuizzyTab>
         final featured = data['featured'] as List<dynamic>? ?? [];
         final trending = data['trending'] as List<dynamic>? ?? [];
         final continuePlaying = data['continuePlaying'] as List<dynamic>? ?? [];
-        final topics = data['topics'] as List<dynamic>? ?? [];
+        final categories = data['categories'] as List<dynamic>? ?? [];
 
         return RefreshIndicator(
           onRefresh: _refresh,
@@ -224,7 +187,7 @@ class _QuizzyTabState extends State<QuizzyTab>
                   ),
                 SizedBox(height: 32),
                 Text(
-                  "Browse Topics",
+                  "Browse Categories",
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 22,
@@ -236,17 +199,17 @@ class _QuizzyTabState extends State<QuizzyTab>
                   height: 100,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: topics.length,
+                    itemCount: categories.length,
                     separatorBuilder: (context, index) => SizedBox(width: 12),
                     itemBuilder: (context, index) {
-                      final topic = topics[index];
+                      final category = categories[index];
                       return SizedBox(
                         width: 120,
                         child: TopicCard(
-                          label: topic["label"],
-                          icon: _getIconFromString(topic["icon"]),
+                          label: category["name"] ?? "Unknown",
+                          imageUrl: category["imageUrl"],
                           onTap: () =>
-                              context.push("/category/${topic["label"]}"),
+                              context.push("/category/${category["name"]}"),
                         ),
                       );
                     },
@@ -298,7 +261,7 @@ class _QuizzyTabState extends State<QuizzyTab>
                       return TrendingCard(
                         title: item["title"] ?? "Untitled",
                         author: user?["fullName"] ?? "Unknown",
-                        category: item["category"] ?? "General",
+                        category: item["category"]?["name"] ?? "General",
                         count: item["questionCount"] ?? 0,
                         isSessions: item["isSessions"] ?? false,
                         quizId: item["id"]?.toString() ?? "1",
@@ -350,7 +313,7 @@ class _QuizzyTabState extends State<QuizzyTab>
                     child: ContinuePlayingItem(
                       title: quiz?["title"] ?? "Untitled",
                       author: user?["fullName"] ?? "Unknown",
-                      category: quiz?["category"] ?? "General",
+                      category: quiz?["category"]?["name"] ?? "General",
                       count: quiz?["playCount"] ?? 0,
                     ),
                   );

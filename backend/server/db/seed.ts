@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from './schema';
 import { SEED_USERS, SEED_USERS_COUNT, getRegularUserCounts } from './seed-data';
+import { INITIAL_CATEGORIES } from './seed-categories';
 import {
 	uploadAllSeedImages,
 	seedAdminUser,
@@ -20,6 +21,7 @@ if (!DATABASE_URL) {
 }
 
 const seedSchema = {
+	categories: schema.categories,
 	users: schema.users,
 	collections: schema.collections,
 	quizzes: schema.quizzes,
@@ -50,6 +52,17 @@ const main = async () => {
 
 	const startTime = Date.now();
 
+	// Seed categories FIRST
+	console.log('📝 Seeding categories...');
+	const insertedCategories = await db.insert(schema.categories).values(INITIAL_CATEGORIES).returning();
+	console.log(`✅ Seeded ${insertedCategories.length} categories`);
+
+	// Create a map for category lookup
+	const categoryMap = new Map<string, string>();
+	for (const category of insertedCategories) {
+		categoryMap.set(category.name, category.id);
+	}
+
 	await seedAdminUser(db);
 	await seedFixedUsers(db);
 	await seedSpecificUsers(db);
@@ -65,13 +78,13 @@ const main = async () => {
 	const totalUsers = SEED_USERS_COUNT + SEED_USERS.length;
 	const regularCounts = getRegularUserCounts(totalUsers);
 
-	await seedRegularUsers(db, seedImageUrls);
-	await seedFixedUsersData(db);
+	await seedRegularUsers(db, seedImageUrls, categoryMap);
+	await seedFixedUsersData(db, categoryMap);
 
 	const endTime = Date.now();
 	const duration = ((endTime - startTime) / 1000).toFixed(2);
 
-	const totalRecords = Object.values(regularCounts).reduce((a, b) => a + b, 0);
+	const totalRecords = Object.values(regularCounts).reduce((a, b) => a + b, 0) + insertedCategories.length;
 	console.log(`✅ Seeded ${totalRecords} records in ${duration}s`);
 
 	await client.end();

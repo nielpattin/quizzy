@@ -9,7 +9,6 @@ import {
 	SEED_USERS,
 	SEED_USERS_COUNT,
 	SEED_COMMENTS_COUNT_PER_POST,
-	categories,
 	questionTypes,
 	accountTypes,
 	bios,
@@ -216,7 +215,7 @@ export const seedAdminUser = async (db: any) => {
 	console.log(`   - Status: active\n`);
 };
 
-export const seedFixedUsersData = async (db: any) => {
+export const seedFixedUsersData = async (db: any, categoryMap?: Map<string, string>) => {
 	console.log('🔧 Seeding collections and saved quizzes for fixed users...');
 
 	for (const fixedUserConfig of FIXED_USER_COLLECTIONS) {
@@ -354,8 +353,11 @@ const seedSchemaDef = {
 	notifications: schema.notifications,
 };
 
-export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) => {
+export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls, categoryMap?: Map<string, string>) => {
 	const counts = getRegularUserCounts(SEED_USERS_COUNT);
+	
+	// Get all category IDs for random assignment
+	const categoryIds = categoryMap ? Array.from(categoryMap.values()) : [];
 
 	await seed(db, seedSchemaDef, { count: 10 }).refine((f) => ({
 		users: {
@@ -375,8 +377,8 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		collections: {
 			count: counts.collections,
 			columns: {
-				title: f.valuesFromArray({ values: categories.map((c) => `Bộ đề ${c}`) }),
-				description: f.valuesFromArray({ values: categories.map((c) => `Tài liệu và bài tập ${c} được tuyển chọn`) }),
+				title: f.loremIpsum({ sentencesCount: 2 }),
+				description: f.loremIpsum({ sentencesCount: 3 }),
 				quizCount: f.int({ minValue: 0, maxValue: 20 }),
 				isPublic: f.boolean(),
 			},
@@ -385,9 +387,10 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 			count: counts.quizzes,
 			columns: {
 				collectionId: undefined,
+				categoryId: categoryIds.length > 0 ? f.valuesFromArray({ values: categoryIds }) : undefined,
 				title: f.loremIpsum({ sentencesCount: 1 }),
 				description: f.loremIpsum({ sentencesCount: 2 }),
-				category: f.valuesFromArray({ values: categories }),
+				category: undefined,
 				questionCount: f.int({ minValue: 5, maxValue: 30 }),
 				playCount: f.int({ minValue: 0, maxValue: 5000 }),
 				favoriteCount: f.int({ minValue: 0, maxValue: 500 }),
@@ -413,7 +416,7 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 				version: f.int({ minValue: 1, maxValue: 5 }),
 				title: f.loremIpsum({ sentencesCount: 1 }),
 				description: f.loremIpsum({ sentencesCount: 2 }),
-				category: f.valuesFromArray({ values: categories }),
+				category: undefined,
 				questionCount: f.int({ minValue: 5, maxValue: 50 }),
 			},
 		},
@@ -447,7 +450,7 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		posts: {
 			count: counts.posts,
 			columns: {
-				text: f.valuesFromArray({ values: categories.map((c) => `Chia sẻ bộ quiz ${c} mới – rất mong nhận phản hồi!`) }),
+				text: f.loremIpsum({ sentencesCount: 2 }),
 				postType: f.valuesFromArray({ values: ['text', 'text', 'text', 'image', 'quiz'] }),
 				imageUrl: undefined,
 				questionType: undefined,
@@ -515,10 +518,39 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 	}
 	console.log('✅ Updated emails and usernames');
 
+	// Create reverse map: categoryId -> categoryName
+	const categoryIdToName = new Map<string, string>();
+	if (categoryMap) {
+		for (const [name, id] of categoryMap.entries()) {
+			categoryIdToName.set(id, name);
+		}
+	}
+
+	// Map English category names to Vietnamese for title generation
+	const categoryNameMap: Record<string, string> = {
+		'General Knowledge': 'Kiến thức chung',
+		'Science': 'Khoa học',
+		'Math': 'Toán học',
+		'History': 'Lịch sử',
+		'Geography': 'Địa lý',
+		'Literature': 'Văn học',
+		'Music': 'Âm nhạc',
+		'Movies': 'Phim ảnh',
+		'Sports': 'Thể thao',
+		'Technology': 'Công nghệ',
+		'Programming': 'Lập trình',
+		'Art': 'Nghệ thuật',
+		'Other': 'Khác',
+	};
+
+	// Fetch quizzes with their category IDs
 	const quizzes = await db.select().from(schema.quizzes);
 	for (const q of quizzes) {
-		const title = generateQuizTitle(q.category ?? 'Kiến thức chung');
-		const description = generateQuizDescription(q.category ?? 'Kiến thức chung');
+		// Get category name from categoryId, fallback to 'Kiến thức chung'
+		const englishCategoryName = q.categoryId ? categoryIdToName.get(q.categoryId) ?? 'General Knowledge' : 'General Knowledge';
+		const vietnameseCategoryName = categoryNameMap[englishCategoryName] || 'Kiến thức chung';
+		const title = generateQuizTitle(vietnameseCategoryName);
+		const description = generateQuizDescription(vietnameseCategoryName);
 		await db.update(schema.quizzes).set({ title, description }).where(eq(schema.quizzes.id, q.id));
 	}
 
@@ -531,8 +563,17 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		})
 		.from(schema.questions);
 
+	// Build quiz map with Vietnamese category names
 	const quizMap = new Map<string, { category: string | null }>();
-	for (const q of quizzes) quizMap.set(q.id, { category: q.category ?? null });
+	for (const q of quizzes) {
+		if (q.categoryId) {
+			const englishName = categoryIdToName.get(q.categoryId) ?? null;
+			const vietnameseName = englishName ? categoryNameMap[englishName] ?? null : null;
+			quizMap.set(q.id, { category: vietnameseName });
+		} else {
+			quizMap.set(q.id, { category: null });
+		}
+	}
 
 	for (const qs of questions) {
 		const meta = quizMap.get(qs.quizId);
@@ -543,8 +584,10 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 
 	const quizSnapshots = await db.select().from(schema.quizSnapshots);
 	for (const s of quizSnapshots) {
-		const title = generateQuizTitle(s.category ?? 'Kiến thức chung');
-		const description = generateQuizDescription(s.category ?? 'Kiến thức chung');
+		// Note: quizSnapshots.category is being deprecated, but kept for backwards compatibility
+		// We'll just use a default category name here
+		const title = generateQuizTitle('Kiến thức chung');
+		const description = generateQuizDescription('Kiến thức chung');
 		await db.update(schema.quizSnapshots).set({ title, description }).where(eq(schema.quizSnapshots.id, s.id));
 	}
 
@@ -558,7 +601,7 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		.from(schema.questionsSnapshots);
 
 	const snapMap = new Map<string, { category: string | null }>();
-	for (const s of quizSnapshots) snapMap.set(s.id, { category: s.category ?? null });
+	for (const s of quizSnapshots) snapMap.set(s.id, { category: null });
 
 	for (const qs of questionSnapshots) {
 		const meta = snapMap.get(qs.snapshotId);
@@ -630,8 +673,7 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls) =
 		
 		// Generate proper question data for quiz posts
 		const questionType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
-		const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-		const questionText = generateQuestionText(randomCategory, questionType, i);
+		const questionText = generateQuestionText(null, questionType, i);
 		const questionData = generateQuestionData(questionType);
 		
 		// Assign image URL to 30% of quiz posts

@@ -29,7 +29,7 @@ searchRoutes.get('/quizzes', async (c) => {
     }
 
     if (category) {
-      conditions.push(eq(quizzes.category, category))
+      conditions.push(eq(categories.name, category))
     }
 
     const results = await db
@@ -37,7 +37,7 @@ searchRoutes.get('/quizzes', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: categories.name,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
         favoriteCount: quizzes.favoriteCount,
@@ -51,6 +51,7 @@ searchRoutes.get('/quizzes', async (c) => {
       })
       .from(quizzes)
       .leftJoin(users, eq(quizzes.userId, users.id))
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(and(...conditions))
       .orderBy(desc(quizzes.playCount))
       .limit(limit)
@@ -214,13 +215,14 @@ searchRoutes.get('/', async (c) => {
           id: quizzes.id,
           title: quizzes.title,
           description: quizzes.description,
-          category: quizzes.category,
+          category: categories.name,
           questionCount: quizzes.questionCount,
           playCount: quizzes.playCount,
           favoriteCount: quizzes.favoriteCount,
           createdAt: quizzes.createdAt,
         })
         .from(quizzes)
+        .leftJoin(categories, eq(quizzes.categoryId, categories.id))
         .where(
           and(
             eq(quizzes.isDeleted, false),

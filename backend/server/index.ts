@@ -13,6 +13,7 @@ import searchRoutes from './routes/search'
 import uploadRoutes from './routes/upload'
 import adminRoutes from './routes/admin'
 import authRoutes from './routes/auth'
+import categoryRoutes from './routes/category'
 import { 
   authenticateWebSocket, 
   handleWebSocketMessage, 
@@ -51,6 +52,7 @@ app.route('/api/search', searchRoutes)
 app.route('/api/upload', uploadRoutes)
 app.route('/api/admin', adminRoutes)
 app.route('/api/auth', authRoutes)
+app.route('/api/categories', categoryRoutes)
 
 const port = 8000
 console.log(`🚀 Quizzy API server running on http://localhost:${port}`)

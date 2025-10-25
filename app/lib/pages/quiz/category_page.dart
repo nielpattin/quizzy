@@ -180,7 +180,7 @@ class _CategoryPageState extends State<CategoryPage> {
                             child: TrendingCard(
                               title: quiz["title"] ?? "Untitled",
                               author: user?["fullName"] ?? "Unknown",
-                              category: quiz["category"] ?? "General",
+                              category: quiz["category"]?["name"] ?? "General",
                               count: quiz["playCount"] ?? 0,
                               isSessions: false,
                               quizId: quiz["id"]?.toString() ?? "1",

@@ -19,35 +19,22 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String _selectedCategory = "General Knowledge";
+  String? _selectedCategoryId;
   String? _selectedCollectionId;
   bool _isPublic = true;
   bool _questionsVisible = false;
   bool _isLoading = false;
   bool _loadingCollections = false;
+  bool _loadingCategories = false;
   File? _selectedImageFile;
   List<Map<String, dynamic>> _collections = [];
-
-  final List<String> _categories = [
-    "General Knowledge",
-    "Science",
-    "Math",
-    "History",
-    "Geography",
-    "Literature",
-    "Music",
-    "Movies",
-    "Sports",
-    "Technology",
-    "Programming",
-    "Art",
-    "Other",
-  ];
+  List<Map<String, dynamic>> _categories = [];
 
   @override
   void initState() {
     super.initState();
     _loadCollections();
+    _loadCategories();
   }
 
   @override
@@ -55,6 +42,23 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _loadingCategories = true);
+    try {
+      final data = await ApiService.getCategories();
+      setState(() {
+        _categories = List<Map<String, dynamic>>.from(data);
+        if (_categories.isNotEmpty) {
+          _selectedCategoryId = _categories[0]['id'];
+        }
+      });
+    } catch (e) {
+      debugPrint("Error loading categories: $e");
+    } finally {
+      setState(() => _loadingCategories = false);
+    }
   }
 
   Future<void> _loadCollections() async {
@@ -117,7 +121,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
           "description": _descriptionController.text.trim().isEmpty
               ? null
               : _descriptionController.text.trim(),
-          "category": _selectedCategory,
+          "categoryId": _selectedCategoryId,
           if (_selectedCollectionId != null)
             "collectionId": _selectedCollectionId,
           if (imageUrl != null) "imageUrl": imageUrl,
@@ -251,22 +255,32 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                initialValue: _selectedCategory,
+                value: _selectedCategoryId,
                 decoration: InputDecoration(
                   labelText: "Category",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  suffixIcon: _loadingCategories
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
                 ),
                 items: _categories.map((category) {
                   return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
+                    value: category['id'] as String,
+                    child: Text(category['name'] as String),
                   );
                 }).toList(),
                 onChanged: (value) {
                   if (value != null) {
-                    setState(() => _selectedCategory = value);
+                    setState(() => _selectedCategoryId = value);
                   }
                 },
               ),

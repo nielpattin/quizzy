@@ -4,6 +4,16 @@ CREATE TYPE "public"."post_type" AS ENUM('text', 'image', 'quiz');--> statement-
 CREATE TYPE "public"."question_type" AS ENUM('single_choice', 'checkbox', 'true_false', 'type_answer', 'reorder', 'drop_pin');--> statement-breakpoint
 CREATE TYPE "public"."search_filter_type" AS ENUM('quiz', 'user', 'collection', 'post');--> statement-breakpoint
 CREATE TYPE "public"."status" AS ENUM('active', 'inactive');--> statement-breakpoint
+CREATE TABLE "categories" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"slug" text NOT NULL,
+	"description" text,
+	"image_url" text,
+	CONSTRAINT "categories_name_unique" UNIQUE("name"),
+	CONSTRAINT "categories_slug_unique" UNIQUE("slug")
+);
+--> statement-breakpoint
 CREATE TABLE "collections" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -81,7 +91,7 @@ CREATE TABLE "images" (
 	"original_name" text NOT NULL,
 	"mime_type" text NOT NULL,
 	"size" integer NOT NULL,
-	"bucket" text DEFAULT 'quizzy-images' NOT NULL,
+	"bucket" text DEFAULT 'quiz-images' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "images_filename_unique" UNIQUE("filename")
@@ -186,7 +196,6 @@ CREATE TABLE "quiz_snapshots" (
 	"version" integer NOT NULL,
 	"title" text NOT NULL,
 	"description" text,
-	"category" text,
 	"question_count" integer NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -195,9 +204,9 @@ CREATE TABLE "quizzes" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"collection_id" uuid,
+	"category_id" uuid,
 	"title" text NOT NULL,
 	"description" text,
-	"category" text,
 	"image_url" text,
 	"question_count" integer DEFAULT 0 NOT NULL,
 	"play_count" integer DEFAULT 0 NOT NULL,
@@ -273,7 +282,9 @@ ALTER TABLE "questions_snapshots" ADD CONSTRAINT "questions_snapshots_snapshot_i
 ALTER TABLE "quiz_snapshots" ADD CONSTRAINT "quiz_snapshots_quiz_id_quizzes_id_fk" FOREIGN KEY ("quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_collection_id_collections_id_fk" FOREIGN KEY ("collection_id") REFERENCES "public"."collections"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "search_history" ADD CONSTRAINT "search_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "categories_slug_idx" ON "categories" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "collections_user_id_idx" ON "collections" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "comment_likes_user_id_idx" ON "comment_likes" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "comment_likes_comment_id_idx" ON "comment_likes" USING btree ("comment_id");--> statement-breakpoint
@@ -324,7 +335,7 @@ CREATE INDEX "quiz_snapshots_version_idx" ON "quiz_snapshots" USING btree ("vers
 CREATE INDEX "quiz_snapshots_quiz_id_version_idx" ON "quiz_snapshots" USING btree ("quiz_id","version");--> statement-breakpoint
 CREATE INDEX "quizzes_user_id_idx" ON "quizzes" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "quizzes_collection_id_idx" ON "quizzes" USING btree ("collection_id");--> statement-breakpoint
-CREATE INDEX "quizzes_category_idx" ON "quizzes" USING btree ("category");--> statement-breakpoint
+CREATE INDEX "quizzes_category_id_idx" ON "quizzes" USING btree ("category_id");--> statement-breakpoint
 CREATE INDEX "quizzes_is_deleted_idx" ON "quizzes" USING btree ("is_deleted");--> statement-breakpoint
 CREATE INDEX "search_history_user_id_idx" ON "search_history" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "search_history_created_at_idx" ON "search_history" USING btree ("created_at");--> statement-breakpoint

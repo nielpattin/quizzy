@@ -1,9 +1,84 @@
 {
-  "id": "41c5c127-095b-4754-96da-fd6c3a65af3e",
+  "id": "b8ac1750-d90f-4df8-9357-02084895146b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.categories": {
+      "name": "categories",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "categories_slug_idx": {
+          "name": "categories_slug_idx",
+          "columns": [
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "categories_name_unique": {
+          "name": "categories_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        },
+        "categories_slug_unique": {
+          "name": "categories_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.collections": {
       "name": "collections",
       "schema": "",
@@ -942,7 +1017,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'quizzy-images'"
+          "default": "'quiz-images'"
         },
         "created_at": {
           "name": "created_at",
@@ -2211,12 +2286,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "question_count": {
           "name": "question_count",
           "type": "integer",
@@ -2328,6 +2397,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "category_id": {
+          "name": "category_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "title": {
           "name": "title",
           "type": "text",
@@ -2336,12 +2411,6 @@
         },
         "description": {
           "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "category": {
-          "name": "category",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2460,11 +2529,11 @@
           "method": "btree",
           "with": {}
         },
-        "quizzes_category_idx": {
-          "name": "quizzes_category_idx",
+        "quizzes_category_id_idx": {
+          "name": "quizzes_category_id_idx",
           "columns": [
             {
-              "expression": "category",
+              "expression": "category_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2511,6 +2580,19 @@
           "tableTo": "collections",
           "columnsFrom": [
             "collection_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "quizzes_category_id_categories_id_fk": {
+          "name": "quizzes_category_id_categories_id_fk",
+          "tableFrom": "quizzes",
+          "tableTo": "categories",
+          "columnsFrom": [
+            "category_id"
           ],
           "columnsTo": [
             "id"

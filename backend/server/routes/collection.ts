@@ -72,13 +72,14 @@ collectionRoutes.get('/:id', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: categories.name,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
         favoriteCount: quizzes.favoriteCount,
         createdAt: quizzes.createdAt,
       })
       .from(quizzes)
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(and(eq(quizzes.collectionId, collectionId), eq(quizzes.isDeleted, false)))
       .orderBy(desc(quizzes.createdAt))
 

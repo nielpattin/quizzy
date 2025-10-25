@@ -8,6 +8,7 @@ import "package:flutter_dotenv/flutter_dotenv.dart";
 import "package:image_picker/image_picker.dart";
 import "../../services/upload_service.dart";
 import "../../services/quiz_service.dart";
+import "../../services/api_service.dart";
 
 class EditQuizPage extends StatefulWidget {
   final String quizId;
@@ -21,33 +22,20 @@ class _EditQuizPageState extends State<EditQuizPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String _selectedCategory = "General Knowledge";
+  String? _selectedCategoryId;
   bool _isPublic = true;
   bool _questionsVisible = false;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _loadingCategories = false;
   File? _selectedImageFile;
   String? _existingImageUrl;
-
-  final List<String> _categories = [
-    "General Knowledge",
-    "Science",
-    "Math",
-    "History",
-    "Geography",
-    "Literature",
-    "Music",
-    "Movies",
-    "Sports",
-    "Technology",
-    "Programming",
-    "Art",
-    "Other",
-  ];
+  List<Map<String, dynamic>> _categories = [];
 
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     _loadQuizData();
   }
 
@@ -56,6 +44,19 @@ class _EditQuizPageState extends State<EditQuizPage> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _loadingCategories = true);
+    try {
+      final data = await ApiService.getCategories();
+      setState(() {
+        _categories = List<Map<String, dynamic>>.from(data);
+        _loadingCategories = false;
+      });
+    } catch (e) {
+      setState(() => _loadingCategories = false);
+    }
   }
 
   Future<void> _loadQuizData() async {
@@ -80,7 +81,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
       setState(() {
         _titleController.text = quiz["title"] ?? "";
         _descriptionController.text = quiz["description"] ?? "";
-        _selectedCategory = quiz["category"] ?? "General Knowledge";
+        _selectedCategoryId = quiz["category"]?["id"];
         _isPublic = quiz["isPublic"] ?? true;
         _questionsVisible = quiz["questionsVisible"] ?? false;
         _existingImageUrl = quiz["imageUrl"];
@@ -134,7 +135,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        category: _selectedCategory,
+        categoryId: _selectedCategoryId,
         imageUrl: imageUrl,
         isPublic: _isPublic,
         questionsVisible: _questionsVisible,
@@ -347,23 +348,31 @@ class _EditQuizPageState extends State<EditQuizPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                value: _selectedCategoryId,
                 decoration: InputDecoration(
                   labelText: "Category",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                items: _categories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
+                items: _loadingCategories
+                    ? []
+                    : _categories.map((category) {
+                        return DropdownMenuItem(
+                          value: category["id"] as String,
+                          child: Text(category["name"] as String),
+                        );
+                      }).toList(),
                 onChanged: (value) {
                   if (value != null) {
-                    setState(() => _selectedCategory = value);
+                    setState(() => _selectedCategoryId = value);
                   }
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return "Please select a category";
+                  }
+                  return null;
                 },
               ),
               const SizedBox(height: 24),

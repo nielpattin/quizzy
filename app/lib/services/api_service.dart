@@ -522,4 +522,26 @@ class ApiService {
   static Future<void> deleteQuiz(String quizId) async {
     return QuizService.deleteQuiz(quizId);
   }
+
+  static Future<List<dynamic>> getCategories() async {
+    return HttpClient.handleRequest(() async {
+      return http.get(Uri.parse("${HttpClient.baseUrl}/api/categories"));
+    });
+  }
+
+  static Future<dynamic> getCategory(String categoryId) async {
+    return HttpClient.handleRequest(() async {
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/categories/$categoryId"),
+      );
+    });
+  }
+
+  static Future<dynamic> getCategoryBySlug(String slug) async {
+    return HttpClient.handleRequest(() async {
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/categories/slug/$slug"),
+      );
+    });
+  }
 }

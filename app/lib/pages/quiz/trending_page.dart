@@ -113,7 +113,7 @@ class _TrendingPageState extends State<TrendingPage> {
                     return _TrendingCard(
                       title: item["title"] ?? "Untitled",
                       author: user?["fullName"] ?? "Unknown",
-                      category: item["category"] ?? "General",
+                      category: item["category"]?["name"] ?? "General",
                       count: item["playCount"] ?? 0,
                       isSessions: item["isSessions"] ?? false,
                       onTap: () => context.push("/quiz/${item["id"] ?? "1"}"),

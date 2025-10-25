@@ -66,7 +66,7 @@ class ProfileTabsContent extends StatelessWidget {
           return _QuizCard(
             id: quiz["id"],
             title: quiz["title"],
-            category: quiz["category"] ?? "General",
+            category: quiz["category"]?["name"] ?? "General",
             plays: quiz["playCount"] ?? 0,
             questionCount: quiz["questionCount"] ?? 0,
             imageUrl: quiz["imageUrl"],

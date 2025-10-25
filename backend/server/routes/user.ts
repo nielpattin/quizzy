@@ -147,7 +147,7 @@ userRoutes.get('/profile/:userId', optionalAuthMiddleware, async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: categories.name,
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
@@ -155,6 +155,7 @@ userRoutes.get('/profile/:userId', optionalAuthMiddleware, async (c) => {
         createdAt: quizzes.createdAt,
       })
       .from(quizzes)
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(
         and(
           eq(quizzes.userId, targetUserId),
@@ -395,7 +396,7 @@ userRoutes.get('/quizzes', authMiddleware, async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: categories.name,
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
@@ -405,6 +406,7 @@ userRoutes.get('/quizzes', authMiddleware, async (c) => {
         createdAt: quizzes.createdAt,
       })
       .from(quizzes)
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(and(eq(quizzes.userId, userId), eq(quizzes.isDeleted, false)))
       .orderBy(desc(quizzes.createdAt))
 

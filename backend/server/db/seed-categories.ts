@@ -1,0 +1,80 @@
+export const INITIAL_CATEGORIES = [
+	{
+		name: 'General Knowledge',
+		slug: 'general-knowledge',
+		description: 'Broad topics across various subjects',
+		imageUrl: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Science',
+		slug: 'science',
+		description: 'Physics, Chemistry, Biology, and more',
+		imageUrl: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Math',
+		slug: 'math',
+		description: 'Mathematics and problem solving',
+		imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'History',
+		slug: 'history',
+		description: 'World history and historical events',
+		imageUrl: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Geography',
+		slug: 'geography',
+		description: 'Places, maps, and world geography',
+		imageUrl: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Literature',
+		slug: 'literature',
+		description: 'Books, authors, and literary works',
+		imageUrl: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Music',
+		slug: 'music',
+		description: 'Music theory, artists, and genres',
+		imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Movies',
+		slug: 'movies',
+		description: 'Film, cinema, and entertainment',
+		imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Sports',
+		slug: 'sports',
+		description: 'Athletics, games, and competitions',
+		imageUrl: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Technology',
+		slug: 'technology',
+		description: 'Computers, programming, and tech',
+		imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Programming',
+		slug: 'programming',
+		description: 'Coding, algorithms, and software',
+		imageUrl: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Art',
+		slug: 'art',
+		description: 'Visual arts, design, and creativity',
+		imageUrl: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=400&h=300&fit=crop',
+	},
+	{
+		name: 'Other',
+		slug: 'other',
+		description: 'Miscellaneous topics',
+		imageUrl: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=400&h=300&fit=crop',
+	},
+];

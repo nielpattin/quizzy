@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { authMiddleware, type AuthContext } from '../middleware/auth'
 import { db } from '../db/index'
-import { quizzes, questions, users } from '../db/schema'
+import { quizzes, questions, users, categories } from '../db/schema'
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { WebSocketService } from '../services/websocket-service'
 
@@ -20,13 +20,21 @@ quizRoutes.post('/', authMiddleware, async (c) => {
       return c.json({ error: 'Title is required' }, 400)
     }
 
+    // Validate categoryId if provided
+    if (body.categoryId) {
+      const [category] = await db.select().from(categories).where(eq(categories.id, body.categoryId));
+      if (!category) {
+        return c.json({ error: 'Invalid category ID' }, 400)
+      }
+    }
+
     const [newQuiz] = await db
       .insert(quizzes)
       .values({
         userId,
         title: body.title,
         description: body.description || null,
-        category: body.category || null,
+        categoryId: body.categoryId || null,
         imageUrl: body.imageUrl || null,
         collectionId: body.collectionId || null,
         isPublic: body.isPublic !== undefined ? body.isPublic : true,
@@ -51,7 +59,11 @@ quizRoutes.get('/featured', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
@@ -66,6 +78,7 @@ quizRoutes.get('/featured', async (c) => {
       })
       .from(quizzes)
       .leftJoin(users, eq(quizzes.userId, users.id))
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(and(
         eq(quizzes.isPublic, true),
         eq(quizzes.isDeleted, false),
@@ -91,7 +104,11 @@ quizRoutes.get('/trending', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
@@ -106,6 +123,7 @@ quizRoutes.get('/trending', async (c) => {
       })
       .from(quizzes)
       .leftJoin(users, eq(quizzes.userId, users.id))
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(and(eq(quizzes.isPublic, true), eq(quizzes.isDeleted, false)))
       .orderBy(desc(quizzes.playCount))
       .limit(20)
@@ -118,7 +136,7 @@ quizRoutes.get('/trending', async (c) => {
 })
 
 quizRoutes.get('/category/:category', async (c) => {
-  const category = c.req.param('category')
+  const categorySlug = c.req.param('category')
 
   try {
     const categoryQuizzes = await db
@@ -126,7 +144,11 @@ quizRoutes.get('/category/:category', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
@@ -141,8 +163,9 @@ quizRoutes.get('/category/:category', async (c) => {
       })
       .from(quizzes)
       .leftJoin(users, eq(quizzes.userId, users.id))
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(and(
-        eq(quizzes.category, category),
+        eq(categories.slug, categorySlug),
         eq(quizzes.isPublic, true),
         eq(quizzes.isDeleted, false)
       ))
@@ -165,7 +188,11 @@ quizRoutes.get('/user/:userId', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
@@ -175,6 +202,7 @@ quizRoutes.get('/user/:userId', async (c) => {
         updatedAt: quizzes.updatedAt,
       })
       .from(quizzes)
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(and(eq(quizzes.userId, targetUserId), eq(quizzes.isDeleted, false)))
       .orderBy(desc(quizzes.createdAt))
 
@@ -224,7 +252,11 @@ quizRoutes.get('/:id', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: quizzes.category,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
@@ -245,6 +277,7 @@ quizRoutes.get('/:id', async (c) => {
       })
       .from(quizzes)
       .leftJoin(users, eq(quizzes.userId, users.id))
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
       .where(and(eq(quizzes.id, quizId), eq(quizzes.isDeleted, false)))
 
     if (!quiz) {
@@ -277,12 +310,20 @@ quizRoutes.put('/:id', authMiddleware, async (c) => {
       return c.json({ error: 'Unauthorized' }, 403)
     }
 
+    // Validate categoryId if provided
+    if (body.categoryId) {
+      const [category] = await db.select().from(categories).where(eq(categories.id, body.categoryId));
+      if (!category) {
+        return c.json({ error: 'Invalid category ID' }, 400)
+      }
+    }
+
     const [updatedQuiz] = await db
       .update(quizzes)
       .set({
         title: body.title,
         description: body.description,
-        category: body.category,
+        categoryId: body.categoryId,
         imageUrl: body.imageUrl,
         collectionId: body.collectionId,
         isPublic: body.isPublic,

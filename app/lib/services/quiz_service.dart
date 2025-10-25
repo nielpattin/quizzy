@@ -57,7 +57,7 @@ class QuizService {
     String quizId, {
     required String title,
     String? description,
-    String? category,
+    String? categoryId,
     String? imageUrl,
     String? collectionId,
     required bool isPublic,
@@ -71,7 +71,7 @@ class QuizService {
         body: jsonEncode({
           "title": title,
           "description": description,
-          "category": category,
+          "categoryId": categoryId,
           "imageUrl": imageUrl,
           "collectionId": collectionId,
           "isPublic": isPublic,
