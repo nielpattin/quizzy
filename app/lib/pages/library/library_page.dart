@@ -5,7 +5,7 @@ import "widgets/sort_button.dart";
 import "services/library_service.dart" show SortOption;
 import "../../widgets/bottom_nav.dart";
 import "tabs/created_tab.dart";
-import "tabs/saved_tab.dart";
+import "tabs/favorites_tab.dart";
 import "tabs/game_tab.dart";
 
 class LibraryPage extends StatefulWidget {
@@ -40,7 +40,7 @@ class _LibraryPageState extends State<LibraryPage> {
               switchOutCurve: Curves.easeIn,
               child: () {
                 if (_selectedCategoryIndex == 0) return _buildCreatedTab();
-                if (_selectedCategoryIndex == 1) return _buildSavedTab();
+                if (_selectedCategoryIndex == 1) return _buildFavoritesTab();
                 return _buildGameTab();
               }(),
             ),
@@ -121,9 +121,9 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  Widget _buildSavedTab() {
-    return SavedTab(
-      key: const ValueKey("saved_tab"),
+  Widget _buildFavoritesTab() {
+    return FavoritesTab(
+      key: const ValueKey("favorites_tab"),
       sort: _sort,
       onSortTap: _showSortSheet,
     );

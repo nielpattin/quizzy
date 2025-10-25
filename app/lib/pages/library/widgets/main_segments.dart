@@ -13,7 +13,7 @@ class MainSegments extends StatelessWidget {
   Widget build(BuildContext context) {
     final entries = [
       (icon: Icons.quiz, label: "Created", count: 30),
-      (icon: Icons.bookmark, label: "Saved", count: 18),
+      (icon: Icons.bookmark, label: "Favorites", count: 18),
       (icon: Icons.sports_esports, label: "Game", count: 6),
     ];
     final scheme = Theme.of(context).colorScheme;

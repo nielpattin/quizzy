@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
+import "package:flutter_dotenv/flutter_dotenv.dart";
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -25,6 +26,8 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDebugMode = dotenv.env['DEBUG']?.toLowerCase() == 'true';
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Settings"),
@@ -74,6 +77,23 @@ class SettingsPage extends StatelessWidget {
               ),
             ],
           ),
+          if (isDebugMode) ...[
+            SizedBox(height: 16),
+            _buildSettingsSection(
+              context,
+              title: "Developer",
+              items: [
+                _SettingsItem(
+                  icon: Icons.bug_report_outlined,
+                  title: "Debug",
+                  subtitle: "View session and user information",
+                  onTap: () {
+                    context.push("/debug");
+                  },
+                ),
+              ],
+            ),
+          ],
           SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),

@@ -47,12 +47,29 @@ class _SetupAccountPageState extends State<SetupAccountPage> {
   @override
   void initState() {
     super.initState();
+
+    // Set default date of birth to 01/01/2000
+    _selectedDate = DateTime(2000, 1, 1);
+    _dobController.text = "01/01/2000";
+
     if (widget.name != null) {
       _nameController.text = widget.name!;
     }
+
+    // Extract username from email if available
+    if (widget.email != null) {
+      _usernameController.text = _extractUsernameFromEmail(widget.email!);
+    }
+
     if (widget.email == null) {
       _fetchProfileData();
     }
+  }
+
+  String _extractUsernameFromEmail(String email) {
+    // Get the part before @ symbol
+    final username = email.split('@').first;
+    return username;
   }
 
   Future<void> _fetchProfileData() async {
@@ -89,6 +106,13 @@ class _SetupAccountPageState extends State<SetupAccountPage> {
         if (_fetchedName != null && _fetchedName!.isNotEmpty) {
           _nameController.text = _fetchedName!;
           debugPrint('[SETUP] Pre-filled name: $_fetchedName');
+        }
+        // Extract username from email
+        if (email != null) {
+          _usernameController.text = _extractUsernameFromEmail(email);
+          debugPrint(
+            '[SETUP] Pre-filled username: ${_usernameController.text}',
+          );
         }
         _isFetchingProfile = false;
       });

@@ -5,26 +5,26 @@ import "../widgets/quiz_play_card.dart";
 import "../services/library_service.dart";
 import "../models/quiz.dart";
 
-class SavedTab extends StatefulWidget {
+class FavoritesTab extends StatefulWidget {
   final SortOption sort;
   final VoidCallback onSortTap;
-  const SavedTab({super.key, required this.sort, required this.onSortTap});
+  const FavoritesTab({super.key, required this.sort, required this.onSortTap});
 
   @override
-  State<SavedTab> createState() => _SavedTabState();
+  State<FavoritesTab> createState() => _FavoritesTabState();
 }
 
-class _SavedTabState extends State<SavedTab> {
-  int? _savedCount;
+class _FavoritesTabState extends State<FavoritesTab> {
+  int? _favoritesCount;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      key: const ValueKey("saved_tab"),
+      key: const ValueKey("favorites_tab"),
       children: [
         SectionHeader(
-          title: "Saved",
-          count: _savedCount,
+          title: "Favorites",
+          count: _favoritesCount,
           showSort: true,
           sort: widget.sort,
           onSortTap: widget.onSortTap,
@@ -35,8 +35,8 @@ class _SavedTabState extends State<SavedTab> {
             onCountChanged: (count) {
               if (mounted) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted && _savedCount != count) {
-                    setState(() => _savedCount = count);
+                  if (mounted && _favoritesCount != count) {
+                    setState(() => _favoritesCount = count);
                   }
                 });
               }
@@ -67,7 +67,7 @@ class _FavoritesListState extends State<_FavoritesList>
   @override
   void initState() {
     super.initState();
-    _quizzesFuture = LibraryService.fetchSavedQuizzes(widget.sort);
+    _quizzesFuture = LibraryService.fetchFavoriteQuizzes(widget.sort);
   }
 
   @override
@@ -75,7 +75,7 @@ class _FavoritesListState extends State<_FavoritesList>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sort != widget.sort) {
       setState(() {
-        _quizzesFuture = LibraryService.fetchSavedQuizzes(widget.sort);
+        _quizzesFuture = LibraryService.fetchFavoriteQuizzes(widget.sort);
       });
     }
   }
@@ -92,12 +92,12 @@ class _FavoritesListState extends State<_FavoritesList>
 
         if (snapshot.hasError) {
           debugPrint(
-            "[SavedTab] Error loading saved quizzes: ${snapshot.error}",
+            "[FavoritesTab] Error loading favorite quizzes: ${snapshot.error}",
           );
           widget.onCountChanged(0);
           return Center(
             child: Text(
-              "Error loading saved quizzes",
+              "Error loading favorite quizzes",
               style: TextStyle(
                 color: Theme.of(
                   context,
@@ -113,7 +113,7 @@ class _FavoritesListState extends State<_FavoritesList>
         if (quizzes.isEmpty) {
           return Center(
             child: Text(
-              "No saved quizzes yet",
+              "No favorite quizzes yet",
               style: TextStyle(
                 color: Theme.of(
                   context,

@@ -1,7 +1,7 @@
 import "dart:async";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "../../services/api_service.dart";
+import "../../services/search_service.dart";
 import "../../widgets/user_avatar.dart";
 
 class SearchPage extends StatefulWidget {
@@ -19,20 +19,14 @@ class _SearchPageState extends State<SearchPage> {
   List<dynamic> _quizResults = [];
   List<dynamic> _userResults = [];
   List<dynamic> _collectionResults = [];
+  List<dynamic> _postResults = [];
   Timer? _debounce;
-  final List<String> _recentSearches = [
-    "History",
-    "Javascript",
-    "Math",
-    "food",
-    "general knowledge",
-    "science trivia",
-    "sports quiz",
-  ];
+  List<dynamic> _recentSearches = [];
 
   @override
   void initState() {
     super.initState();
+    _loadSearchHistory();
     _searchController.addListener(() {
       if (_debounce?.isActive ?? false) _debounce!.cancel();
       _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -50,6 +44,19 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
+  Future<void> _loadSearchHistory() async {
+    try {
+      final history = await SearchService.getSearchHistory();
+      if (mounted) {
+        setState(() {
+          _recentSearches = history;
+        });
+      }
+    } catch (e) {
+      debugPrint("[SearchPage] Error loading search history: $e");
+    }
+  }
+
   Future<void> _performSearch() async {
     final query = _searchController.text.trim();
 
@@ -59,6 +66,7 @@ class _SearchPageState extends State<SearchPage> {
         _quizResults = [];
         _userResults = [];
         _collectionResults = [];
+        _postResults = [];
       });
       return;
     }
@@ -69,22 +77,35 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
+      String? filterType;
       if (_selectedFilter == 0) {
-        final results = await ApiService.searchQuizzes(query);
+        filterType = 'quiz';
+        final results = await SearchService.searchQuizzes(query);
         setState(() {
           _quizResults = results;
         });
       } else if (_selectedFilter == 1) {
-        final results = await ApiService.searchUsers(query);
+        filterType = 'user';
+        final results = await SearchService.searchUsers(query);
         setState(() {
           _userResults = results;
         });
-      } else {
-        final results = await ApiService.search(query);
+      } else if (_selectedFilter == 2) {
+        filterType = 'collection';
+        final results = await SearchService.searchCollections(query);
         setState(() {
-          _collectionResults = results["collections"] ?? [];
+          _collectionResults = results;
+        });
+      } else if (_selectedFilter == 3) {
+        filterType = 'post';
+        final results = await SearchService.searchPosts(query);
+        setState(() {
+          _postResults = results;
         });
       }
+
+      await SearchService.saveSearchHistory(query, filterType: filterType);
+      await _loadSearchHistory();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -105,7 +126,21 @@ class _SearchPageState extends State<SearchPage> {
       _quizResults = [];
       _userResults = [];
       _collectionResults = [];
+      _postResults = [];
     });
+  }
+
+  Future<void> _deleteSearchHistoryItem(String id) async {
+    try {
+      await SearchService.deleteSearchHistory(id);
+      await _loadSearchHistory();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error deleting search: ${e.toString()}")),
+        );
+      }
+    }
   }
 
   @override
@@ -144,7 +179,9 @@ class _SearchPageState extends State<SearchPage> {
                               ? "Search quizzes"
                               : _selectedFilter == 1
                               ? "Search people"
-                              : "Search collections",
+                              : _selectedFilter == 2
+                              ? "Search collections"
+                              : "Search posts",
                           hintStyle: TextStyle(
                             color: Theme.of(
                               context,
@@ -180,41 +217,55 @@ class _SearchPageState extends State<SearchPage> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: [
-                  _FilterButton(
-                    label: "Quiz",
-                    isSelected: _selectedFilter == 0,
-                    onTap: () {
-                      setState(() => _selectedFilter = 0);
-                      if (_searchController.text.isNotEmpty) {
-                        _performSearch();
-                      }
-                    },
-                  ),
-                  SizedBox(width: 12),
-                  _FilterButton(
-                    label: "People",
-                    isSelected: _selectedFilter == 1,
-                    onTap: () {
-                      setState(() => _selectedFilter = 1);
-                      if (_searchController.text.isNotEmpty) {
-                        _performSearch();
-                      }
-                    },
-                  ),
-                  SizedBox(width: 12),
-                  _FilterButton(
-                    label: "Collections",
-                    isSelected: _selectedFilter == 2,
-                    onTap: () {
-                      setState(() => _selectedFilter = 2);
-                      if (_searchController.text.isNotEmpty) {
-                        _performSearch();
-                      }
-                    },
-                  ),
-                ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _FilterButton(
+                      label: "Quiz",
+                      isSelected: _selectedFilter == 0,
+                      onTap: () {
+                        setState(() => _selectedFilter = 0);
+                        if (_searchController.text.isNotEmpty) {
+                          _performSearch();
+                        }
+                      },
+                    ),
+                    SizedBox(width: 12),
+                    _FilterButton(
+                      label: "People",
+                      isSelected: _selectedFilter == 1,
+                      onTap: () {
+                        setState(() => _selectedFilter = 1);
+                        if (_searchController.text.isNotEmpty) {
+                          _performSearch();
+                        }
+                      },
+                    ),
+                    SizedBox(width: 12),
+                    _FilterButton(
+                      label: "Collections",
+                      isSelected: _selectedFilter == 2,
+                      onTap: () {
+                        setState(() => _selectedFilter = 2);
+                        if (_searchController.text.isNotEmpty) {
+                          _performSearch();
+                        }
+                      },
+                    ),
+                    SizedBox(width: 12),
+                    _FilterButton(
+                      label: "Posts",
+                      isSelected: _selectedFilter == 3,
+                      onTap: () {
+                        setState(() => _selectedFilter = 3);
+                        if (_searchController.text.isNotEmpty) {
+                          _performSearch();
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
             SizedBox(height: 16),
@@ -230,6 +281,20 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildRecentSearches() {
+    if (_recentSearches.isEmpty) {
+      return Center(
+        child: Text(
+          "No recent searches",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -250,9 +315,10 @@ class _SearchPageState extends State<SearchPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: _recentSearches.length,
             itemBuilder: (context, index) {
+              final searchItem = _recentSearches[index];
               return InkWell(
                 onTap: () {
-                  _searchController.text = _recentSearches[index];
+                  _searchController.text = searchItem['query'] ?? '';
                   _performSearch();
                 },
                 child: Container(
@@ -270,7 +336,7 @@ class _SearchPageState extends State<SearchPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          _recentSearches[index],
+                          searchItem['query'] ?? '',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 16,
@@ -285,7 +351,8 @@ class _SearchPageState extends State<SearchPage> {
                           ).colorScheme.onSurface.withValues(alpha: 0.54),
                           size: 20,
                         ),
-                        onPressed: () {},
+                        onPressed: () =>
+                            _deleteSearchHistoryItem(searchItem['id']),
                       ),
                     ],
                   ),
@@ -307,8 +374,10 @@ class _SearchPageState extends State<SearchPage> {
       return _buildQuizResults();
     } else if (_selectedFilter == 1) {
       return _buildPeopleResults();
-    } else {
+    } else if (_selectedFilter == 2) {
       return _buildCollectionResults();
+    } else {
+      return _buildPostResults();
     }
   }
 
@@ -596,6 +665,137 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPostResults() {
+    if (_postResults.isEmpty) {
+      return Center(
+        child: Text(
+          "No posts found",
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _postResults.length,
+      itemBuilder: (context, index) {
+        final post = _postResults[index];
+        final user = post["user"] as Map<String, dynamic>?;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.push("/post/details", extra: post),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        UserAvatar(
+                          imageUrl: user?["profilePictureUrl"],
+                          radius: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user?["fullName"] ?? "Unknown",
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                "@${user?["username"] ?? "unknown"}",
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      post["text"] ?? "",
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 15,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.favorite_border,
+                          size: 18,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          "${post["likesCount"] ?? 0}",
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Icon(
+                          Icons.comment_outlined,
+                          size: 18,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          "${post["commentsCount"] ?? 0}",
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         );

@@ -43,7 +43,7 @@ class LibraryService {
     }
   }
 
-  static Future<List<Quiz>> fetchSavedQuizzes(SortOption sort) async {
+  static Future<List<Quiz>> fetchFavoriteQuizzes(SortOption sort) async {
     final data = await ApiService.getFavorites();
 
     final quizzes = data.asMap().entries.map((e) {

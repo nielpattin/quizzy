@@ -20,7 +20,7 @@
           "request": "launch"
         },
         {
-          "name": "5554 App",
+          "name": "App",
           "cwd": "app",
           "request": "launch",
           "type": "dart"
