@@ -15,18 +15,27 @@ class _CategoryPageState extends State<CategoryPage> {
   bool _isLoading = true;
   List<dynamic> _quizzes = [];
   String? _error;
+  String _categoryName = '';
 
   @override
   void initState() {
     super.initState();
-    _loadCategoryQuizzes();
+    _loadCategoryData();
   }
 
-  Future<void> _loadCategoryQuizzes() async {
+  Future<void> _loadCategoryData() async {
     try {
-      final quizzes = await ApiService.getCategoryQuizzes(widget.category);
+      final results = await Future.wait([
+        ApiService.getCategoryBySlug(widget.category),
+        ApiService.getCategoryQuizzes(widget.category),
+      ]);
+
       if (mounted) {
+        final category = results[0] as Map<String, dynamic>;
+        final quizzes = results[1] as List<dynamic>;
+
         setState(() {
+          _categoryName = category['name'] ?? widget.category;
           _quizzes = quizzes;
           _isLoading = false;
         });
@@ -35,6 +44,7 @@ class _CategoryPageState extends State<CategoryPage> {
       if (mounted) {
         setState(() {
           _error = e.toString();
+          _categoryName = widget.category;
           _isLoading = false;
         });
       }
@@ -46,14 +56,14 @@ class _CategoryPageState extends State<CategoryPage> {
       _isLoading = true;
       _error = null;
     });
-    await _loadCategoryQuizzes();
+    await _loadCategoryData();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.category),
+        title: _isLoading ? null : Text(_categoryName),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
@@ -161,32 +171,27 @@ class _CategoryPageState extends State<CategoryPage> {
                         ),
                       ),
                       SizedBox(height: 16),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.7,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                        itemCount: _quizzes.length,
-                        itemBuilder: (context, index) {
-                          final quiz = _quizzes[index];
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: _quizzes.map((quiz) {
                           final user = quiz["user"] as Map<String, dynamic>?;
-                          return InkWell(
-                            onTap: () => context.push("/quiz/${quiz["id"]}"),
-                            borderRadius: BorderRadius.circular(12),
+                          return SizedBox(
+                            width: (MediaQuery.of(context).size.width - 44) / 2,
                             child: TrendingCard(
                               title: quiz["title"] ?? "Untitled",
                               author: user?["fullName"] ?? "Unknown",
                               category: quiz["category"]?["name"] ?? "General",
-                              count: quiz["playCount"] ?? 0,
+                              count: quiz["questionCount"] ?? 0,
                               isSessions: false,
                               quizId: quiz["id"]?.toString() ?? "1",
+                              imageUrl: quiz["imageUrl"],
+                              profilePictureUrl: user?["profilePictureUrl"],
+                              playCount: quiz["playCount"] ?? 0,
+                              createdAt: quiz["createdAt"],
                             ),
                           );
-                        },
+                        }).toList(),
                       ),
                     ],
                   ),

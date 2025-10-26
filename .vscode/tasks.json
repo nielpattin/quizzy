@@ -10,23 +10,27 @@
     },
     {
       "label": "5554-Emulator",
-      "type": "process",
-      "command": "cmd",
-      "args": [
-        "/k",
-        "cd app && flutter run -d emulator-5554"
-      ],
-      "problemMatcher": []
+      "type": "shell",
+      "command": "cd app; flutter run -d emulator-5554 | Select-String -Pattern 'D/EGL_emulation' -NotMatch",
+      "problemMatcher": [],
+      "options": {
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-Command"]
+        }
+      }
     },
     {
       "label": "5556-Emulator",
-      "type": "process",
-      "command": "cmd",
-      "args": [
-        "/k",
-        "cd app && flutter run -d emulator-5556"
-      ],
-      "problemMatcher": []
+      "type": "shell",
+      "command": "cd app; flutter run -d emulator-5556 | Select-String -Pattern 'D/EGL_emulation' -NotMatch",
+      "problemMatcher": [],
+      "options": {
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-Command"]
+        }
+      }
     }
   ]
 }

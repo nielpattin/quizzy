@@ -1,5 +1,6 @@
 CREATE TYPE "public"."account_type" AS ENUM('admin', 'employee', 'user');--> statement-breakpoint
 CREATE TYPE "public"."moderation_status" AS ENUM('approved', 'flagged', 'rejected', 'review_pending');--> statement-breakpoint
+CREATE TYPE "public"."notification_type" AS ENUM('like', 'comment', 'follow', 'quiz_share', 'game_invite', 'mention', 'quiz_answer', 'follow_request', 'system');--> statement-breakpoint
 CREATE TYPE "public"."post_type" AS ENUM('text', 'image', 'quiz');--> statement-breakpoint
 CREATE TYPE "public"."question_type" AS ENUM('single_choice', 'checkbox', 'true_false', 'type_answer', 'reorder', 'drop_pin');--> statement-breakpoint
 CREATE TYPE "public"."search_filter_type" AS ENUM('quiz', 'user', 'collection', 'post');--> statement-breakpoint
@@ -100,11 +101,12 @@ CREATE TABLE "images" (
 CREATE TABLE "notifications" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
-	"type" text NOT NULL,
+	"type" "notification_type" NOT NULL,
 	"title" text NOT NULL,
 	"subtitle" text,
 	"related_user_id" uuid,
 	"related_post_id" uuid,
+	"related_quiz_id" uuid,
 	"is_unread" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -266,6 +268,7 @@ ALTER TABLE "images" ADD CONSTRAINT "images_user_id_users_id_fk" FOREIGN KEY ("u
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_related_user_id_users_id_fk" FOREIGN KEY ("related_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_related_post_id_posts_id_fk" FOREIGN KEY ("related_post_id") REFERENCES "public"."posts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_related_quiz_id_quizzes_id_fk" FOREIGN KEY ("related_quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "post_answers" ADD CONSTRAINT "post_answers_post_id_posts_id_fk" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "post_answers" ADD CONSTRAINT "post_answers_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "post_likes" ADD CONSTRAINT "post_likes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

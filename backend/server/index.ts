@@ -14,6 +14,7 @@ import uploadRoutes from './routes/upload'
 import adminRoutes from './routes/admin'
 import authRoutes from './routes/auth'
 import categoryRoutes from './routes/category'
+import { queueDashboard } from './routes/queue-dashboard'
 import { 
   authenticateWebSocket, 
   handleWebSocketMessage, 
@@ -21,6 +22,8 @@ import {
   handleWebSocketError,
   activeConnections
 } from './websocket'
+import { RedisConnectionStore } from './services/redis-connection-store'
+import './services/notification-worker'
 
 const app = new Hono()
 
@@ -54,8 +57,11 @@ app.route('/api/admin', adminRoutes)
 app.route('/api/auth', authRoutes)
 app.route('/api/categories', categoryRoutes)
 
+// Mount Bull Board queue dashboard
+app.route('/admin/queues', queueDashboard)
+
 const port = 8000
-console.log(`🚀 Quizzy API server running on http://localhost:${port}`)
+console.log(`[Server] Listening on port ${port}`)
 
 export default {
   port,
@@ -63,8 +69,22 @@ export default {
     async open(ws: any) {
       const context = ws.data
       if (context) {
+        // Add to local Map for message sending
         activeConnections.set(ws, context)
-        console.log(`✅ WebSocket opened for user ${context.userId} (${context.email})`)
+        
+        // Add to Redis for persistence across hot reloads
+        await RedisConnectionStore.addConnection(context.userId, context.email)
+        
+        const shortUserId = context.userId.substring(0, 8)
+        const totalConnections = activeConnections.size
+        console.log(`[WS] Connection opened | user:${shortUserId} | email:${context.email} | total:${totalConnections}`)
+        
+        // Send connection confirmation to client
+        ws.send(JSON.stringify({ 
+          type: 'connected', 
+          message: 'WebSocket connection established',
+          userId: context.userId 
+        }))
       }
     },
     async message(ws: any, message: string | Buffer) {
@@ -85,18 +105,26 @@ export default {
     
     // Handle WebSocket upgrade
     if (url.pathname === '/ws') {
+      const hasToken = url.searchParams.has('token')
+      const token = url.searchParams.get('token')
+      const tokenPreview = token ? `${token.substring(0, 20)}...${token.substring(token.length - 10)}` : 'none'
+      
+      console.log(`[WS] Upgrade request | path:/ws | token:${hasToken ? tokenPreview : 'missing'}`)
+      
       const context = await authenticateWebSocket(request)
       if (!context) {
-        console.log('❌ WebSocket upgrade failed: Unauthorized')
+        console.log('[WS] Upgrade failed | reason:unauthorized')
         return new Response('Unauthorized', { status: 401 })
       }
       
-      console.log(`🔌 Upgrading WebSocket for user ${context.userId} (${context.email})`)
+      const shortUserId = context.userId.substring(0, 8)
+      console.log(`[WS] Upgrading connection | user:${shortUserId} | email:${context.email}`)
       
       if (server.upgrade(request, { data: context })) {
         return undefined
       }
       
+      console.log('[WS] Upgrade call failed | reason:server_error')
       return new Response('WebSocket upgrade failed', { status: 400 })
     }
     

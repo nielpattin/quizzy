@@ -75,8 +75,6 @@ authRoutes.post('/create-first-admin', async (c) => {
       })
       .returning()
 
-    console.log(`[BACKEND] First admin user created: ${newUser.id} (${email})`)
-
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.signInWithPassword({
       email,
       password,

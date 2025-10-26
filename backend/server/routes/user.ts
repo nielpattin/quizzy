@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../db/index'
-import { users, quizzes, gameSessions, posts, follows } from '../db/schema'
+import { users, quizzes, gameSessions, posts, follows, categories } from '../db/schema'
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { authMiddleware, optionalAuthMiddleware, type AuthContext } from '../middleware/auth'
 
@@ -147,7 +147,11 @@ userRoutes.get('/profile/:userId', optionalAuthMiddleware, async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: categories.name,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
@@ -226,10 +230,6 @@ userRoutes.get('/profile', authMiddleware, async (c) => {
   const { userId, email, userMetadata } = c.get('user') as AuthContext
 
   try {
-    console.log(`[BACKEND] Profile endpoint called for user: ${userId}`)
-    console.log(`[BACKEND] Email: ${email}`)
-    console.log(`[BACKEND] User Metadata:`, JSON.stringify(userMetadata, null, 2))
-    
     let [user] = await db
       .select({
         id: users.id,
@@ -248,14 +248,11 @@ userRoutes.get('/profile', authMiddleware, async (c) => {
       .where(eq(users.id, userId))
 
     if (!user) {
-      console.log(`[BACKEND] User ${userId} not found in database`)
       return c.json({ 
         error: 'User not found in database', 
         code: 'USER_NOT_FOUND' 
       }, 404)
     }
-
-    console.log(`[BACKEND] Returning user profile: ${userId}, isSetupComplete: ${user.isSetupComplete}`)
 
     // Get follower/following counts
     const [followerCount] = await db
@@ -295,9 +292,6 @@ userRoutes.post('/setup', authMiddleware, async (c) => {
   const body = await c.req.json()
 
   try {
-    console.log(`[BACKEND] Setup endpoint called for user: ${userId}`)
-    console.log(`[BACKEND] Request body:`, body)
-
     const { username, fullName, dob, accountType } = body
 
     // Validate required fields
@@ -327,9 +321,6 @@ userRoutes.post('/setup', authMiddleware, async (c) => {
       // Create new user with setup information
       const avatarUrl = userMetadata?.avatar_url || userMetadata?.picture || null
       
-      console.log(`[BACKEND] User ${userId} not found, creating with setup data`)
-      console.log(`[BACKEND] Avatar URL: ${avatarUrl}`)
-      
       const [newUser] = await db
         .insert(users)
         .values({
@@ -345,7 +336,6 @@ userRoutes.post('/setup', authMiddleware, async (c) => {
         .returning()
       
       updatedUser = newUser
-      console.log(`[BACKEND] Created new user: ${userId}`)
     } else {
       // Update existing user with setup information
       const [updated] = await db
@@ -362,10 +352,7 @@ userRoutes.post('/setup', authMiddleware, async (c) => {
         .returning()
       
       updatedUser = updated
-      console.log(`[BACKEND] Updated existing user: ${userId}`)
     }
-
-    console.log(`[BACKEND] User setup completed: ${userId}`)
 
     return c.json({
       id: updatedUser.id,
@@ -396,7 +383,11 @@ userRoutes.get('/quizzes', authMiddleware, async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: categories.name,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,

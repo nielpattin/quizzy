@@ -2,6 +2,7 @@ import { db } from './db/index'
 import { gameSessions, gameSessionParticipants, users } from './db/schema'
 import { eq, and } from 'drizzle-orm'
 import { supabase } from './lib/supabase'
+import { RedisConnectionStore } from './services/redis-connection-store'
 
 // WebSocket connection context type
 export interface WebSocketContext {
@@ -184,6 +185,8 @@ export async function handleWebSocketMessage(ws: any, message: string, context: 
         break
 
       case 'ping':
+        // Update Redis heartbeat to keep connection alive
+        await RedisConnectionStore.updateHeartbeat(context.userId)
         sendToConnection(ws, { type: 'pong' })
         break
 
@@ -289,10 +292,15 @@ async function handleLeaveSession(ws: any, sessionId: string, context: WebSocket
 }
 
 // Handle WebSocket connection close
-export function handleWebSocketClose(ws: any) {
+export async function handleWebSocketClose(ws: any) {
   try {
     const context = activeConnections.get(ws)
     if (context) {
+      const shortUserId = context.userId.substring(0, 8)
+      
+      // Remove from Redis
+      await RedisConnectionStore.removeConnection(context.userId)
+      
       // Remove from all sessions
       removeConnectionFromAllSessions(ws)
 
@@ -305,16 +313,19 @@ export function handleWebSocketClose(ws: any) {
         }, ws)
       }
 
-      console.log(`WebSocket closed for user ${context.userId}`)
+      const totalConnections = activeConnections.size
+      console.log(`[WS] Connection closed | user:${shortUserId} | email:${context.email} | remaining:${totalConnections}`)
     }
   } catch (error) {
-    console.error('Error handling WebSocket close:', error)
+    console.error('[WS] Error handling close:', error)
   }
 }
 
 // Handle WebSocket errors
 export function handleWebSocketError(ws: any, error: any) {
-  console.error('WebSocket error:', error)
+  const context = activeConnections.get(ws)
+  const shortUserId = context?.userId?.substring(0, 8) || 'unknown'
+  console.error(`[WS] Connection error | user:${shortUserId} |`, error.message || error)
   removeConnectionFromAllSessions(ws)
 }
 
@@ -331,6 +342,21 @@ export function getSessionParticipants(sessionId: string): WebSocketContext[] {
   return Array.from(participants)
     .map(ws => activeConnections.get(ws))
     .filter(Boolean) as WebSocketContext[]
+}
+
+// Check if user is online (check Redis for persistence across hot reloads)
+export async function isUserOnline(userId: string): Promise<boolean> {
+  // Check Redis first (persists across hot reloads)
+  const inRedis = await RedisConnectionStore.isUserOnline(userId)
+  if (inRedis) return true
+  
+  // Fallback to local Map (faster for recently connected users)
+  for (const context of activeConnections.values()) {
+    if (context.userId === userId) {
+      return true
+    }
+  }
+  return false
 }
 
 // Get real-time session info including active WebSocket connections
@@ -371,7 +397,9 @@ export async function getSessionRealtimeInfo(sessionId: string) {
 }
 
 // Cleanup function for server shutdown
-export function cleanupWebSocketConnections() {
+export async function cleanupWebSocketConnections() {
+  console.log('[WS] Cleaning up WebSocket connections...')
+  
   // Close all active connections
   activeConnections.forEach((context, ws) => {
     try {
@@ -385,5 +413,8 @@ export function cleanupWebSocketConnections() {
   activeConnections.clear()
   sessionParticipants.clear()
 
-  console.log('WebSocket connections cleaned up')
+  // Note: We DON'T clear Redis here - let TTL handle it
+  // This allows us to know users were recently connected after hot reload
+  
+  console.log('[WS] WebSocket connections cleaned up')
 }

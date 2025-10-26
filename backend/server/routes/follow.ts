@@ -4,6 +4,7 @@ import type { AuthContext } from '@/middleware/auth'
 import { db } from '@/db'
 import { follows, users } from '@/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
+import { NotificationService } from '@/services/notification-service'
 
 type Variables = {
   user: AuthContext
@@ -69,6 +70,9 @@ followRoutes.post('/:userId', authMiddleware, async (c) => {
         })
         .where(eq(users.id, followerId))
     }
+
+    // Create notification for new follow
+    await NotificationService.createFollowNotification(followerId, followingId)
 
     return c.json(newFollow, 201)
   } catch (error) {

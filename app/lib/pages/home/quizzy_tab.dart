@@ -209,7 +209,7 @@ class _QuizzyTabState extends State<QuizzyTab>
                           label: category["name"] ?? "Unknown",
                           imageUrl: category["imageUrl"],
                           onTap: () =>
-                              context.push("/category/${category["name"]}"),
+                              context.push("/category/${category["slug"]}"),
                         ),
                       );
                     },

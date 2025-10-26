@@ -1,6 +1,6 @@
 {
-  "id": "76f9e2c8-a96c-4bcd-bcd2-b5ba47bf94dd",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "f6cb2be5-b312-4067-b17d-8884d23883b1",
+  "prevId": "76f9e2c8-a96c-4bcd-bcd2-b5ba47bf94dd",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1170,6 +1170,32 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "delivery_channel": {
+          "name": "delivery_channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "retry_count": {
+          "name": "retry_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

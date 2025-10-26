@@ -20,6 +20,18 @@ export const statusEnum = pgEnum('status', ['active', 'inactive']);
 
 export const searchFilterTypeEnum = pgEnum('search_filter_type', ['quiz', 'user', 'collection', 'post']);
 
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'like',
+  'comment',
+  'follow',
+  'quiz_share',
+  'game_invite',
+  'mention',
+  'quiz_answer',
+  'follow_request',
+  'system'
+]);
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
@@ -298,12 +310,17 @@ export const follows = pgTable('follows', {
 export const notifications = pgTable('notifications', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  type: text('type').notNull(),
+  type: notificationTypeEnum('type').notNull(),
   title: text('title').notNull(),
   subtitle: text('subtitle'),
   relatedUserId: uuid('related_user_id').references(() => users.id, { onDelete: 'cascade' }),
   relatedPostId: uuid('related_post_id').references(() => posts.id, { onDelete: 'cascade' }),
+  relatedQuizId: uuid('related_quiz_id').references(() => quizzes.id, { onDelete: 'cascade' }),
   isUnread: boolean('is_unread').notNull().default(true),
+  status: text('status').notNull().default('PENDING'),
+  deliveryChannel: text('delivery_channel'),
+  retryCount: integer('retry_count').notNull().default(0),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index('notifications_user_id_idx').on(table.userId),

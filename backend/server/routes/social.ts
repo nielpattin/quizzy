@@ -4,6 +4,7 @@ import type { AuthContext } from '../middleware/auth'
 import { db } from '../db/index'
 import { posts, postLikes, comments, commentLikes, users, postAnswers } from '../db/schema'
 import { eq, and, desc, inArray, sql } from 'drizzle-orm'
+import { NotificationService } from '../services/notification-service'
 
 type Variables = {
   user: AuthContext
@@ -354,6 +355,9 @@ socialRoutes.post('/posts/:id/like', authMiddleware, async (c) => {
       })
       .where(eq(posts.id, postId))
 
+    // Create notification for post like
+    await NotificationService.createPostLikeNotification(userId, postId)
+
     return c.json(newLike, 201)
   } catch (error) {
     console.error('Error liking post:', error)
@@ -440,6 +444,9 @@ socialRoutes.post('/posts/:id/comments', authMiddleware, async (c) => {
         commentsCount: post.commentsCount + 1,
       })
       .where(eq(posts.id, postId))
+
+    // Create notification for new comment
+    await NotificationService.createCommentNotification(userId, postId)
 
     return c.json(newComment, 201)
   } catch (error) {
@@ -725,6 +732,9 @@ socialRoutes.post('/posts/:id/answer', authMiddleware, async (c) => {
         answersCount: post.answersCount + 1,
       })
       .where(eq(posts.id, postId))
+
+    // Create notification for quiz answer
+    await NotificationService.createQuizAnswerNotification(userId, postId)
 
     const [correctCount] = await db
       .select({

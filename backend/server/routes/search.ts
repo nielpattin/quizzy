@@ -37,7 +37,11 @@ searchRoutes.get('/quizzes', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: categories.name,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
         favoriteCount: quizzes.favoriteCount,
@@ -215,7 +219,11 @@ searchRoutes.get('/', async (c) => {
           id: quizzes.id,
           title: quizzes.title,
           description: quizzes.description,
-          category: categories.name,
+          category: {
+            id: categories.id,
+            name: categories.name,
+            slug: categories.slug,
+          },
           questionCount: quizzes.questionCount,
           playCount: quizzes.playCount,
           favoriteCount: quizzes.favoriteCount,
@@ -310,7 +318,7 @@ searchRoutes.get('/', async (c) => {
 })
 
 searchRoutes.post('/history', authMiddleware, async (c) => {
-  const userId = c.get('userId')
+  const userId = c.get('user')?.userId
   const { query, filterType } = await c.req.json()
 
   if (!query?.trim()) {
@@ -352,7 +360,7 @@ searchRoutes.post('/history', authMiddleware, async (c) => {
 })
 
 searchRoutes.get('/history', authMiddleware, async (c) => {
-  const userId = c.get('userId')
+  const userId = c.get('user')?.userId
   const limit = parseInt(c.req.query('limit') || '10')
 
   try {
@@ -376,7 +384,7 @@ searchRoutes.get('/history', authMiddleware, async (c) => {
 })
 
 searchRoutes.delete('/history/:id', authMiddleware, async (c) => {
-  const userId = c.get('userId')
+  const userId = c.get('user')?.userId
   const historyId = c.req.param('id')
 
   try {

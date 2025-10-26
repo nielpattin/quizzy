@@ -215,60 +215,62 @@ class _SearchPageState extends State<SearchPage> {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _FilterButton(
-                      label: "Quiz",
-                      isSelected: _selectedFilter == 0,
-                      onTap: () {
-                        setState(() => _selectedFilter = 0);
-                        if (_searchController.text.isNotEmpty) {
-                          _performSearch();
-                        }
-                      },
-                    ),
-                    SizedBox(width: 12),
-                    _FilterButton(
-                      label: "People",
-                      isSelected: _selectedFilter == 1,
-                      onTap: () {
-                        setState(() => _selectedFilter = 1);
-                        if (_searchController.text.isNotEmpty) {
-                          _performSearch();
-                        }
-                      },
-                    ),
-                    SizedBox(width: 12),
-                    _FilterButton(
-                      label: "Collections",
-                      isSelected: _selectedFilter == 2,
-                      onTap: () {
-                        setState(() => _selectedFilter = 2);
-                        if (_searchController.text.isNotEmpty) {
-                          _performSearch();
-                        }
-                      },
-                    ),
-                    SizedBox(width: 12),
-                    _FilterButton(
-                      label: "Posts",
-                      isSelected: _selectedFilter == 3,
-                      onTap: () {
-                        setState(() => _selectedFilter = 3);
-                        if (_searchController.text.isNotEmpty) {
-                          _performSearch();
-                        }
-                      },
-                    ),
-                  ],
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
                 ),
               ),
+              child: Row(
+                children: [
+                  _TabButton(
+                    label: "Quiz",
+                    isSelected: _selectedFilter == 0,
+                    onTap: () {
+                      setState(() => _selectedFilter = 0);
+                      if (_searchController.text.isNotEmpty) {
+                        _performSearch();
+                      }
+                    },
+                  ),
+                  _TabButton(
+                    label: "People",
+                    isSelected: _selectedFilter == 1,
+                    onTap: () {
+                      setState(() => _selectedFilter = 1);
+                      if (_searchController.text.isNotEmpty) {
+                        _performSearch();
+                      }
+                    },
+                  ),
+                  _TabButton(
+                    label: "Collections",
+                    isSelected: _selectedFilter == 2,
+                    onTap: () {
+                      setState(() => _selectedFilter = 2);
+                      if (_searchController.text.isNotEmpty) {
+                        _performSearch();
+                      }
+                    },
+                  ),
+                  _TabButton(
+                    label: "Posts",
+                    isSelected: _selectedFilter == 3,
+                    onTap: () {
+                      setState(() => _selectedFilter = 3);
+                      if (_searchController.text.isNotEmpty) {
+                        _performSearch();
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
-            SizedBox(height: 16),
             Expanded(
               child: _hasSearched
                   ? _buildSearchResults()
@@ -698,7 +700,7 @@ class _SearchPageState extends State<SearchPage> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => context.push("/post/details", extra: post),
+              onTap: () => context.push("/post/details", extra: post["id"]),
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -804,12 +806,12 @@ class _SearchPageState extends State<SearchPage> {
   }
 }
 
-class _FilterButton extends StatelessWidget {
+class _TabButton extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _FilterButton({
+  const _TabButton({
     required this.label,
     required this.isSelected,
     required this.onTap,
@@ -817,29 +819,33 @@ class _FilterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surface,
-          border: Border.all(
-            color: Theme.of(context).colorScheme.primary,
-            width: 2,
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
+                width: 2,
+              ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : Theme.of(context).colorScheme.primary,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+              fontSize: 15,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            ),
           ),
         ),
       ),

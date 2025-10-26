@@ -3,6 +3,7 @@ import "package:go_router/go_router.dart";
 import "quizzy_tab.dart";
 import "feedy_tab.dart";
 import "widgets/tab_button.dart";
+import "../../services/api_service.dart";
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,6 +14,26 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedTab = 0;
+  int _unreadNotificationCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await ApiService.getUnreadCount();
+      if (mounted) {
+        setState(() {
+          _unreadNotificationCount = count;
+        });
+      }
+    } catch (e) {
+      // Silently fail - badge will just show 0
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,17 +45,13 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.quiz,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: 24,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'images/Logo.png',
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
                     ),
                   ),
                   SizedBox(width: 12),
@@ -55,11 +72,19 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () => context.push("/search"),
                   ),
                   IconButton(
-                    icon: Icon(
-                      Icons.notifications_outlined,
-                      color: Theme.of(context).colorScheme.onSurface,
+                    icon: Badge(
+                      label: Text(_unreadNotificationCount.toString()),
+                      isLabelVisible: _unreadNotificationCount > 0,
+                      child: Icon(
+                        Icons.notifications_outlined,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
-                    onPressed: () => context.push("/notification"),
+                    onPressed: () async {
+                      await context.push("/notification");
+                      // Reload unread count when returning from notification page
+                      _loadUnreadCount();
+                    },
                   ),
                 ],
               ),

@@ -72,7 +72,11 @@ collectionRoutes.get('/:id', async (c) => {
         id: quizzes.id,
         title: quizzes.title,
         description: quizzes.description,
-        category: categories.name,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         questionCount: quizzes.questionCount,
         playCount: quizzes.playCount,
         favoriteCount: quizzes.favoriteCount,

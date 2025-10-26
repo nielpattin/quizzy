@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import 'websocket_service.dart';
+import 'in_app_notification_service.dart';
 
 // Notification types
 enum NotificationType {
@@ -80,13 +81,6 @@ class RealTimeNotification {
         icon = const Icon(Icons.play_arrow, color: Colors.green, size: 24);
         break;
 
-      case WebSocketMessageType.sessionEnded:
-        type = NotificationType.sessionEnded;
-        title = 'Quiz Ended';
-        messageText = 'The live quiz session has ended.';
-        icon = const Icon(Icons.stop_circle, color: Colors.red, size: 24);
-        break;
-
       case WebSocketMessageType.leaderboardUpdate:
         type = NotificationType.leaderboardUpdate;
         title = 'Leaderboard Updated';
@@ -162,18 +156,54 @@ class RealTimeNotificationService {
   }
 
   void _handleWebSocketMessage(WebSocketMessage message) {
-    // Convert WebSocket message to notification
+    debugPrint(
+      '[RealTimeNotification] Received WebSocket message type: ${message.type}',
+    );
+    debugPrint('[RealTimeNotification] Message data: ${message.data}');
+
+    if (message.type == WebSocketMessageType.notification) {
+      debugPrint('[RealTimeNotification] Processing notification message');
+
+      // message.data now contains the notification directly (not nested under 'notification')
+      final notificationData = message.data;
+      debugPrint('[RealTimeNotification] Notification data: $notificationData');
+
+      if (notificationData != null) {
+        debugPrint('[RealTimeNotification] Showing in-app notification');
+        debugPrint(
+          '[RealTimeNotification] Title: ${notificationData['title']}',
+        );
+        debugPrint(
+          '[RealTimeNotification] Subtitle: ${notificationData['subtitle']}',
+        );
+
+        InAppNotificationService.showInAppNotification(
+          title: notificationData['title'] ?? 'New Notification',
+          body: notificationData['subtitle'] ?? '',
+          payload: {
+            'type': notificationData['type'],
+            'relatedPostId': notificationData['relatedPostId'],
+            'relatedUserId': notificationData['relatedUserId'],
+            'relatedQuizId': notificationData['relatedQuizId'],
+          },
+        );
+      } else {
+        debugPrint('[RealTimeNotification] ERROR: notificationData is NULL!');
+        debugPrint(
+          '[RealTimeNotification] Full message.data structure: ${message.data}',
+        );
+      }
+      return;
+    }
+
     final notification = RealTimeNotification.fromWebSocketMessage(message);
 
-    // Add to notifications list
     _notifications.insert(0, notification);
 
-    // Keep only last 50 notifications
     if (_notifications.length > 50) {
       _notifications.removeRange(50, _notifications.length);
     }
 
-    // Update streams
     _notificationController.add(notification);
     _notificationsListController.add(List.from(_notifications));
     _updateUnreadCount();

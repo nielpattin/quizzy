@@ -5,8 +5,11 @@ import {
   broadcastToSession,
   getSessionParticipants,
   getUserInfo,
+  isUserOnline,
   WebSocketMessage,
+  activeConnections,
 } from '../websocket'
+import { RedisConnectionStore } from './redis-connection-store'
 
 // Simplified WebSocket service for essential real-time features only
 export class WebSocketService {
@@ -74,12 +77,53 @@ export class WebSocketService {
         },
       }
 
-      // Broadcast to specific user
       broadcastToSession(`user_${followedUserId}`, message)
-      console.log(`Broadcasted new follower event to user ${followedUserId}`)
+      console.log(`Broadcasted new follower notification to user ${followedUserId}`)
     } catch (error) {
       console.error('Error broadcasting new follower:', error)
     }
+  }
+
+  // Broadcast to specific user
+  static async broadcastToUser(userId: string, message: any): Promise<boolean> {
+    try {
+      const shortUserId = userId.substring(0, 8)
+      
+      // Check Redis for online status (persists across hot reloads)
+      const inRedis = await RedisConnectionStore.isUserOnline(userId)
+      const totalOnline = activeConnections.size
+      const redisCount = await RedisConnectionStore.getOnlineCount()
+      
+      console.log(`[WS] Active connections: ${totalOnline} in-memory | ${redisCount} in Redis`)
+      
+      // Try to send via local WebSocket connection
+      for (const [ws, context] of activeConnections.entries()) {
+        if (context.userId === userId && ws.readyState === 1) {
+          ws.send(JSON.stringify(message))
+          console.log(`[WS] Delivered -> user:${shortUserId} | via:websocket | channel:open`)
+          return true
+        }
+      }
+      
+      // User not in local Map but exists in Redis (hot reload case)
+      if (inRedis) {
+        console.log(`[WS] User in Redis but not in Map -> user:${shortUserId} | likely:hot-reload | will:reconnect`)
+        return false
+      }
+      
+      // User is truly offline
+      console.log(`[WS] User offline -> user:${shortUserId} | connections:0`)
+      return false
+    } catch (error) {
+      console.error('[WS] Error broadcasting to user:', error)
+      return false
+    }
+  }
+
+  // Check if user is online
+  static async isUserOnline(userId: string): Promise<boolean> {
+    // Check Redis first (persists across hot reloads)
+    return await isUserOnline(userId)
   }
 
   // Broadcast quiz shared event (social notification)

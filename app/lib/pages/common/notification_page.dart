@@ -88,6 +88,37 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
+  void _navigateToRelatedContent(Map<String, dynamic> notification) {
+    final type = notification["type"] as String?;
+    final relatedPostId = notification["relatedPostId"] as String?;
+    final relatedUserId = notification["relatedUserId"] as String?;
+    final relatedQuizId = notification["relatedQuizId"] as String?;
+
+    switch (type) {
+      case "like":
+      case "comment":
+      case "quiz_answer":
+        if (relatedPostId != null) {
+          context.push("/post/$relatedPostId");
+        }
+        break;
+      case "follow":
+      case "follow_request":
+        if (relatedUserId != null) {
+          context.push("/profile/$relatedUserId");
+        }
+        break;
+      case "quiz_share":
+      case "game_invite":
+        if (relatedQuizId != null) {
+          context.push("/quiz/$relatedQuizId");
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
   String _formatTime(String timestamp) {
     try {
       final createdAt = DateTime.parse(timestamp);
@@ -116,8 +147,18 @@ class _NotificationPageState extends State<NotificationPage> {
         return Icons.comment;
       case "follow":
         return Icons.person_add;
-      case "quiz":
+      case "quiz_share":
+        return Icons.share;
+      case "game_invite":
+        return Icons.gamepad;
+      case "quiz_answer":
         return Icons.quiz;
+      case "mention":
+        return Icons.alternate_email;
+      case "follow_request":
+        return Icons.person_add_alt_1;
+      case "system":
+        return Icons.info;
       default:
         return Icons.notifications;
     }
@@ -243,15 +284,17 @@ class _NotificationPageState extends State<NotificationPage> {
               if (notification["isUnread"]) {
                 _markAsRead(notification["id"]);
               }
+              _navigateToRelatedContent(notification);
             },
             child: _NotificationItem(
               avatar: Icons.person,
               avatarColor: Theme.of(context).colorScheme.primary,
               title: notification["title"] ?? "",
-              subtitle: notification["message"] ?? "",
+              subtitle: notification["subtitle"] ?? "",
               time: _formatTime(notification["createdAt"]),
               isUnread: notification["isUnread"] ?? false,
               icon: _getNotificationIcon(notification["type"] ?? ""),
+              relatedUser: notification["relatedUser"],
             ),
           ),
         );
@@ -352,6 +395,7 @@ class _NotificationItem extends StatelessWidget {
   final String time;
   final bool isUnread;
   final IconData icon;
+  final Map<String, dynamic>? relatedUser;
 
   const _NotificationItem({
     required this.avatar,
@@ -361,6 +405,7 @@ class _NotificationItem extends StatelessWidget {
     required this.time,
     required this.isUnread,
     required this.icon,
+    this.relatedUser,
   });
 
   @override
@@ -388,11 +433,16 @@ class _NotificationItem extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: avatarColor,
-                child: Icon(
-                  avatar,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  size: 24,
-                ),
+                backgroundImage: relatedUser?["profilePictureUrl"] != null
+                    ? NetworkImage(relatedUser!["profilePictureUrl"])
+                    : null,
+                child: relatedUser?["profilePictureUrl"] == null
+                    ? Icon(
+                        avatar,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: 24,
+                      )
+                    : null,
               ),
               Positioned(
                 right: 0,
@@ -458,6 +508,19 @@ class _NotificationItem extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (relatedUser != null) ...[
+                  SizedBox(height: 4),
+                  Text(
+                    relatedUser!["username"] ??
+                        relatedUser!["fullName"] ??
+                        "User",
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

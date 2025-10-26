@@ -7,6 +7,7 @@ import "../../widgets/bottom_nav.dart";
 import "tabs/created_tab.dart";
 import "tabs/favorites_tab.dart";
 import "tabs/game_tab.dart";
+import "../../services/api_service.dart";
 
 class LibraryPage extends StatefulWidget {
   final bool showBottomNav;
@@ -22,6 +23,26 @@ class _LibraryPageState extends State<LibraryPage> {
   int _gameTabIndex = 0;
   SortOption _sort = SortOption.newest;
   VoidCallback? _refreshCollectionsCallback;
+  int _unreadNotificationCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await ApiService.getUnreadCount();
+      if (mounted) {
+        setState(() {
+          _unreadNotificationCount = count;
+        });
+      }
+    } catch (e) {
+      // Silently fail
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,11 +119,18 @@ class _LibraryPageState extends State<LibraryPage> {
           onPressed: () => context.push("/search"),
         ),
         IconButton(
-          icon: Icon(
-            Icons.notifications_outlined,
-            color: Theme.of(context).colorScheme.onSurface,
+          icon: Badge(
+            label: Text(_unreadNotificationCount.toString()),
+            isLabelVisible: _unreadNotificationCount > 0,
+            child: Icon(
+              Icons.notifications_outlined,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
-          onPressed: () => context.push("/notification"),
+          onPressed: () async {
+            await context.push("/notification");
+            _loadUnreadCount();
+          },
         ),
       ],
     );

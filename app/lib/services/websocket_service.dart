@@ -23,6 +23,7 @@ enum WebSocketMessageType {
   sessionState,
   ping,
   pong,
+  notification,
 }
 
 // WebSocket message model
@@ -89,6 +90,9 @@ class WebSocketMessage {
       case 'pong':
         messageType = WebSocketMessageType.pong;
         break;
+      case 'notification':
+        messageType = WebSocketMessageType.notification;
+        break;
       default:
         messageType = WebSocketMessageType.error;
     }
@@ -98,6 +102,7 @@ class WebSocketMessage {
       sessionId: json['sessionId'],
       data:
           json['data'] ??
+          json['notification'] ??
           json['participant'] ??
           json['leaderboard'] ??
           json['session'],
@@ -277,8 +282,8 @@ class WebSocketService {
         onDone: _handleDisconnect,
       );
 
-      _startPingTimer();
-      _updateConnectionStatus(ConnectionStatus.connected);
+      // Don't set connected status immediately - wait for server confirmation
+      // Status will be set to connected when first message is received
     } catch (e) {
       _updateConnectionStatus(ConnectionStatus.error);
       _scheduleReconnect();
@@ -328,6 +333,13 @@ class WebSocketService {
       final message = WebSocketMessage.fromJson(json);
 
       _messageController.add(message);
+
+      // Set connected status when first message received
+      if (currentStatus == ConnectionStatus.connecting) {
+        _updateConnectionStatus(ConnectionStatus.connected);
+        _startPingTimer();
+        debugPrint('WebSocket connected successfully');
+      }
 
       switch (message.type) {
         case WebSocketMessageType.sessionJoined:
@@ -407,6 +419,12 @@ class WebSocketService {
 
         case WebSocketMessageType.pong:
           // Pong received, connection is alive
+          break;
+
+        case WebSocketMessageType.connected:
+          _updateConnectionStatus(ConnectionStatus.connected);
+          _startPingTimer();
+          debugPrint('WebSocket connected successfully');
           break;
 
         case WebSocketMessageType.error:

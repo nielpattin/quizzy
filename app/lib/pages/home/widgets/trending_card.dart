@@ -12,6 +12,8 @@ class TrendingCard extends StatelessWidget {
   final String quizId;
   final String? imageUrl;
   final String? profilePictureUrl;
+  final int? playCount;
+  final String? createdAt;
 
   const TrendingCard({
     super.key,
@@ -23,6 +25,8 @@ class TrendingCard extends StatelessWidget {
     required this.quizId,
     this.imageUrl,
     this.profilePictureUrl,
+    this.playCount,
+    this.createdAt,
   });
 
   LinearGradient _getGradientForCategory(String category) {
@@ -48,6 +52,34 @@ class TrendingCard extends StatelessWidget {
     );
   }
 
+  String _getRelativeTime(String? dateString) {
+    if (dateString == null) return '';
+
+    try {
+      final dateTime = DateTime.parse(dateString).toLocal();
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inDays == 0) {
+        if (difference.inHours == 0) {
+          return '${difference.inMinutes}m ago';
+        }
+        return '${difference.inHours}h ago';
+      } else if (difference.inDays == 1) {
+        return '1d ago';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}d ago';
+      } else if (difference.inDays < 30) {
+        return '${(difference.inDays / 7).floor()}w ago';
+      } else if (difference.inDays < 365) {
+        return '${(difference.inDays / 30).floor()}mo ago';
+      }
+      return '${(difference.inDays / 365).floor()}y ago';
+    } catch (e) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -64,7 +96,8 @@ class TrendingCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              height: 90,
+              width: double.infinity,
+              height: 80,
               decoration: BoxDecoration(
                 gradient: (imageUrl == null || imageUrl!.isEmpty)
                     ? _getGradientForCategory(category)
@@ -85,7 +118,7 @@ class TrendingCard extends StatelessWidget {
                       child: CachedNetworkImage(
                         imageUrl: imageUrl!,
                         width: double.infinity,
-                        height: 90,
+                        height: 80,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
                           decoration: BoxDecoration(
@@ -100,37 +133,37 @@ class TrendingCard extends StatelessWidget {
                             child: Icon(
                               Icons.image_not_supported,
                               color: Colors.white.withValues(alpha: 0.5),
-                              size: 32,
+                              size: 28,
                             ),
                           ),
                         ),
                       ),
                     ),
                   Positioned(
-                    top: 8,
-                    left: 8,
+                    top: 6,
+                    left: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 8,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         category,
-                        style: TextStyle(color: Colors.white, fontSize: 11),
+                        style: TextStyle(color: Colors.white, fontSize: 10),
                       ),
                     ),
                   ),
                   Positioned(
-                    bottom: 8,
-                    right: 8,
+                    bottom: 6,
+                    right: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 6,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primary,
@@ -139,13 +172,13 @@ class TrendingCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.copy, size: 11, color: Colors.white),
-                          SizedBox(width: 4),
+                          Icon(Icons.copy, size: 10, color: Colors.white),
+                          SizedBox(width: 2),
                           Text(
                             "$count",
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -155,20 +188,20 @@ class TrendingCard extends StatelessWidget {
                   ),
                   if (isSessions)
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      top: 6,
+                      right: 6,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                          horizontal: 8,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           "Sessions",
-                          style: TextStyle(color: Colors.white, fontSize: 11),
+                          style: TextStyle(color: Colors.white, fontSize: 10),
                         ),
                       ),
                     ),
@@ -176,30 +209,31 @@ class TrendingCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     title,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       height: 1.2,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 6),
                   Row(
                     children: [
                       UserAvatar(
                         imageUrl: profilePictureUrl,
-                        radius: 10,
-                        iconSize: 12,
+                        radius: 8,
+                        iconSize: 10,
                       ),
-                      SizedBox(width: 6),
+                      SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           author,
@@ -207,13 +241,64 @@ class TrendingCard extends StatelessWidget {
                             color: Theme.of(
                               context,
                             ).colorScheme.onSurface.withValues(alpha: 0.7),
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
                       ),
+                    ],
+                  ),
+                  SizedBox(height: 2),
+                  Row(
+                    children: [
+                      if (createdAt != null &&
+                          _getRelativeTime(createdAt).isNotEmpty) ...[
+                        Text(
+                          _getRelativeTime(createdAt),
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            fontSize: 10,
+                          ),
+                        ),
+                        if (playCount != null && playCount! > 0) ...[
+                          Text(
+                            ' • ',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ],
+                      if (playCount != null && playCount! > 0)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.play_arrow,
+                              size: 10,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                            SizedBox(width: 2),
+                            Text(
+                              "$playCount plays",
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ],

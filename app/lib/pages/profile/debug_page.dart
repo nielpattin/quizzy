@@ -3,6 +3,8 @@ import "package:flutter/services.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "dart:convert";
+import "dart:async";
+import "../../services/websocket_service.dart";
 
 class DebugPage extends StatefulWidget {
   const DebugPage({super.key});
@@ -13,12 +15,38 @@ class DebugPage extends StatefulWidget {
 
 class _DebugPageState extends State<DebugPage> {
   Map<String, dynamic> _sessionInfo = {};
+  Map<String, dynamic> _websocketInfo = {};
   bool _isLoading = true;
+  StreamSubscription? _wsSubscription;
+  DateTime? _connectedAt;
+  DateTime? _lastMessageAt;
+  Timer? _updateTimer;
 
   @override
   void initState() {
     super.initState();
     _loadSessionInfo();
+    _loadWebSocketInfo();
+
+    _wsSubscription = WebSocketService().connectionStatus.listen((_) {
+      if (mounted) {
+        _loadWebSocketInfo();
+      }
+    });
+
+    WebSocketService().messages.listen((_) {
+      if (mounted) {
+        setState(() {
+          _lastMessageAt = DateTime.now();
+        });
+      }
+    });
+
+    _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _websocketInfo.isNotEmpty) {
+        setState(() {});
+      }
+    });
   }
 
   Future<void> _loadSessionInfo() async {
@@ -84,6 +112,89 @@ class _DebugPageState extends State<DebugPage> {
     }
   }
 
+  Future<void> _loadWebSocketInfo() async {
+    try {
+      final wsService = WebSocketService();
+      final status = wsService.currentStatus;
+      final user = Supabase.instance.client.auth.currentUser;
+
+      if (status == ConnectionStatus.connected && _connectedAt == null) {
+        _connectedAt = DateTime.now();
+      } else if (status != ConnectionStatus.connected) {
+        _connectedAt = null;
+      }
+
+      String statusEmoji;
+      Color statusColor;
+      switch (status) {
+        case ConnectionStatus.connected:
+          statusEmoji = "🟢";
+          statusColor = Colors.green;
+          break;
+        case ConnectionStatus.connecting:
+        case ConnectionStatus.reconnecting:
+          statusEmoji = "🟡";
+          statusColor = Colors.orange;
+          break;
+        case ConnectionStatus.error:
+          statusEmoji = "⚫";
+          statusColor = Colors.grey;
+          break;
+        case ConnectionStatus.disconnected:
+        default:
+          statusEmoji = "🔴";
+          statusColor = Colors.red;
+      }
+
+      String connectedDuration = "N/A";
+      if (_connectedAt != null && status == ConnectionStatus.connected) {
+        final duration = DateTime.now().difference(_connectedAt!);
+        if (duration.inHours > 0) {
+          connectedDuration =
+              "${duration.inHours}h ${duration.inMinutes % 60}m";
+        } else if (duration.inMinutes > 0) {
+          connectedDuration =
+              "${duration.inMinutes}m ${duration.inSeconds % 60}s";
+        } else {
+          connectedDuration = "${duration.inSeconds}s";
+        }
+      }
+
+      String lastMessage = "Never";
+      if (_lastMessageAt != null) {
+        final since = DateTime.now().difference(_lastMessageAt!);
+        if (since.inMinutes > 0) {
+          lastMessage = "${since.inMinutes}m ${since.inSeconds % 60}s ago";
+        } else {
+          lastMessage = "${since.inSeconds}s ago";
+        }
+      }
+
+      setState(() {
+        _websocketInfo = {
+          "Status": status.toString().split('.').last,
+          "Status Emoji": statusEmoji,
+          "Status Color": statusColor,
+          "Is Connected": status == ConnectionStatus.connected,
+          "User ID": user?.id ?? "N/A",
+          "Connected Duration": connectedDuration,
+          "Last Message": lastMessage,
+        };
+      });
+    } catch (e) {
+      setState(() {
+        _websocketInfo = {"Error": e.toString()};
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _wsSubscription?.cancel();
+    _updateTimer?.cancel();
+    super.dispose();
+  }
+
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -95,7 +206,7 @@ class _DebugPageState extends State<DebugPage> {
     );
   }
 
-  Widget _buildInfoItem(String key, dynamic value) {
+  Widget _buildInfoItem(String key, dynamic value, {Color? backgroundColor}) {
     String displayValue;
     if (value is Map || value is List) {
       displayValue = const JsonEncoder.withIndent("  ").convert(value);
@@ -110,7 +221,7 @@ class _DebugPageState extends State<DebugPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: backgroundColor ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
@@ -173,6 +284,108 @@ class _DebugPageState extends State<DebugPage> {
     );
   }
 
+  Widget _buildWebSocketSection() {
+    if (_websocketInfo.isEmpty) {
+      return SizedBox.shrink();
+    }
+
+    final isConnected = _websocketInfo["Is Connected"] ?? false;
+    final statusEmoji = _websocketInfo["Status Emoji"] ?? "⚫";
+    final statusColor = _websocketInfo["Status Color"] ?? Colors.grey;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withOpacity(0.3), width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(statusEmoji, style: TextStyle(fontSize: 24)),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "WebSocket Status",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                    Text(
+                      isConnected ? "Connected to backend" : "Not connected",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                isConnected ? Icons.check_circle : Icons.error,
+                color: statusColor,
+                size: 32,
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Divider(),
+          SizedBox(height: 8),
+          ..._websocketInfo.entries
+              .where(
+                (e) => ![
+                  "Status Emoji",
+                  "Status Color",
+                  "Is Connected",
+                ].contains(e.key),
+              )
+              .map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 140,
+                        child: Text(
+                          entry.key,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: SelectableText(
+                          entry.value.toString(),
+                          style: TextStyle(
+                            fontFamily: entry.key == "User ID"
+                                ? "monospace"
+                                : null,
+                            fontSize: entry.key == "User ID" ? 11 : 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -189,7 +402,13 @@ class _DebugPageState extends State<DebugPage> {
           },
         ),
         actions: [
-          IconButton(icon: Icon(Icons.refresh), onPressed: _loadSessionInfo),
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: () {
+              _loadSessionInfo();
+              _loadWebSocketInfo();
+            },
+          ),
         ],
       ),
       body: _isLoading
@@ -223,6 +442,7 @@ class _DebugPageState extends State<DebugPage> {
                   ),
                 ),
                 SizedBox(height: 24),
+                _buildWebSocketSection(),
                 ..._sessionInfo.entries.map((entry) {
                   return _buildInfoItem(entry.key, entry.value);
                 }),

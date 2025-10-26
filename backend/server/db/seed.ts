@@ -3,14 +3,17 @@ import { reset } from 'drizzle-seed';
 import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from './schema';
-import { SEED_USERS, SEED_USERS_COUNT, getRegularUserCounts } from './seed-data';
-import { INITIAL_CATEGORIES } from './seed-categories';
 import {
+	SEED_USERS,
+	SEED_USERS_COUNT,
+	getRegularUserCounts,
+	INITIAL_CATEGORIES,
 	uploadAllSeedImages,
 	seedAdminUser,
 	seedFixedUsers,
 	seedFixedUsersData,
 	seedSpecificUsers,
+	seedSpecificUsersContent,
 	seedRegularUsers,
 } from './seed-functions';
 
@@ -44,50 +47,56 @@ const main = async () => {
 	const client = postgres(DATABASE_URL);
 	const db = drizzle(client);
 
-	await db.execute(sql`SET client_min_messages TO WARNING;`);
-	await reset(db, seedSchema);
+	try {
+		await db.execute(sql`SET client_min_messages TO WARNING;`);
+		await reset(db, seedSchema);
 
-	const { cleanMinIOBuckets } = await import('../../scripts/setup-minio');
-	await cleanMinIOBuckets();
+		const { cleanMinIOBuckets } = await import('../../scripts/setup-minio');
+		await cleanMinIOBuckets();
 
-	const startTime = Date.now();
+		const startTime = Date.now();
 
-	// Seed categories FIRST
-	console.log('📝 Seeding categories...');
-	const insertedCategories = await db.insert(schema.categories).values(INITIAL_CATEGORIES).returning();
-	console.log(`✅ Seeded ${insertedCategories.length} categories`);
+		// Seed categories FIRST
+		console.log('📝 Seeding categories...');
+		const insertedCategories = await db.insert(schema.categories).values(INITIAL_CATEGORIES).returning();
+		console.log(`✅ Seeded ${insertedCategories.length} categories`);
 
-	// Create a map for category lookup
-	const categoryMap = new Map<string, string>();
-	for (const category of insertedCategories) {
-		categoryMap.set(category.name, category.id);
+		// Create a map for category lookup
+		const categoryMap = new Map<string, string>();
+		for (const category of insertedCategories) {
+			categoryMap.set(category.name, category.id);
+		}
+
+		await seedAdminUser(db);
+		await seedFixedUsers(db);
+		await seedSpecificUsers(db);
+
+		const fixedUsers = await db.select().from(schema.users).limit(1);
+		const seedImageOwner = fixedUsers[0]?.id;
+
+		let seedImageUrls: { posts: string[]; quizzes: string[]; profiles: string[] } = { posts: [], quizzes: [], profiles: [] };
+		if (seedImageOwner) {
+			seedImageUrls = await uploadAllSeedImages(db, seedImageOwner);
+		}
+
+		const totalUsers = SEED_USERS_COUNT + SEED_USERS.length;
+		const regularCounts = getRegularUserCounts(totalUsers);
+
+		await seedRegularUsers(db, seedImageUrls, categoryMap);
+		await seedSpecificUsersContent(db, categoryMap, seedImageUrls);
+		await seedFixedUsersData(db, categoryMap, seedImageUrls);
+
+		const endTime = Date.now();
+		const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+		const totalRecords = Object.values(regularCounts).reduce((a, b) => a + b, 0) + insertedCategories.length;
+		console.log(`✅ Seeded ${totalRecords} records in ${duration}s`);
+	} catch (error) {
+		console.error('❌ Seeding failed:', error);
+		throw error;
+	} finally {
+		await client.end();
 	}
-
-	await seedAdminUser(db);
-	await seedFixedUsers(db);
-	await seedSpecificUsers(db);
-
-	const fixedUsers = await db.select().from(schema.users).limit(1);
-	const seedImageOwner = fixedUsers[0]?.id;
-
-	let seedImageUrls: { posts: string[]; quizzes: string[]; profiles: string[] } = { posts: [], quizzes: [], profiles: [] };
-	if (seedImageOwner) {
-		seedImageUrls = await uploadAllSeedImages(db, seedImageOwner);
-	}
-
-	const totalUsers = SEED_USERS_COUNT + SEED_USERS.length;
-	const regularCounts = getRegularUserCounts(totalUsers);
-
-	await seedRegularUsers(db, seedImageUrls, categoryMap);
-	await seedFixedUsersData(db, categoryMap);
-
-	const endTime = Date.now();
-	const duration = ((endTime - startTime) / 1000).toFixed(2);
-
-	const totalRecords = Object.values(regularCounts).reduce((a, b) => a + b, 0) + insertedCategories.length;
-	console.log(`✅ Seeded ${totalRecords} records in ${duration}s`);
-
-	await client.end();
 };
 
 main().catch((error) => {
