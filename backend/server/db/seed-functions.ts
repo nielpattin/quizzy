@@ -10,16 +10,9 @@ import * as fs from 'fs/promises';
 // SEED DATA CONFIGURATION AND CONSTANTS
 // ============================================================================
 
-const getRequiredEnv = (key: string): string => {
+const getOptionalNumberEnv = (key: string, defaultValue: number): number => {
 	const value = process.env[key];
-	if (!value) {
-		throw new Error(`Missing required environment variable: ${key}`);
-	}
-	return value;
-};
-
-const getRequiredNumberEnv = (key: string): number => {
-	const value = getRequiredEnv(key);
+	if (!value) return defaultValue;
 	const num = Number(value);
 	if (isNaN(num)) {
 		throw new Error(`Environment variable ${key} must be a number, got: ${value}`);
@@ -29,20 +22,27 @@ const getRequiredNumberEnv = (key: string): number => {
 
 export const SEED_ADMIN = process.env.SEED_ADMIN || '';
 export const SEED_USERS = process.env.SEED_USERS?.split(',').map((email) => email.trim()) || [];
-export const SEED_USERS_COUNT = getRequiredNumberEnv('SEED_USERS_COUNT');
-export const SEED_COLLECTIONS_COUNT_PER_USER = getRequiredNumberEnv('SEED_COLLECTIONS_COUNT_PER_USER');
-export const SEED_QUIZZES_COUNT_PER_USER = getRequiredNumberEnv('SEED_QUIZZES_COUNT_PER_USER');
-export const SEED_QUESTIONS_PER_QUIZ_COUNT = getRequiredNumberEnv('SEED_QUESTIONS_PER_QUIZ_COUNT');
-export const SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ = getRequiredNumberEnv('SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ');
-export const SEED_GAME_SESSIONS_COUNT_PER_QUIZ = getRequiredNumberEnv('SEED_GAME_SESSIONS_COUNT_PER_QUIZ');
-export const SEED_GAME_PARTICIPANTS_PER_SESSION_COUNT = getRequiredNumberEnv('SEED_GAME_PARTICIPANTS_PER_SESSION_COUNT');
-export const SEED_POSTS_COUNT_PER_USER = getRequiredNumberEnv('SEED_POSTS_COUNT_PER_USER');
-export const SEED_COMMENTS_COUNT_PER_POST = getRequiredNumberEnv('SEED_COMMENTS_COUNT_PER_POST');
-export const SEED_POST_LIKES_COUNT_PER_POST = getRequiredNumberEnv('SEED_POST_LIKES_COUNT_PER_POST');
-export const SEED_COMMENT_LIKES_COUNT_PER_COMMENT = getRequiredNumberEnv('SEED_COMMENT_LIKES_COUNT_PER_COMMENT');
-export const SEED_FAVORITE_QUIZZES_COUNT_PER_USER = getRequiredNumberEnv('SEED_FAVORITE_QUIZZES_COUNT_PER_USER');
-export const SEED_FOLLOWS_COUNT_PER_USER = getRequiredNumberEnv('SEED_FOLLOWS_COUNT_PER_USER');
-export const SEED_NOTIFICATIONS_COUNT_PER_POST = getRequiredNumberEnv('SEED_NOTIFICATIONS_COUNT_PER_POST');
+
+// NEW: Simple mode - set absolute counts
+export const SEED_USERS_COUNT = getOptionalNumberEnv('SEED_USERS_COUNT', 10);
+export const SEED_QUIZZES_COUNT = getOptionalNumberEnv('SEED_QUIZZES_COUNT', 0); // 0 = use per-user mode
+export const SEED_QUESTIONS_COUNT = getOptionalNumberEnv('SEED_QUESTIONS_COUNT', 5);
+export const SEED_POSTS_COUNT = getOptionalNumberEnv('SEED_POSTS_COUNT', 0); // 0 = use per-user mode
+
+// OLD: Per-user mode (used when SEED_QUIZZES_COUNT = 0)
+export const SEED_COLLECTIONS_COUNT_PER_USER = getOptionalNumberEnv('SEED_COLLECTIONS_COUNT_PER_USER', 3);
+export const SEED_QUIZZES_COUNT_PER_USER = getOptionalNumberEnv('SEED_QUIZZES_COUNT_PER_USER', 5);
+export const SEED_QUESTIONS_PER_QUIZ_COUNT = getOptionalNumberEnv('SEED_QUESTIONS_PER_QUIZ_COUNT', 10);
+export const SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ = getOptionalNumberEnv('SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ', 1);
+export const SEED_GAME_SESSIONS_COUNT_PER_QUIZ = getOptionalNumberEnv('SEED_GAME_SESSIONS_COUNT_PER_QUIZ', 2);
+export const SEED_GAME_PARTICIPANTS_PER_SESSION_COUNT = getOptionalNumberEnv('SEED_GAME_PARTICIPANTS_PER_SESSION_COUNT', 4);
+export const SEED_POSTS_COUNT_PER_USER = getOptionalNumberEnv('SEED_POSTS_COUNT_PER_USER', 1);
+export const SEED_COMMENTS_COUNT_PER_POST = getOptionalNumberEnv('SEED_COMMENTS_COUNT_PER_POST', 3);
+export const SEED_POST_LIKES_COUNT_PER_POST = getOptionalNumberEnv('SEED_POST_LIKES_COUNT_PER_POST', 5);
+export const SEED_COMMENT_LIKES_COUNT_PER_COMMENT = getOptionalNumberEnv('SEED_COMMENT_LIKES_COUNT_PER_COMMENT', 2);
+export const SEED_FAVORITE_QUIZZES_COUNT_PER_USER = getOptionalNumberEnv('SEED_FAVORITE_QUIZZES_COUNT_PER_USER', 8);
+export const SEED_FOLLOWS_COUNT_PER_USER = getOptionalNumberEnv('SEED_FOLLOWS_COUNT_PER_USER', 12);
+export const SEED_NOTIFICATIONS_COUNT_PER_POST = getOptionalNumberEnv('SEED_NOTIFICATIONS_COUNT_PER_POST', 4);
 
 export const INITIAL_CATEGORIES = [
 	{
@@ -130,8 +130,8 @@ export const questionTypes: string[] = [
 	'checkbox',
 	'true_false',
 	'type_answer',
-	'reorder',
-	'drop_pin',
+	// 'reorder',     // Disabled for now
+	// 'drop_pin',    // Disabled for now
 ];
 
 export const accountTypes = ['user', 'employee'];
@@ -348,29 +348,49 @@ export const FIXED_USER_COLLECTIONS = [
 ];
 
 export const getRegularUserCounts = (totalUsers: number) => {
+	// NEW: Simple mode - if SEED_QUIZZES_COUNT is set, use absolute counts
+	if (SEED_QUIZZES_COUNT > 0) {
+		return {
+			users: totalUsers,
+			collections: 0,
+			quizzes: SEED_QUIZZES_COUNT,
+			questions: SEED_QUESTIONS_COUNT * SEED_QUIZZES_COUNT,
+			quizSnapshots: 0,
+			questionsSnapshots: 0,
+			gameSessions: 0,
+			gameParticipants: 0,
+			savedQuizzes: 0,
+			posts: SEED_POSTS_COUNT,
+			postLikes: 0,
+			follows: 0,
+			notifications: 0,
+		};
+	}
+	
+	// OLD: Per-user mode - calculate based on user count
 	const SEED_COLLECTIONS_COUNT = totalUsers * SEED_COLLECTIONS_COUNT_PER_USER;
-	const SEED_QUIZZES_COUNT = totalUsers * SEED_QUIZZES_COUNT_PER_USER;
-	const SEED_QUESTIONS_COUNT = SEED_QUIZZES_COUNT * SEED_QUESTIONS_PER_QUIZ_COUNT;
-	const SEED_QUIZ_SNAPSHOTS_COUNT = SEED_QUIZZES_COUNT * SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ;
+	const SEED_QUIZZES_COUNT_TOTAL = totalUsers * SEED_QUIZZES_COUNT_PER_USER;
+	const SEED_QUESTIONS_COUNT_TOTAL = SEED_QUIZZES_COUNT_TOTAL * SEED_QUESTIONS_PER_QUIZ_COUNT;
+	const SEED_QUIZ_SNAPSHOTS_COUNT = SEED_QUIZZES_COUNT_TOTAL * SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ;
 	const SEED_QUESTIONS_SNAPSHOTS_COUNT = SEED_QUIZ_SNAPSHOTS_COUNT * SEED_QUESTIONS_PER_QUIZ_COUNT;
-	const SEED_GAME_SESSIONS_COUNT = SEED_QUIZZES_COUNT * SEED_GAME_SESSIONS_COUNT_PER_QUIZ;
+	const SEED_GAME_SESSIONS_COUNT = SEED_QUIZZES_COUNT_TOTAL * SEED_GAME_SESSIONS_COUNT_PER_QUIZ;
 	const SEED_GAME_PARTICIPANTS_COUNT = SEED_GAME_SESSIONS_COUNT * SEED_GAME_PARTICIPANTS_PER_SESSION_COUNT;
-	const SEED_POSTS_COUNT = totalUsers * SEED_POSTS_COUNT_PER_USER;
-	const SEED_POST_LIKES_COUNT = SEED_POSTS_COUNT * SEED_POST_LIKES_COUNT_PER_POST;
+	const SEED_POSTS_COUNT_TOTAL = totalUsers * SEED_POSTS_COUNT_PER_USER;
+	const SEED_POST_LIKES_COUNT = SEED_POSTS_COUNT_TOTAL * SEED_POST_LIKES_COUNT_PER_POST;
 	const SEED_FAVORITE_QUIZZES_COUNT = totalUsers * SEED_FAVORITE_QUIZZES_COUNT_PER_USER;
 	const SEED_FOLLOWS_COUNT = totalUsers * SEED_FOLLOWS_COUNT_PER_USER;
 	
 	return {
 		users: totalUsers,
 		collections: SEED_COLLECTIONS_COUNT,
-		quizzes: SEED_QUIZZES_COUNT,
-		questions: SEED_QUESTIONS_COUNT,
+		quizzes: SEED_QUIZZES_COUNT_TOTAL,
+		questions: SEED_QUESTIONS_COUNT_TOTAL,
 		quizSnapshots: SEED_QUIZ_SNAPSHOTS_COUNT,
 		questionsSnapshots: SEED_QUESTIONS_SNAPSHOTS_COUNT,
 		gameSessions: SEED_GAME_SESSIONS_COUNT,
 		gameParticipants: SEED_GAME_PARTICIPANTS_COUNT,
 		savedQuizzes: SEED_FAVORITE_QUIZZES_COUNT,
-		posts: SEED_POSTS_COUNT,
+		posts: SEED_POSTS_COUNT_TOTAL,
 		postLikes: SEED_POST_LIKES_COUNT,
 		follows: SEED_FOLLOWS_COUNT,
 		notifications: 0,
@@ -1407,4 +1427,156 @@ export const seedSpecificUsersContent = async (db: any, categoryMap?: Map<string
 	}
 
 	console.log(`✅ Seed users content created`);
+};
+
+// NEW: Minimal seed function for simple mode (SEED_QUIZZES_COUNT > 0)
+export const seedMinimalContent = async (db: any, categoryMap?: Map<string, string>, seedImageUrls?: SeedImageUrls) => {
+	console.log(`📝 Creating minimal content (${SEED_QUIZZES_COUNT} quiz per user, ${SEED_POSTS_COUNT} posts per user)...`);
+
+	// Get SEED_USERS (not admin, not employees)
+	const users = await db.select().from(schema.users).where(
+		inArray(schema.users.email, SEED_USERS)
+	);
+	
+	if (users.length === 0) {
+		console.log('⚠️  No SEED_USERS found in database');
+		return;
+	}
+
+	const categoryIds = categoryMap ? Array.from(categoryMap.values()) : [];
+	const categoryIdToName = new Map<string, string>();
+	if (categoryMap) {
+		for (const [name, id] of categoryMap.entries()) {
+			categoryIdToName.set(id, name);
+		}
+	}
+
+	const categoryNameMap: Record<string, string> = {
+		'General Knowledge': 'Kiến thức chung',
+		'Science': 'Khoa học',
+		'Math': 'Toán học',
+		'History': 'Lịch sử',
+		'Geography': 'Địa lý',
+		'Literature': 'Văn học',
+		'Music': 'Âm nhạc',
+		'Movies': 'Phim ảnh',
+		'Sports': 'Thể thao',
+		'Technology': 'Công nghệ',
+		'Programming': 'Lập trình',
+		'Art': 'Nghệ thuật',
+		'Other': 'Khác',
+	};
+
+	// Assign profile images to users
+	if (seedImageUrls?.profiles && seedImageUrls.profiles.length > 0) {
+		console.log(`📝 Assigning profile images to ${users.length} users...`);
+		for (let i = 0; i < users.length; i++) {
+			const user = users[i];
+			const profilePictureUrl = seedImageUrls.profiles[i % seedImageUrls.profiles.length];
+			await db.update(schema.users)
+				.set({ profilePictureUrl })
+				.where(eq(schema.users.id, user.id));
+		}
+		console.log('✅ Profile images assigned');
+	}
+
+	// Create content for EACH user
+	for (const owner of users) {
+		console.log(`  📝 Creating content for ${owner.email}...`);
+		
+		// Create quiz(zes) for this user
+		for (let i = 0; i < SEED_QUIZZES_COUNT; i++) {
+			const categoryId = categoryIds.length > 0 ? categoryIds[i % categoryIds.length] : null;
+			const englishCategoryName = categoryId ? categoryIdToName.get(categoryId) ?? 'General Knowledge' : 'General Knowledge';
+			const vietnameseCategoryName = categoryNameMap[englishCategoryName] || 'Kiến thức chung';
+
+			const imageUrl = seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0
+				? seedImageUrls.quizzes[i % seedImageUrls.quizzes.length]
+				: null;
+
+			const [quiz] = await db.insert(schema.quizzes).values({
+				userId: owner.id,
+				categoryId,
+				title: generateQuizTitle(vietnameseCategoryName),
+				description: generateQuizDescription(vietnameseCategoryName),
+				imageUrl,
+				questionCount: SEED_QUESTIONS_COUNT,
+				playCount: 0,
+				favoriteCount: 0,
+				shareCount: 0,
+				isPublic: true,
+				questionsVisible: true,
+				isDeleted: false,
+				version: 1,
+			}).returning();
+
+			// Create questions with random types, at least 1 with image
+			const questionTypesList = [...questionTypes]; // All 6 types
+			const shuffledTypes = questionTypesList.sort(() => Math.random() - 0.5);
+			
+			for (let j = 0; j < SEED_QUESTIONS_COUNT; j++) {
+				const questionType = shuffledTypes[j % shuffledTypes.length];
+				
+				// First question MUST have image, others random
+				let questionImageUrl = null;
+				if (j === 0) {
+					// Force first question to have image
+					questionImageUrl = seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0
+						? seedImageUrls.quizzes[(i + j) % seedImageUrls.quizzes.length]
+						: null;
+				} else {
+					// 30% chance for other questions
+					if (Math.random() < 0.3 && seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0) {
+						questionImageUrl = seedImageUrls.quizzes[(i + j) % seedImageUrls.quizzes.length];
+					}
+				}
+
+				await db.insert(schema.questions).values({
+					quizId: quiz.id,
+					type: questionType,
+					questionText: generateQuestionText(vietnameseCategoryName, questionType, j),
+					data: generateQuestionData(questionType),
+					imageUrl: questionImageUrl,
+					orderIndex: j,
+				});
+			}
+
+			console.log(`    ✓ Created quiz "${quiz.title}" with ${SEED_QUESTIONS_COUNT} questions`);
+		}
+
+		// Create posts for this user
+		for (let i = 0; i < SEED_POSTS_COUNT; i++) {
+			const postType = i === 0 ? 'text' : (i === 1 ? 'image' : 'quiz');
+			let imageUrl = null;
+			let questionType = null;
+			let questionText = null;
+			let questionData = null;
+
+			if (postType === 'image') {
+				imageUrl = seedImageUrls?.posts && seedImageUrls.posts.length > 0
+					? seedImageUrls.posts[i % seedImageUrls.posts.length]
+					: null;
+			} else if (postType === 'quiz') {
+				questionType = questionTypes[i % questionTypes.length];
+				questionText = generateQuestionText(null, questionType, i);
+				questionData = generateQuestionData(questionType);
+			}
+
+			await db.insert(schema.posts).values({
+				userId: owner.id,
+				text: `Bài viết ${i + 1} từ ${owner.fullName}`,
+				postType,
+				imageUrl,
+				questionType,
+				questionText,
+				questionData,
+				likesCount: 0,
+				commentsCount: 0,
+			});
+		}
+		
+		console.log(`    ✓ Created ${SEED_POSTS_COUNT} posts`);
+	}
+
+	console.log(`✅ Minimal content created for ${users.length} users`);
 };

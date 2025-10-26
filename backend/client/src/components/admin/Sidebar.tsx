@@ -6,9 +6,10 @@ import {
 	LogOut,
 	Menu,
 	MessageSquare,
+	Monitor,
+	ScrollText,
 	Trophy,
 	Users,
-	ScrollText,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -17,6 +18,7 @@ const navItems = [
 	{ path: "/admin/quiz-manager", label: "Quiz Manager", icon: FileText },
 	{ path: "/admin/users", label: "Users", icon: Users },
 	{ path: "/admin/contests", label: "Contests", icon: Trophy },
+	{ path: "/admin/session-manager", label: "Session Manager", icon: Monitor },
 	{ path: "/admin/leaderboard", label: "Leaderboard", icon: BarChart3 },
 	{ path: "/admin/feed-manager", label: "Feed Manager", icon: MessageSquare },
 	{ path: "/admin/logs", label: "Logs", icon: ScrollText },

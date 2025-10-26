@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminSessionManagerRouteImport } from './routes/admin/session-manager'
 import { Route as AdminQuizManagerRouteImport } from './routes/admin/quiz-manager'
 import { Route as AdminLogsRouteImport } from './routes/admin/logs'
 import { Route as AdminLeaderboardRouteImport } from './routes/admin/leaderboard'
@@ -43,6 +44,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSessionManagerRoute = AdminSessionManagerRouteImport.update({
+  id: '/session-manager',
+  path: '/session-manager',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminQuizManagerRoute = AdminQuizManagerRouteImport.update({
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/admin/leaderboard': typeof AdminLeaderboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/quiz-manager': typeof AdminQuizManagerRoute
+  '/admin/session-manager': typeof AdminSessionManagerRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/admin/leaderboard': typeof AdminLeaderboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/quiz-manager': typeof AdminQuizManagerRoute
+  '/admin/session-manager': typeof AdminSessionManagerRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/admin/leaderboard': typeof AdminLeaderboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/quiz-manager': typeof AdminQuizManagerRoute
+  '/admin/session-manager': typeof AdminSessionManagerRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/admin/leaderboard'
     | '/admin/logs'
     | '/admin/quiz-manager'
+    | '/admin/session-manager'
     | '/admin/users'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/admin/leaderboard'
     | '/admin/logs'
     | '/admin/quiz-manager'
+    | '/admin/session-manager'
     | '/admin/users'
     | '/admin'
   id:
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/admin/leaderboard'
     | '/admin/logs'
     | '/admin/quiz-manager'
+    | '/admin/session-manager'
     | '/admin/users'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -188,6 +200,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/session-manager': {
+      id: '/admin/session-manager'
+      path: '/session-manager'
+      fullPath: '/admin/session-manager'
+      preLoaderRoute: typeof AdminSessionManagerRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/quiz-manager': {
       id: '/admin/quiz-manager'
       path: '/quiz-manager'
@@ -232,6 +251,7 @@ interface AdminRouteChildren {
   AdminLeaderboardRoute: typeof AdminLeaderboardRoute
   AdminLogsRoute: typeof AdminLogsRoute
   AdminQuizManagerRoute: typeof AdminQuizManagerRoute
+  AdminSessionManagerRoute: typeof AdminSessionManagerRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -242,6 +262,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminLeaderboardRoute: AdminLeaderboardRoute,
   AdminLogsRoute: AdminLogsRoute,
   AdminQuizManagerRoute: AdminQuizManagerRoute,
+  AdminSessionManagerRoute: AdminSessionManagerRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

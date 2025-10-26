@@ -328,7 +328,8 @@ export const notifications = pgTable('notifications', {
   index('notifications_user_id_idx').on(table.userId),
   index('notifications_is_unread_idx').on(table.isUnread),
   index('notifications_created_at_idx').on(table.createdAt),
-  unique('notifications_unique_constraint').on(table.userId, table.type, table.relatedUserId, table.relatedPostId, table.relatedQuizId),
+  // Note: Unique index with NULLS NOT DISTINCT is created via custom SQL migration
+  // to properly handle NULL values in related_quiz_id, related_post_id, related_user_id
 ]);
 
 export const userNotificationState = pgTable('user_notification_state', {

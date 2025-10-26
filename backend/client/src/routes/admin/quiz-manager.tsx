@@ -10,6 +10,7 @@ import { EditCollectionDialog } from "@/components/admin/quiz-manager/EditCollec
 import { QuizTable } from "@/components/admin/quiz-manager/QuizTable";
 import { QuizTableToolbar } from "@/components/admin/quiz-manager/QuizTableToolbar";
 import { ViewCollectionQuizzesDialog } from "@/components/admin/quiz-manager/ViewCollectionQuizzesDialog";
+import { ViewQuizQuestionsDialog } from "@/components/admin/quiz-manager/ViewQuizQuestionsDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,6 +43,28 @@ interface QuizzesResponse {
 	total: number;
 	page: number;
 	limit: number;
+}
+
+interface Question {
+	id: string;
+	quizId: string;
+	type:
+		| "single_choice"
+		| "checkbox"
+		| "true_false"
+		| "type_answer"
+		| "reorder"
+		| "drop_pin";
+	questionText: string;
+	imageUrl: string | null;
+	data: {
+		options?: Array<{ text: string; isCorrect: boolean }>;
+		correctAnswer?: boolean;
+		acceptedAnswers?: string[];
+		items?: string[];
+		[key: string]: unknown;
+	};
+	orderIndex: number;
 }
 
 interface Collection {
@@ -239,6 +262,23 @@ async function removeQuizFromCollection(
 	}
 }
 
+async function fetchQuizQuestions(
+	token: string,
+	quizId: string,
+): Promise<Question[]> {
+	const response = await fetch(`${API_BASE_URL}/api/quiz/${quizId}/questions`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error("Failed to fetch questions");
+	}
+
+	return response.json();
+}
+
 function QuizManagerPage() {
 	const queryClient = useQueryClient();
 	const { session } = useAuth();
@@ -264,6 +304,11 @@ function QuizManagerPage() {
 		useState<Collection | null>(null);
 	const [viewCollectionOpen, setViewCollectionOpen] = useState(false);
 	const [collectionToView, setCollectionToView] = useState<string | null>(null);
+
+	const [viewQuestionsOpen, setViewQuestionsOpen] = useState(false);
+	const [quizToViewQuestions, setQuizToViewQuestions] = useState<Quiz | null>(
+		null,
+	);
 
 	const { data, isLoading } = useQuery({
 		queryKey: [
@@ -294,6 +339,15 @@ function QuizManagerPage() {
 					})
 				: Promise.reject("No token"),
 		enabled: !!token && activeTab === "collections",
+	});
+
+	const { data: questionsData, isLoading: questionsLoading } = useQuery({
+		queryKey: ["quiz-questions", quizToViewQuestions?.id],
+		queryFn: () =>
+			token && quizToViewQuestions
+				? fetchQuizQuestions(token, quizToViewQuestions.id)
+				: Promise.reject("No token or quiz"),
+		enabled: !!token && !!quizToViewQuestions && viewQuestionsOpen,
 	});
 
 	const deleteMutation = useMutation({
@@ -373,7 +427,11 @@ function QuizManagerPage() {
 	});
 
 	const handleEdit = (quizId: string) => {
-		console.log("Edit quiz:", quizId);
+		const quiz = data?.quizzes.find((q) => q.id === quizId);
+		if (quiz) {
+			setQuizToViewQuestions(quiz);
+			setViewQuestionsOpen(true);
+		}
 	};
 
 	const handleCopy = async (quizId: string) => {
@@ -542,7 +600,7 @@ function QuizManagerPage() {
 					<QuizTable
 						quizzes={data?.quizzes || []}
 						isLoading={isLoading}
-						onEdit={handleEdit}
+						onClick={handleEdit}
 						onCopy={handleCopy}
 						onDelete={handleDelete}
 						onMore={handleMore}
@@ -610,6 +668,14 @@ function QuizManagerPage() {
 				onOpenChange={setViewCollectionOpen}
 				collectionId={collectionToView}
 				onRemoveQuiz={handleRemoveQuizFromCollection}
+			/>
+
+			<ViewQuizQuestionsDialog
+				open={viewQuestionsOpen}
+				onOpenChange={setViewQuestionsOpen}
+				quizTitle={quizToViewQuestions?.title || ""}
+				questions={questionsData || []}
+				isLoading={questionsLoading}
 			/>
 		</div>
 	);

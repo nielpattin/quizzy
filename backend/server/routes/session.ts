@@ -39,6 +39,50 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
       return c.json({ error: 'Quiz not found' }, 404)
     }
 
+    // Check for reusable session: same quiz, same version, user has participant, not ended
+    const existingSessions = await db
+      .select({
+        session: gameSessions,
+        snapshot: quizSnapshots,
+        participant: gameSessionParticipants,
+      })
+      .from(gameSessions)
+      .innerJoin(quizSnapshots, eq(gameSessions.quizSnapshotId, quizSnapshots.id))
+      .innerJoin(gameSessionParticipants, eq(gameSessionParticipants.sessionId, gameSessions.id))
+      .where(and(
+        eq(quizSnapshots.quizId, quiz.id),
+        eq(gameSessions.quizVersion, quiz.version),
+        eq(gameSessionParticipants.userId, userId),
+        sql`${gameSessions.endedAt} IS NULL`
+      ))
+      .limit(1)
+
+    // If reusable session found, create new participant in existing session
+    if (existingSessions.length > 0) {
+      const existingSession = existingSessions[0].session
+
+      const [newParticipant] = await db
+        .insert(gameSessionParticipants)
+        .values({
+          sessionId: existingSession.id,
+          userId,
+        })
+        .returning()
+
+      await db
+        .update(gameSessions)
+        .set({
+          joinedCount: existingSession.joinedCount + 1,
+        })
+        .where(eq(gameSessions.id, existingSession.id))
+
+      return c.json({
+        ...existingSession,
+        participantId: newParticipant.id,
+      }, 201)
+    }
+
+    // No reusable session found, create new session
     const [snapshot] = await db
       .insert(quizSnapshots)
       .values({
@@ -46,7 +90,6 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
         version: quiz.version,
         title: quiz.title,
         description: quiz.description,
-        category: quiz.category,
         questionCount: quiz.questionCount,
       })
       .returning()
@@ -62,6 +105,7 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
         snapshotId: snapshot.id,
         type: q.type,
         questionText: q.questionText,
+        imageUrl: q.imageUrl,
         data: q.data,
         orderIndex: q.orderIndex,
       }))
@@ -85,7 +129,26 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
       })
       .returning()
 
-    return c.json(newSession, 201)
+    // Auto-create first participant for session creator
+    const [firstParticipant] = await db
+      .insert(gameSessionParticipants)
+      .values({
+        sessionId: newSession.id,
+        userId,
+      })
+      .returning()
+
+    await db
+      .update(gameSessions)
+      .set({
+        joinedCount: 1,
+      })
+      .where(eq(gameSessions.id, newSession.id))
+
+    return c.json({
+      ...newSession,
+      participantId: firstParticipant.id,
+    }, 201)
   } catch (error) {
     console.error('Error creating game session:', error)
     return c.json({ error: 'Failed to create game session' }, 500)
@@ -159,7 +222,6 @@ sessionRoutes.get('/:id', async (c) => {
           id: quizSnapshots.id,
           title: quizSnapshots.title,
           description: quizSnapshots.description,
-          category: quizSnapshots.category,
           questionCount: quizSnapshots.questionCount,
         },
       })
@@ -380,6 +442,19 @@ sessionRoutes.get('/:id/question/:index', authMiddleware, async (c) => {
       return c.json({ error: 'Session not found' }, 404)
     }
 
+    // Find participant record
+    const [participant] = await db
+      .select()
+      .from(gameSessionParticipants)
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, userId)
+      ))
+
+    if (!participant) {
+      return c.json({ error: 'Not a participant in this session' }, 404)
+    }
+
     const sessionQuestions = await db
       .select()
       .from(questionsSnapshots)
@@ -393,11 +468,32 @@ sessionRoutes.get('/:id/question/:index', authMiddleware, async (c) => {
     const question = sessionQuestions[questionIndex]
     const timeLimit = question.data?.timeLimit || 30
 
-    // Create timing record
+    // Check if timing record already exists
+    const [existingTiming] = await db
+      .select()
+      .from(questionTimings)
+      .where(and(
+        eq(questionTimings.participantId, participant.id),
+        eq(questionTimings.questionSnapshotId, question.id)
+      ))
+
+    if (existingTiming) {
+      return c.json({
+        question,
+        timing: {
+          id: existingTiming.id,
+          timeLimit,
+          serverStartTime: existingTiming.serverStartTime.toISOString(),
+          deadlineTime: existingTiming.deadlineTime.toISOString(),
+        },
+      })
+    }
+
+    // Create timing record with correct participantId
     const [timingRecord] = await db
       .insert(questionTimings)
       .values({
-        participantId: userId,
+        participantId: participant.id,
         questionSnapshotId: question.id,
         sessionId,
         serverStartTime: new Date(),
@@ -430,12 +526,25 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
       return c.json({ error: 'questionId and answer are required' }, 400)
     }
 
+    // Find participant record
+    const [participant] = await db
+      .select()
+      .from(gameSessionParticipants)
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, userId)
+      ))
+
+    if (!participant) {
+      return c.json({ error: 'Not a participant in this session' }, 404)
+    }
+
     // Get timing record
     const [timing] = await db
       .select()
       .from(questionTimings)
       .where(and(
-        eq(questionTimings.participantId, userId),
+        eq(questionTimings.participantId, participant.id),
         eq(questionTimings.questionSnapshotId, body.questionId),
         eq(questionTimings.sessionId, sessionId)
       ))
@@ -448,11 +557,18 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
     // Check if time expired
     const now = new Date()
     if (now > timing.deadlineTime) {
+      // Accept late submission but give 0 score
+      await db
+        .update(questionTimings)
+        .set({ submittedAt: now })
+        .where(eq(questionTimings.id, timing.id))
+
+      // Don't update participant score (0 points)
       return c.json({
-        error: 'time_expired',
-        message: 'Time limit exceeded',
-        correctAnswer: body.questionId, // In real implementation, fetch actual correct answer
-      }, 400)
+        isCorrect: false,
+        score: 0,
+        message: 'Time expired - no points awarded',
+      })
     }
 
     // Process answer (simplified - in real implementation, validate against correct answer)
@@ -471,10 +587,7 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
       .set({
         score: sql`${gameSessionParticipants.score} + ${score}`,
       })
-      .where(and(
-        eq(gameSessionParticipants.sessionId, sessionId),
-        eq(gameSessionParticipants.userId, userId)
-      ))
+      .where(eq(gameSessionParticipants.id, participant.id))
 
     return c.json({
       isCorrect,

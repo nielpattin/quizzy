@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { Copy, Edit, MoreVertical, Trash2 } from "lucide-react";
+import { Copy, MoreVertical, Trash2, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Quiz {
@@ -22,7 +22,7 @@ interface Quiz {
 
 interface QuizCardProps {
 	quiz: Quiz;
-	onEdit: (quizId: string) => void;
+	onClick: (quizId: string) => void;
 	onCopy: (quizId: string) => void;
 	onDelete: (quizId: string) => void;
 	onMore: (quizId: string) => void;
@@ -30,13 +30,25 @@ interface QuizCardProps {
 
 export function QuizCard({
 	quiz,
-	onEdit,
+	onClick,
 	onCopy,
 	onDelete,
 	onMore,
 }: QuizCardProps) {
 	return (
-		<div className="bg-[#1a2433] border border-[#253347] rounded-[14px] px-[25px] py-[25px]">
+		// biome-ignore lint/a11y/useSemanticElements: Card with complex layout needs div wrapper
+		<div
+			role="button"
+			tabIndex={0}
+			className="bg-[#1a2433] border border-[#253347] rounded-[14px] px-[25px] py-[25px] cursor-pointer hover:bg-[#1e2938] transition-colors"
+			onClick={() => onClick(quiz.id)}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					onClick(quiz.id);
+				}
+			}}
+		>
 			<div className="flex items-center justify-between">
 				<div className="flex-1 flex flex-col gap-2">
 					<div className="flex items-center gap-3">
@@ -54,6 +66,16 @@ export function QuizCard({
 							{quiz.status}
 						</Badge>
 					</div>
+
+					{quiz.user && (
+						<div className="flex items-center gap-2 text-[#8b9bab] text-[13px]">
+							<User className="w-3.5 h-3.5" />
+							<span>
+								Created by {quiz.user.fullName}
+								{quiz.user.username && ` (@${quiz.user.username})`}
+							</span>
+						</div>
+					)}
 
 					<div className="flex items-center gap-6 text-[#8b9bab] text-[14px] leading-5">
 						{quiz.collection && (
@@ -73,16 +95,10 @@ export function QuizCard({
 				<div className="flex items-center gap-2">
 					<button
 						type="button"
-						onClick={() => onEdit(quiz.id)}
-						className="w-[36px] h-[32px] flex items-center justify-center rounded-[8px] hover:bg-[#253347] transition-colors"
-						title="Edit"
-					>
-						<Edit className="w-4 h-4 text-[#8b9bab]" />
-					</button>
-
-					<button
-						type="button"
-						onClick={() => onCopy(quiz.id)}
+						onClick={(e) => {
+							e.stopPropagation();
+							onCopy(quiz.id);
+						}}
 						className="w-[36px] h-[32px] flex items-center justify-center rounded-[8px] hover:bg-[#253347] transition-colors"
 						title="Copy"
 					>
@@ -91,7 +107,10 @@ export function QuizCard({
 
 					<button
 						type="button"
-						onClick={() => onDelete(quiz.id)}
+						onClick={(e) => {
+							e.stopPropagation();
+							onDelete(quiz.id);
+						}}
 						className="w-[36px] h-[32px] flex items-center justify-center rounded-[8px] hover:bg-[#253347] transition-colors"
 						title="Delete"
 					>
@@ -100,7 +119,10 @@ export function QuizCard({
 
 					<button
 						type="button"
-						onClick={() => onMore(quiz.id)}
+						onClick={(e) => {
+							e.stopPropagation();
+							onMore(quiz.id);
+						}}
 						className="w-[36px] h-[32px] flex items-center justify-center rounded-[8px] hover:bg-[#253347] transition-colors"
 						title="More"
 					>

@@ -113,8 +113,7 @@ CREATE TABLE "notifications" (
 	"delivery_channel" text,
 	"retry_count" integer DEFAULT 0 NOT NULL,
 	"sent_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "notifications_unique_constraint" UNIQUE("user_id","type","related_user_id","related_post_id","related_quiz_id")
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "post_answers" (
@@ -344,6 +343,7 @@ CREATE INDEX "images_created_at_idx" ON "images" USING btree ("created_at");--> 
 CREATE INDEX "notifications_user_id_idx" ON "notifications" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "notifications_is_unread_idx" ON "notifications" USING btree ("is_unread");--> statement-breakpoint
 CREATE INDEX "notifications_created_at_idx" ON "notifications" USING btree ("created_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "notifications_unique_idx" ON "notifications" ("user_id", "type", "related_user_id", "related_post_id", "related_quiz_id") NULLS NOT DISTINCT;--> statement-breakpoint
 CREATE INDEX "post_answers_post_id_idx" ON "post_answers" USING btree ("post_id");--> statement-breakpoint
 CREATE INDEX "post_answers_user_id_idx" ON "post_answers" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "post_answers_post_id_user_id_idx" ON "post_answers" USING btree ("post_id","user_id");--> statement-breakpoint

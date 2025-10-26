@@ -6,6 +6,7 @@ import * as schema from './schema';
 import {
 	SEED_USERS,
 	SEED_USERS_COUNT,
+	SEED_QUIZZES_COUNT,
 	getRegularUserCounts,
 	INITIAL_CATEGORIES,
 	uploadAllSeedImages,
@@ -15,6 +16,7 @@ import {
 	seedSpecificUsers,
 	seedSpecificUsersContent,
 	seedRegularUsers,
+	seedMinimalContent,
 } from './seed-functions';
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -67,24 +69,44 @@ const main = async () => {
 			categoryMap.set(category.name, category.id);
 		}
 
-		await seedAdminUser(db);
-		await seedFixedUsers(db);
-		await seedSpecificUsers(db);
-
-		const fixedUsers = await db.select().from(schema.users).limit(1);
-		const seedImageOwner = fixedUsers[0]?.id;
-
-		let seedImageUrls: { posts: string[]; quizzes: string[]; profiles: string[] } = { posts: [], quizzes: [], profiles: [] };
-		if (seedImageOwner) {
-			seedImageUrls = await uploadAllSeedImages(db, seedImageOwner);
-		}
-
 		const totalUsers = SEED_USERS_COUNT + SEED_USERS.length;
 		const regularCounts = getRegularUserCounts(totalUsers);
 
-		await seedRegularUsers(db, seedImageUrls, categoryMap);
-		await seedSpecificUsersContent(db, categoryMap, seedImageUrls);
-		await seedFixedUsersData(db, categoryMap, seedImageUrls);
+		// Check if we're in simple mode (SEED_QUIZZES_COUNT > 0)
+		if (SEED_QUIZZES_COUNT > 0) {
+			console.log('📦 Simple mode: Creating minimal seed data...');
+			
+			// Only seed SEED_USERS in simple mode
+			await seedSpecificUsers(db);
+			
+			const fixedUsers = await db.select().from(schema.users).limit(1);
+			const seedImageOwner = fixedUsers[0]?.id;
+
+			let seedImageUrls: { posts: string[]; quizzes: string[]; profiles: string[] } = { posts: [], quizzes: [], profiles: [] };
+			if (seedImageOwner) {
+				seedImageUrls = await uploadAllSeedImages(db, seedImageOwner);
+			}
+			
+			await seedMinimalContent(db, categoryMap, seedImageUrls);
+		} else {
+			console.log('📦 Per-user mode: Creating regular seed data...');
+			
+			await seedAdminUser(db);
+			await seedFixedUsers(db);
+			await seedSpecificUsers(db);
+
+			const fixedUsers = await db.select().from(schema.users).limit(1);
+			const seedImageOwner = fixedUsers[0]?.id;
+
+			let seedImageUrls: { posts: string[]; quizzes: string[]; profiles: string[] } = { posts: [], quizzes: [], profiles: [] };
+			if (seedImageOwner) {
+				seedImageUrls = await uploadAllSeedImages(db, seedImageOwner);
+			}
+			
+			await seedRegularUsers(db, seedImageUrls, categoryMap);
+			await seedSpecificUsersContent(db, categoryMap, seedImageUrls);
+			await seedFixedUsersData(db, categoryMap, seedImageUrls);
+		}
 
 		const endTime = Date.now();
 		const duration = ((endTime - startTime) / 1000).toFixed(2);

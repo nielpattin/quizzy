@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../db/index'
-import { users, quizzes, gameSessions, collections, posts, postReports, categories, systemLogs } from '../db/schema'
+import { users, quizzes, gameSessions, gameSessionParticipants, quizSnapshots, collections, posts, postReports, categories, systemLogs } from '../db/schema'
 import { eq, desc, sql, and, or, ilike, count, asc, isNotNull, gte, lte } from 'drizzle-orm'
 import { authMiddleware, type AuthContext } from '../middleware/auth'
 
@@ -11,14 +11,43 @@ type Variables = {
 const adminRoutes = new Hono<{ Variables: Variables }>()
 
 const isAdmin = async (c: any, next: any) => {
-  const { userId } = c.get('user') as AuthContext
+  const { userId, email, userMetadata } = c.get('user') as AuthContext
   
-  const [user] = await db
+  let [user] = await db
     .select({ accountType: users.accountType })
     .from(users)
     .where(eq(users.id, userId))
   
-  if (!user || user.accountType !== 'admin') {
+  // If user doesn't exist in PostgreSQL, auto-create them
+  if (!user) {
+    console.log(`[ADMIN] User ${email} not found in database, auto-creating admin user...`)
+    
+    const fullName = userMetadata?.full_name || userMetadata?.name || email.split('@')[0]
+    const username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_')
+    
+    try {
+      // Create user in PostgreSQL with admin privileges
+      const [newUser] = await db.insert(users).values({
+        id: userId,
+        email,
+        fullName,
+        username,
+        accountType: 'admin',
+        status: 'active',
+        isSetupComplete: true,
+        bio: 'Platform Administrator',
+        profilePictureUrl: userMetadata?.avatar_url || userMetadata?.picture || null,
+      }).returning()
+      
+      user = { accountType: newUser.accountType }
+      console.log(`[ADMIN] ✅ Created admin user: ${email}`)
+    } catch (error) {
+      console.error(`[ADMIN] ❌ Failed to create admin user:`, error)
+      return c.json({ error: 'Failed to create admin user in database' }, 500)
+    }
+  }
+  
+  if (user.accountType !== 'admin') {
     return c.json({ error: 'Unauthorized. Admin access required.' }, 403)
   }
   
@@ -1230,6 +1259,270 @@ adminRoutes.get('/logs/stats', async (c) => {
   } catch (error) {
     console.error('[BACKEND] Error fetching log stats:', error)
     return c.json({ error: 'Failed to fetch log statistics' }, 500)
+  }
+})
+
+// ============== SESSION MANAGEMENT ROUTES ==============
+
+// Get session statistics
+adminRoutes.get('/sessions/stats', async (c) => {
+  try {
+    const [totalSessions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(gameSessions)
+
+    const [activeSessions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(gameSessions)
+      .where(and(
+        eq(gameSessions.isLive, true),
+        sql`${gameSessions.endedAt} IS NULL`
+      ))
+
+    const [completedSessions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(gameSessions)
+      .where(sql`${gameSessions.endedAt} IS NOT NULL`)
+
+    const [totalParticipants] = await db
+      .select({ sum: sql<number>`cast(sum(${gameSessions.joinedCount}) as int)` })
+      .from(gameSessions)
+
+    // Calculate average duration for completed sessions
+    const avgDurationResult = await db
+      .select({
+        avgDuration: sql<number>`
+          COALESCE(
+            AVG(
+              EXTRACT(EPOCH FROM (${gameSessions.endedAt} - ${gameSessions.startedAt})) / 60
+            ), 
+            0
+          )
+        `,
+      })
+      .from(gameSessions)
+      .where(and(
+        sql`${gameSessions.startedAt} IS NOT NULL`,
+        sql`${gameSessions.endedAt} IS NOT NULL`
+      ))
+
+    const avgDuration = Math.round(Number(avgDurationResult[0]?.avgDuration || 0))
+
+    return c.json({
+      totalSessions: totalSessions?.count || 0,
+      activeSessions: activeSessions?.count || 0,
+      completedSessions: completedSessions?.count || 0,
+      totalParticipants: totalParticipants?.sum || 0,
+      avgDuration,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching session stats:', error)
+    return c.json({ error: 'Failed to fetch session statistics' }, 500)
+  }
+})
+
+// List all sessions with pagination and filters
+adminRoutes.get('/sessions', async (c) => {
+  try {
+    const search = c.req.query('search') || ''
+    const status = c.req.query('status') || ''
+    const page = Number.parseInt(c.req.query('page') || '1', 10)
+    const limit = Number.parseInt(c.req.query('limit') || '20', 10)
+    const offset = (page - 1) * limit
+
+    let conditions = []
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(gameSessions.title, `%${search}%`),
+          ilike(gameSessions.code, `%${search}%`)
+        )
+      )
+    }
+
+    if (status === 'active') {
+      conditions.push(
+        and(
+          eq(gameSessions.isLive, true),
+          sql`${gameSessions.endedAt} IS NULL`
+        )
+      )
+    } else if (status === 'completed') {
+      conditions.push(sql`${gameSessions.endedAt} IS NOT NULL`)
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    const allSessions = await db
+      .select({
+        id: gameSessions.id,
+        title: gameSessions.title,
+        code: gameSessions.code,
+        isLive: gameSessions.isLive,
+        joinedCount: gameSessions.joinedCount,
+        estimatedMinutes: gameSessions.estimatedMinutes,
+        startedAt: gameSessions.startedAt,
+        endedAt: gameSessions.endedAt,
+        createdAt: gameSessions.createdAt,
+        host: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+        snapshot: {
+          id: quizSnapshots.id,
+          title: quizSnapshots.title,
+          questionCount: quizSnapshots.questionCount,
+        },
+      })
+      .from(gameSessions)
+      .leftJoin(users, eq(gameSessions.hostId, users.id))
+      .leftJoin(quizSnapshots, eq(gameSessions.quizSnapshotId, quizSnapshots.id))
+      .where(whereClause)
+      .orderBy(desc(gameSessions.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [totalCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(gameSessions)
+      .where(whereClause)
+
+    return c.json({
+      sessions: allSessions,
+      total: totalCount?.count || 0,
+      page,
+      limit,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching sessions:', error)
+    return c.json({ error: 'Failed to fetch sessions' }, 500)
+  }
+})
+
+// Get session details
+adminRoutes.get('/sessions/:id', async (c) => {
+  const sessionId = c.req.param('id')
+
+  try {
+    const [session] = await db
+      .select({
+        id: gameSessions.id,
+        title: gameSessions.title,
+        code: gameSessions.code,
+        isLive: gameSessions.isLive,
+        joinedCount: gameSessions.joinedCount,
+        estimatedMinutes: gameSessions.estimatedMinutes,
+        quizVersion: gameSessions.quizVersion,
+        startedAt: gameSessions.startedAt,
+        endedAt: gameSessions.endedAt,
+        createdAt: gameSessions.createdAt,
+        host: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+        snapshot: {
+          id: quizSnapshots.id,
+          title: quizSnapshots.title,
+          description: quizSnapshots.description,
+          questionCount: quizSnapshots.questionCount,
+        },
+      })
+      .from(gameSessions)
+      .leftJoin(users, eq(gameSessions.hostId, users.id))
+      .leftJoin(quizSnapshots, eq(gameSessions.quizSnapshotId, quizSnapshots.id))
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+
+    return c.json(session)
+  } catch (error) {
+    console.error('[BACKEND] Error fetching session details:', error)
+    return c.json({ error: 'Failed to fetch session details' }, 500)
+  }
+})
+
+// Get session participants
+adminRoutes.get('/sessions/:id/participants', async (c) => {
+  const sessionId = c.req.param('id')
+
+  try {
+    const participants = await db
+      .select({
+        id: gameSessionParticipants.id,
+        score: gameSessionParticipants.score,
+        rank: gameSessionParticipants.rank,
+        joinedAt: gameSessionParticipants.joinedAt,
+        leftAt: gameSessionParticipants.leftAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+      })
+      .from(gameSessionParticipants)
+      .leftJoin(users, eq(gameSessionParticipants.userId, users.id))
+      .where(eq(gameSessionParticipants.sessionId, sessionId))
+      .orderBy(asc(gameSessionParticipants.joinedAt))
+
+    return c.json(participants)
+  } catch (error) {
+    console.error('[BACKEND] Error fetching session participants:', error)
+    return c.json({ error: 'Failed to fetch session participants' }, 500)
+  }
+})
+
+// Force end a session
+adminRoutes.post('/sessions/:id/end', async (c) => {
+  const sessionId = c.req.param('id')
+
+  try {
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+
+    if (session.endedAt) {
+      return c.json({ error: 'Session already ended' }, 400)
+    }
+
+    await db
+      .update(gameSessions)
+      .set({
+        endedAt: new Date(),
+        isLive: false,
+      })
+      .where(eq(gameSessions.id, sessionId))
+
+    return c.json({ success: true, message: 'Session ended successfully' })
+  } catch (error) {
+    console.error('[BACKEND] Error ending session:', error)
+    return c.json({ error: 'Failed to end session' }, 500)
+  }
+})
+
+// Delete a session
+adminRoutes.delete('/sessions/:id', async (c) => {
+  const sessionId = c.req.param('id')
+
+  try {
+    await db.delete(gameSessions).where(eq(gameSessions.id, sessionId))
+
+    return c.json({ success: true, message: 'Session deleted successfully' })
+  } catch (error) {
+    console.error('[BACKEND] Error deleting session:', error)
+    return c.json({ error: 'Failed to delete session' }, 500)
   }
 })
 

@@ -1,6 +1,6 @@
 {
-  "id": "4fe6ad93-1796-4a0b-ba0d-a3043f4ba3b6",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "493b4fa4-4e0b-4c81-8b13-444c662fa84a",
+  "prevId": "4fe6ad93-1796-4a0b-ba0d-a3043f4ba3b6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -806,6 +806,14 @@
           "primaryKey": false,
           "notNull": true
         },
+        "status": {
+          "name": "status",
+          "type": "session_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ongoing'"
+        },
         "is_live": {
           "name": "is_live",
           "type": "boolean",
@@ -888,6 +896,21 @@
           "columns": [
             {
               "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "game_sessions_status_idx": {
+          "name": "game_sessions_status_idx",
+          "columns": [
+            {
+              "expression": "status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3234,6 +3257,16 @@
         "user",
         "collection",
         "post"
+      ]
+    },
+    "public.session_status": {
+      "name": "session_status",
+      "schema": "public",
+      "values": [
+        "waiting",
+        "ongoing",
+        "ended",
+        "abandoned"
       ]
     },
     "public.status": {

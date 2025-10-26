@@ -21,7 +21,7 @@ interface Quiz {
 interface QuizTableProps {
 	quizzes: Quiz[];
 	isLoading: boolean;
-	onEdit: (quizId: string) => void;
+	onClick: (quizId: string) => void;
 	onCopy: (quizId: string) => void;
 	onDelete: (quizId: string) => void;
 	onMore: (quizId: string) => void;
@@ -30,7 +30,7 @@ interface QuizTableProps {
 export function QuizTable({
 	quizzes,
 	isLoading,
-	onEdit,
+	onClick,
 	onCopy,
 	onDelete,
 	onMore,
@@ -57,7 +57,7 @@ export function QuizTable({
 				<QuizCard
 					key={quiz.id}
 					quiz={quiz}
-					onEdit={onEdit}
+					onClick={onClick}
 					onCopy={onCopy}
 					onDelete={onDelete}
 					onMore={onMore}
