@@ -1,6 +1,7 @@
 import "dart:math";
 import "package:flutter/material.dart";
 import "package:cached_network_image/cached_network_image.dart";
+import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "../../services/api_service.dart";
 import "../../models/post.dart";
@@ -231,18 +232,29 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
         children: [
           Row(
             children: [
-              UserAvatar(imageUrl: post.user.profilePictureUrl, radius: 24),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  post.user.fullName ?? "Unknown",
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+              GestureDetector(
+                onTap: () {
+                  context.push("/profile/${post.user.id}");
+                },
+                child: Row(
+                  children: [
+                    UserAvatar(
+                      imageUrl: post.user.profilePictureUrl,
+                      radius: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      post.user.fullName ?? "Unknown",
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const Spacer(),
               if (isOwner)
                 PopupMenuButton<String>(
                   onSelected: (value) {
@@ -567,26 +579,34 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                    size: 18,
+                GestureDetector(
+                  onTap: () {
+                    context.push("/profile/${comment["user"]?["id"]}");
+                  },
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        child: const Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        comment["user"]?["fullName"] ?? "Unknown",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    comment["user"]?["fullName"] ?? "Unknown",
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                const Spacer(),
               ],
             ),
             const SizedBox(height: 8),

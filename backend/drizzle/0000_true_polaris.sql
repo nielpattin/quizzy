@@ -1,4 +1,5 @@
 CREATE TYPE "public"."account_type" AS ENUM('admin', 'employee', 'user');--> statement-breakpoint
+CREATE TYPE "public"."log_level" AS ENUM('error', 'warn', 'info', 'debug', 'trace');--> statement-breakpoint
 CREATE TYPE "public"."moderation_status" AS ENUM('approved', 'flagged', 'rejected', 'review_pending');--> statement-breakpoint
 CREATE TYPE "public"."notification_type" AS ENUM('like', 'comment', 'follow', 'quiz_share', 'game_invite', 'mention', 'quiz_answer', 'follow_request', 'system');--> statement-breakpoint
 CREATE TYPE "public"."post_type" AS ENUM('text', 'image', 'quiz');--> statement-breakpoint
@@ -108,7 +109,12 @@ CREATE TABLE "notifications" (
 	"related_post_id" uuid,
 	"related_quiz_id" uuid,
 	"is_unread" boolean DEFAULT true NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"status" text DEFAULT 'PENDING' NOT NULL,
+	"delivery_channel" text,
+	"retry_count" integer DEFAULT 0 NOT NULL,
+	"sent_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "notifications_unique_constraint" UNIQUE("user_id","type","related_user_id","related_post_id","related_quiz_id")
 );
 --> statement-breakpoint
 CREATE TABLE "post_answers" (
@@ -231,6 +237,29 @@ CREATE TABLE "search_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "system_logs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"timestamp" timestamp with time zone DEFAULT now() NOT NULL,
+	"level" "log_level" NOT NULL,
+	"message" text NOT NULL,
+	"metadata" jsonb,
+	"user_id" uuid,
+	"endpoint" varchar(255),
+	"method" varchar(10),
+	"status_code" integer,
+	"duration" integer,
+	"error" text,
+	"ip_address" varchar(45),
+	"user_agent" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "user_notification_state" (
+	"user_id" uuid PRIMARY KEY NOT NULL,
+	"last_seen_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" text NOT NULL,
@@ -287,6 +316,8 @@ ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_user_id_users_id_fk" FOREIGN KEY (
 ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_collection_id_collections_id_fk" FOREIGN KEY ("collection_id") REFERENCES "public"."collections"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "search_history" ADD CONSTRAINT "search_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "system_logs" ADD CONSTRAINT "system_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_notification_state" ADD CONSTRAINT "user_notification_state_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "categories_slug_idx" ON "categories" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "collections_user_id_idx" ON "collections" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "comment_likes_user_id_idx" ON "comment_likes" USING btree ("user_id");--> statement-breakpoint
@@ -342,5 +373,11 @@ CREATE INDEX "quizzes_category_id_idx" ON "quizzes" USING btree ("category_id");
 CREATE INDEX "quizzes_is_deleted_idx" ON "quizzes" USING btree ("is_deleted");--> statement-breakpoint
 CREATE INDEX "search_history_user_id_idx" ON "search_history" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "search_history_created_at_idx" ON "search_history" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "system_logs_timestamp_idx" ON "system_logs" USING btree ("timestamp");--> statement-breakpoint
+CREATE INDEX "system_logs_level_idx" ON "system_logs" USING btree ("level");--> statement-breakpoint
+CREATE INDEX "system_logs_user_id_idx" ON "system_logs" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "system_logs_endpoint_idx" ON "system_logs" USING btree ("endpoint");--> statement-breakpoint
+CREATE INDEX "system_logs_created_at_idx" ON "system_logs" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "user_notification_state_user_id_idx" ON "user_notification_state" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "users_email_idx" ON "users" USING btree ("email");--> statement-breakpoint
 CREATE INDEX "users_username_idx" ON "users" USING btree ("username");

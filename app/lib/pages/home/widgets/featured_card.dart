@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:cached_network_image/cached_network_image.dart";
+import "../../../widgets/user_avatar.dart";
 
 class FeaturedCard extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -127,14 +128,9 @@ class FeaturedCard extends StatelessWidget {
                   SizedBox(height: 8),
                   Row(
                     children: [
-                      CircleAvatar(
+                      UserAvatar(
+                        imageUrl: data["user"]?["profilePictureUrl"],
                         radius: 12,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Icon(
-                          Icons.person,
-                          size: 14,
-                          color: Colors.white,
-                        ),
                       ),
                       SizedBox(width: 8),
                       Text(

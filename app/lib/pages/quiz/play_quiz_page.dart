@@ -554,12 +554,13 @@ class _PlayQuizPageState extends State<PlayQuizPage> {
             if (_showRealTimeFeatures) ...[
               RealTimeNotificationWidget(
                 onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => const NotificationPanel(),
-                  );
+                  // TODO: Navigate to notification page
+                  // showModalBottomSheet(
+                  //   context: context,
+                  //   isScrollControlled: true,
+                  //   backgroundColor: Colors.transparent,
+                  //   builder: (context) => const NotificationPanel(),
+                  // );
                 },
               ),
               const SizedBox(width: 8),

@@ -1,6 +1,8 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "dart:async";
 import "../../services/api_service.dart";
+import "../../services/real_time_notification_service.dart";
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -10,23 +12,52 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<NotificationPage> {
-  int _selectedTab = 0;
   List<dynamic> _notifications = [];
   bool _isLoading = true;
+  final ScrollController _scrollController = ScrollController();
+  int _currentOffset = 0;
+  final int _pageSize = 10;
+  bool _hasMore = true;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoading && _hasMore) {
+        _loadMore();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadNotifications() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _currentOffset = 0;
+      _notifications = [];
+    });
+
     try {
-      final notifications = await ApiService.getNotifications();
+      final notifications = await ApiService.getNotifications(
+        limit: _pageSize,
+        offset: 0,
+      );
       setState(() {
         _notifications = notifications;
         _isLoading = false;
+        _hasMore = notifications.length == _pageSize;
+        _currentOffset = _pageSize;
       });
     } catch (e) {
       if (mounted) {
@@ -37,6 +68,28 @@ class _NotificationPageState extends State<NotificationPage> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoading || !_hasMore) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final moreNotifications = await ApiService.getNotifications(
+        limit: _pageSize,
+        offset: _currentOffset,
+      );
+
+      setState(() {
+        _notifications.addAll(moreNotifications);
+        _currentOffset += _pageSize;
+        _hasMore = moreNotifications.length == _pageSize;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -51,6 +104,10 @@ class _NotificationPageState extends State<NotificationPage> {
           _notifications[index]["isUnread"] = false;
         }
       });
+
+      // Refresh new count to update badge
+      final notificationService = RealTimeNotificationService();
+      notificationService.refreshNewCount();
     } catch (e) {
       // Silently ignore errors when marking as read
     }
@@ -195,42 +252,12 @@ class _NotificationPageState extends State<NotificationPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _TabButton(
-                    label: "Notifications",
-                    isSelected: _selectedTab == 0,
-                    onTap: () => setState(() => _selectedTab = 0),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: _TabButton(
-                    label: "Friend Requests",
-                    isSelected: _selectedTab == 1,
-                    onTap: () => setState(() => _selectedTab = 1),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _selectedTab == 0
-                ? _buildNotifications()
-                : _buildFriendRequests(),
-          ),
-        ],
-      ),
+      body: _buildNotifications(),
     );
   }
 
   Widget _buildNotifications() {
-    if (_isLoading) {
+    if (_isLoading && _notifications.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -248,7 +275,7 @@ class _NotificationPageState extends State<NotificationPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              "No notifications yet",
+              "No notifications",
               style: TextStyle(
                 color: Theme.of(
                   context,
@@ -262,9 +289,20 @@ class _NotificationPageState extends State<NotificationPage> {
     }
 
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _notifications.length,
+      itemCount: _notifications.length + (_isLoading && _hasMore ? 1 : 0),
       itemBuilder: (context, index) {
+        // Show loading indicator at the bottom
+        if (index == _notifications.length) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
         final notification = _notifications[index];
         return Dismissible(
           key: Key(notification["id"]),
@@ -299,90 +337,6 @@ class _NotificationPageState extends State<NotificationPage> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildFriendRequests() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.people_outline,
-            size: 64,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "No friend requests",
-            style: TextStyle(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.6),
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Friend requests will appear here",
-            style: TextStyle(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.4),
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TabButton extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _TabButton({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: isSelected
-              ? null
-              : Border.all(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? Colors.white
-                  : Theme.of(context).colorScheme.primary,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

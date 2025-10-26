@@ -89,31 +89,17 @@ export class WebSocketService {
     try {
       const shortUserId = userId.substring(0, 8)
       
-      // Check Redis for online status (persists across hot reloads)
-      const inRedis = await RedisConnectionStore.isUserOnline(userId)
-      const totalOnline = activeConnections.size
-      const redisCount = await RedisConnectionStore.getOnlineCount()
+      // Use Redis pub/sub as single source of truth for delivery
+      // This is hot-reload proof - if user is subscribed, they'll receive it
+      const delivered = await RedisConnectionStore.publishNotification(userId, message)
       
-      console.log(`[WS] Active connections: ${totalOnline} in-memory | ${redisCount} in Redis`)
-      
-      // Try to send via local WebSocket connection
-      for (const [ws, context] of activeConnections.entries()) {
-        if (context.userId === userId && ws.readyState === 1) {
-          ws.send(JSON.stringify(message))
-          console.log(`[WS] Delivered -> user:${shortUserId} | via:websocket | channel:open`)
-          return true
-        }
+      if (delivered) {
+        console.log(`[WS] Published to Redis -> user:${shortUserId} | type:${message.type} | via:pubsub`)
+      } else {
+        console.log(`[WS] User offline -> user:${shortUserId} | no subscribers`)
       }
       
-      // User not in local Map but exists in Redis (hot reload case)
-      if (inRedis) {
-        console.log(`[WS] User in Redis but not in Map -> user:${shortUserId} | likely:hot-reload | will:reconnect`)
-        return false
-      }
-      
-      // User is truly offline
-      console.log(`[WS] User offline -> user:${shortUserId} | connections:0`)
-      return false
+      return delivered
     } catch (error) {
       console.error('[WS] Error broadcasting to user:', error)
       return false

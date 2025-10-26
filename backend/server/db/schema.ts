@@ -32,6 +32,8 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'system'
 ]);
 
+export const logLevelEnum = pgEnum('log_level', ['error', 'warn', 'info', 'debug', 'trace']);
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
@@ -326,6 +328,38 @@ export const notifications = pgTable('notifications', {
   index('notifications_user_id_idx').on(table.userId),
   index('notifications_is_unread_idx').on(table.isUnread),
   index('notifications_created_at_idx').on(table.createdAt),
+  unique('notifications_unique_constraint').on(table.userId, table.type, table.relatedUserId, table.relatedPostId, table.relatedQuizId),
+]);
+
+export const userNotificationState = pgTable('user_notification_state', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('user_notification_state_user_id_idx').on(table.userId),
+]);
+
+export const systemLogs = pgTable('system_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
+  level: logLevelEnum('level').notNull(),
+  message: text('message').notNull(),
+  metadata: jsonb('metadata'),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  endpoint: varchar('endpoint', { length: 255 }),
+  method: varchar('method', { length: 10 }),
+  statusCode: integer('status_code'),
+  duration: integer('duration'),
+  error: text('error'),
+  ipAddress: varchar('ip_address', { length: 45 }),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('system_logs_timestamp_idx').on(table.timestamp),
+  index('system_logs_level_idx').on(table.level),
+  index('system_logs_user_id_idx').on(table.userId),
+  index('system_logs_endpoint_idx').on(table.endpoint),
+  index('system_logs_created_at_idx').on(table.createdAt),
 ]);
 
 // export const usersRelations = relations(users, ({ many }) => ({

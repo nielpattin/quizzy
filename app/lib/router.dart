@@ -194,6 +194,28 @@ final router = GoRouter(
       },
     ),
     GoRoute(
+      path: "/post/:id",
+      pageBuilder: (context, state) {
+        final postId = state.pathParameters["id"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: PostDetailsPage(postId: postId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
       path: "/notification",
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,

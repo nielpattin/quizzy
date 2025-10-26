@@ -6,6 +6,19 @@ const redis = new Redis({
   password: process.env.REDIS_PASSWORD || undefined,
 })
 
+// Separate Redis client for pub/sub (required by ioredis)
+const redisPub = new Redis({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || undefined,
+})
+
+const redisSub = new Redis({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || undefined,
+})
+
 interface ConnectionMetadata {
   userId: string
   email: string
@@ -162,5 +175,95 @@ export class RedisConnectionStore {
       console.error('[Redis] Error during cleanup:', error)
       return 0
     }
+  }
+
+  /**
+   * Publish a notification to a user's Redis channel
+   * This is the single source of truth for notification delivery
+   */
+  static async publishNotification(userId: string, message: any): Promise<boolean> {
+    try {
+      const channel = `user:${userId}:notifications`
+      const payload = JSON.stringify(message)
+      
+      // Publish returns the number of subscribers that received the message
+      const subscriberCount = await redisPub.publish(channel, payload)
+      
+      const shortUserId = userId.substring(0, 8)
+      if (subscriberCount > 0) {
+        console.log(`[Redis] Published notification | channel:${channel} | subscribers:${subscriberCount}`)
+        return true
+      } else {
+        console.log(`[Redis] No subscribers | channel:${channel} | user offline`)
+        return false
+      }
+    } catch (error) {
+      console.error('[Redis] Error publishing notification:', error)
+      return false
+    }
+  }
+
+  /**
+   * Subscribe to a user's notification channel
+   * Called when WebSocket connection is established
+   */
+  static async subscribeToUser(
+    userId: string,
+    callback: (message: any) => void
+  ): Promise<void> {
+    try {
+      const channel = `user:${userId}:notifications`
+      
+      // Set up message handler
+      redisSub.on('message', (receivedChannel, message) => {
+        if (receivedChannel === channel) {
+          try {
+            const parsed = JSON.parse(message)
+            callback(parsed)
+          } catch (error) {
+            console.error('[Redis] Error parsing message:', error)
+          }
+        }
+      })
+      
+      // Subscribe to channel
+      await redisSub.subscribe(channel)
+      
+      const shortUserId = userId.substring(0, 8)
+      console.log(`[Redis] Subscribed | channel:${channel} | user:${shortUserId}`)
+    } catch (error) {
+      console.error('[Redis] Error subscribing to user channel:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Unsubscribe from a user's notification channel
+   * Called when WebSocket connection is closed
+   */
+  static async unsubscribeFromUser(userId: string): Promise<void> {
+    try {
+      const channel = `user:${userId}:notifications`
+      await redisSub.unsubscribe(channel)
+      
+      const shortUserId = userId.substring(0, 8)
+      console.log(`[Redis] Unsubscribed | channel:${channel} | user:${shortUserId}`)
+    } catch (error) {
+      console.error('[Redis] Error unsubscribing from user channel:', error)
+    }
+  }
+
+  /**
+   * Get the Redis subscriber client (for testing/debugging)
+   */
+  static getSubscriber() {
+    return redisSub
+  }
+
+  /**
+   * Get the Redis publisher client (for testing/debugging)
+   */
+  static getPublisher() {
+    return redisPub
   }
 }

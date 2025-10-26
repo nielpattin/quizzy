@@ -1,9 +1,10 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "dart:async";
 import "quizzy_tab.dart";
 import "feedy_tab.dart";
 import "widgets/tab_button.dart";
-import "../../services/api_service.dart";
+import "../../services/real_time_notification_service.dart";
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,25 +15,31 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedTab = 0;
-  int _unreadNotificationCount = 0;
+  int _newNotificationCount = 0;
+  StreamSubscription? _newCountSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadUnreadCount();
+    _listenToNewCount();
   }
 
-  Future<void> _loadUnreadCount() async {
-    try {
-      final count = await ApiService.getUnreadCount();
+  void _listenToNewCount() {
+    // Listen to real-time new notification count updates
+    final notificationService = RealTimeNotificationService();
+    _newCountSubscription = notificationService.newCount.listen((count) {
       if (mounted) {
         setState(() {
-          _unreadNotificationCount = count;
+          _newNotificationCount = count;
         });
       }
-    } catch (e) {
-      // Silently fail - badge will just show 0
-    }
+    });
+  }
+
+  @override
+  void dispose() {
+    _newCountSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -73,17 +80,24 @@ class _HomePageState extends State<HomePage> {
                   ),
                   IconButton(
                     icon: Badge(
-                      label: Text(_unreadNotificationCount.toString()),
-                      isLabelVisible: _unreadNotificationCount > 0,
+                      label: Text(_newNotificationCount.toString()),
+                      isLabelVisible: _newNotificationCount > 0,
                       child: Icon(
                         Icons.notifications_outlined,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     onPressed: () async {
+                      // Mark as seen immediately
+                      final notificationService = RealTimeNotificationService();
+                      await notificationService.markAsSeen();
+
+                      if (!mounted) return;
+                      // ignore: use_build_context_synchronously
                       await context.push("/notification");
-                      // Reload unread count when returning from notification page
-                      _loadUnreadCount();
+
+                      // Refetch count when returning (in case new ones arrived while page was open)
+                      notificationService.refreshNewCount();
                     },
                   ),
                 ],

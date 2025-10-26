@@ -8,6 +8,7 @@ import {
 	MessageSquare,
 	Trophy,
 	Users,
+	ScrollText,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -18,6 +19,7 @@ const navItems = [
 	{ path: "/admin/contests", label: "Contests", icon: Trophy },
 	{ path: "/admin/leaderboard", label: "Leaderboard", icon: BarChart3 },
 	{ path: "/admin/feed-manager", label: "Feed Manager", icon: MessageSquare },
+	{ path: "/admin/logs", label: "Logs", icon: ScrollText },
 ];
 
 export function Sidebar() {

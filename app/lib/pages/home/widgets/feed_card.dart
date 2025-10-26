@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:cached_network_image/cached_network_image.dart";
+import "package:go_router/go_router.dart";
 import "../../../models/post.dart";
 import "../../../widgets/user_avatar.dart";
 
@@ -183,33 +184,43 @@ class _FeedCardState extends State<FeedCard>
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  UserAvatar(imageUrl: widget.profilePictureUrl, radius: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  GestureDetector(
+                    onTap: () {
+                      context.push("/profile/${widget.authorId}");
+                    },
+                    child: Row(
                       children: [
-                        Text(
-                          widget.author,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        UserAvatar(
+                          imageUrl: widget.profilePictureUrl,
+                          radius: 20,
                         ),
-                        if (widget.username != null)
-                          Text(
-                            '@${widget.username}',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.6),
-                              fontSize: 14,
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.author,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
+                            if (widget.username != null)
+                              Text(
+                                '@${widget.username}',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                  fontSize: 14,
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
+                  const Spacer(),
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'info') {

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '../db/index'
-import { users, quizzes, gameSessions, collections, posts, postReports, categories } from '../db/schema'
-import { eq, desc, sql, and, or, ilike, count, asc, isNotNull } from 'drizzle-orm'
+import { users, quizzes, gameSessions, collections, posts, postReports, categories, systemLogs } from '../db/schema'
+import { eq, desc, sql, and, or, ilike, count, asc, isNotNull, gte, lte } from 'drizzle-orm'
 import { authMiddleware, type AuthContext } from '../middleware/auth'
 
 type Variables = {
@@ -1093,6 +1093,143 @@ adminRoutes.get('/dashboard', async (c) => {
   } catch (error) {
     console.error('[BACKEND] Error fetching dashboard data:', error)
     return c.json({ error: 'Failed to fetch dashboard data' }, 500)
+  }
+})
+
+// Get system logs with filters
+adminRoutes.get('/logs', async (c) => {
+  try {
+    const level = c.req.query('level') || ''
+    const search = c.req.query('search') || ''
+    const startDate = c.req.query('startDate') || ''
+    const endDate = c.req.query('endDate') || ''
+    const userId = c.req.query('userId') || ''
+    const endpoint = c.req.query('endpoint') || ''
+    const page = Number.parseInt(c.req.query('page') || '1', 10)
+    const limit = Number.parseInt(c.req.query('limit') || '50', 10)
+    const offset = (page - 1) * limit
+
+    // Build dynamic WHERE conditions
+    const conditions = []
+
+    if (level) {
+      conditions.push(eq(systemLogs.level, level as any))
+    }
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(systemLogs.message, `%${search}%`),
+          ilike(systemLogs.endpoint, `%${search}%`)
+        )
+      )
+    }
+
+    if (startDate) {
+      conditions.push(gte(systemLogs.timestamp, new Date(startDate)))
+    }
+
+    if (endDate) {
+      conditions.push(lte(systemLogs.timestamp, new Date(endDate)))
+    }
+
+    if (userId) {
+      conditions.push(eq(systemLogs.userId, userId))
+    }
+
+    if (endpoint) {
+      conditions.push(ilike(systemLogs.endpoint, `%${endpoint}%`))
+    }
+
+    // Get total count
+    const [{ count: totalCount }] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(systemLogs)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+
+    // Get logs with user information
+    const logs = await db
+      .select({
+        id: systemLogs.id,
+        timestamp: systemLogs.timestamp,
+        level: systemLogs.level,
+        message: systemLogs.message,
+        metadata: systemLogs.metadata,
+        userId: systemLogs.userId,
+        endpoint: systemLogs.endpoint,
+        method: systemLogs.method,
+        statusCode: systemLogs.statusCode,
+        duration: systemLogs.duration,
+        error: systemLogs.error,
+        ipAddress: systemLogs.ipAddress,
+        userAgent: systemLogs.userAgent,
+        createdAt: systemLogs.createdAt,
+        userEmail: users.email,
+        userName: users.fullName,
+      })
+      .from(systemLogs)
+      .leftJoin(users, eq(systemLogs.userId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(systemLogs.timestamp))
+      .limit(limit)
+      .offset(offset)
+
+    return c.json({
+      logs,
+      pagination: {
+        page,
+        limit,
+        total: totalCount || 0,
+        totalPages: Math.ceil((totalCount || 0) / limit),
+      },
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching system logs:', error)
+    return c.json({ error: 'Failed to fetch system logs' }, 500)
+  }
+})
+
+// Get log statistics
+adminRoutes.get('/logs/stats', async (c) => {
+  try {
+    const [totalLogs] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(systemLogs)
+
+    const [errorLogs] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(systemLogs)
+      .where(eq(systemLogs.level, 'error'))
+
+    const [warnLogs] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(systemLogs)
+      .where(eq(systemLogs.level, 'warn'))
+
+    const [infoLogs] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(systemLogs)
+      .where(eq(systemLogs.level, 'info'))
+
+    // Get 24 hours ago
+    const last24Hours = new Date()
+    last24Hours.setHours(last24Hours.getHours() - 24)
+
+    const [recentLogs] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(systemLogs)
+      .where(gte(systemLogs.timestamp, last24Hours))
+
+    return c.json({
+      totalLogs: totalLogs?.count || 0,
+      errorLogs: errorLogs?.count || 0,
+      warnLogs: warnLogs?.count || 0,
+      infoLogs: infoLogs?.count || 0,
+      recentLogs: recentLogs?.count || 0,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching log stats:', error)
+    return c.json({ error: 'Failed to fetch log statistics' }, 500)
   }
 })
 

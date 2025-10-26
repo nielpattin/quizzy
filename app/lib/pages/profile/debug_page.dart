@@ -6,14 +6,38 @@ import "dart:convert";
 import "dart:async";
 import "../../services/websocket_service.dart";
 
-class DebugPage extends StatefulWidget {
+/// Reusable debug panel widget that can be used in a page or modal
+class DebugPanel extends StatefulWidget {
+  const DebugPanel({super.key});
+
+  @override
+  State<DebugPanel> createState() => _DebugPanelState();
+}
+
+/// Page wrapper for the debug panel (accessible via /debug route)
+class DebugPage extends StatelessWidget {
   const DebugPage({super.key});
 
   @override
-  State<DebugPage> createState() => _DebugPageState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Debug Info"),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: const DebugPanel(),
+    );
+  }
 }
 
-class _DebugPageState extends State<DebugPage> {
+class _DebugPanelState extends State<DebugPanel> {
   Map<String, dynamic> _sessionInfo = {};
   Map<String, dynamic> _websocketInfo = {};
   bool _isLoading = true;
@@ -388,83 +412,66 @@ class _DebugPageState extends State<DebugPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Debug Info"),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          onPressed: () {
-            context.pop();
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: () {
-              _loadSessionInfo();
-              _loadWebSocketInfo();
-            },
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          "Debug Mode - Sensitive Information",
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                            fontWeight: FontWeight.w600,
-                          ),
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "Debug Mode - Sensitive Information",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 24),
-                _buildWebSocketSection(),
-                ..._sessionInfo.entries.map((entry) {
-                  return _buildInfoItem(entry.key, entry.value);
-                }),
-                SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    final jsonString = const JsonEncoder.withIndent(
-                      "  ",
-                    ).convert(_sessionInfo);
-                    _copyToClipboard(jsonString);
-                  },
-                  icon: Icon(Icons.copy_all),
-                  label: Text("Copy All Info"),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () {
+                        _loadSessionInfo();
+                        _loadWebSocketInfo();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildWebSocketSection(),
+              ..._sessionInfo.entries.map((entry) {
+                return _buildInfoItem(entry.key, entry.value);
+              }),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  final jsonString = const JsonEncoder.withIndent(
+                    "  ",
+                  ).convert(_sessionInfo);
+                  _copyToClipboard(jsonString);
+                },
+                icon: const Icon(Icons.copy_all),
+                label: const Text("Copy All Info"),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
-            ),
-    );
+              ),
+            ],
+          );
   }
 }

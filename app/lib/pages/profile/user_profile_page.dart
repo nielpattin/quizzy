@@ -77,9 +77,14 @@ class _UserProfilePageState extends State<UserProfilePage>
   Future<void> _toggleFollow() async {
     try {
       if (_isFollowing) {
+        debugPrint("[UserProfilePage] Unfollowing user: ${widget.userId}");
         await ApiService.unfollowUser(widget.userId);
       } else {
+        debugPrint("[UserProfilePage] Following user: ${widget.userId}");
         await ApiService.followUser(widget.userId);
+        debugPrint(
+          "[UserProfilePage] Follow request completed - notification should be sent to ${widget.userId}",
+        );
       }
 
       setState(() {

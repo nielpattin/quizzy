@@ -346,12 +346,19 @@ class ApiService {
 
   static Future<List<dynamic>> getNotifications({
     bool unreadOnly = false,
+    int limit = 50,
+    int offset = 0,
   }) async {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
-      final unreadParam = unreadOnly ? "?unread=true" : "";
+      final params = {
+        if (unreadOnly) 'unreadOnly': 'true',
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      };
+      final queryString = Uri(queryParameters: params).query;
       return http.get(
-        Uri.parse("${HttpClient.baseUrl}/api/notification$unreadParam"),
+        Uri.parse("${HttpClient.baseUrl}/api/notification?$queryString"),
         headers: headers,
       );
     });
@@ -361,11 +368,32 @@ class ApiService {
     final dynamic result = await HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
       return http.get(
-        Uri.parse("${HttpClient.baseUrl}/api/notification/unread/count"),
+        Uri.parse("${HttpClient.baseUrl}/api/notification/unread-count"),
         headers: headers,
       );
     });
     return result["count"] as int;
+  }
+
+  static Future<int> getNewNotificationCount() async {
+    final dynamic result = await HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/notification/new-count"),
+        headers: headers,
+      );
+    });
+    return result["count"] as int;
+  }
+
+  static Future<void> markNotificationsSeen() async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.put(
+        Uri.parse("${HttpClient.baseUrl}/api/notification/seen"),
+        headers: headers,
+      );
+    });
   }
 
   static Future<void> markAsRead(String notificationId) async {
@@ -383,7 +411,7 @@ class ApiService {
   static Future<void> markAllAsRead() async {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
-      return http.patch(
+      return http.put(
         Uri.parse("${HttpClient.baseUrl}/api/notification/read-all"),
         headers: headers,
       );

@@ -65,7 +65,6 @@ export const notificationWorker = new Worker<NotificationJobData>(
       
       const fullNotification = notificationWithUser[0]
 
-      // Log compact notification details
       const relatedUsername = fullNotification.relatedUser?.username || 'unknown'
       const shortRelatedId = fullNotification.relatedUserId?.substring(0, 8) || 'none'
       console.log(`[Worker] Loaded notification | title:"${fullNotification.title}" | from:${relatedUsername} (${shortRelatedId})`)

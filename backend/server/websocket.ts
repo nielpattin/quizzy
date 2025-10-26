@@ -298,6 +298,9 @@ export async function handleWebSocketClose(ws: any) {
     if (context) {
       const shortUserId = context.userId.substring(0, 8)
       
+      // Unsubscribe from Redis notification channel
+      await RedisConnectionStore.unsubscribeFromUser(context.userId)
+      
       // Remove from Redis
       await RedisConnectionStore.removeConnection(context.userId)
       

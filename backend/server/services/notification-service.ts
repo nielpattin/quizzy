@@ -30,7 +30,13 @@ export class NotificationService {
           relatedPostId: data.relatedPostId,
           relatedQuizId: data.relatedQuizId,
         })
+        .onConflictDoNothing()
         .returning()
+
+      // If notification is null, it's a duplicate - return early without enqueueing
+      if (!notification) {
+        return null
+      }
 
       const shortUserId = data.userId.substring(0, 8)
       console.log(`[API] New notification -> user:${shortUserId} | type:${data.type} | "${data.title}"`)

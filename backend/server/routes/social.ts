@@ -5,6 +5,7 @@ import { db } from '../db/index'
 import { posts, postLikes, comments, commentLikes, users, postAnswers } from '../db/schema'
 import { eq, and, desc, inArray, sql } from 'drizzle-orm'
 import { NotificationService } from '../services/notification-service'
+import { rateLimitLikes } from '../middleware/rate-limiter'
 
 type Variables = {
   user: AuthContext
@@ -314,7 +315,7 @@ socialRoutes.delete('/posts/:id', authMiddleware, async (c) => {
   }
 })
 
-socialRoutes.post('/posts/:id/like', authMiddleware, async (c) => {
+socialRoutes.post('/posts/:id/like', authMiddleware, rateLimitLikes, async (c) => {
   const { userId } = c.get('user') as AuthContext
   const postId = c.req.param('id')
 
@@ -365,7 +366,7 @@ socialRoutes.post('/posts/:id/like', authMiddleware, async (c) => {
   }
 })
 
-socialRoutes.delete('/posts/:id/like', authMiddleware, async (c) => {
+socialRoutes.delete('/posts/:id/like', authMiddleware, rateLimitLikes, async (c) => {
   const { userId } = c.get('user') as AuthContext
   const postId = c.req.param('id')
 

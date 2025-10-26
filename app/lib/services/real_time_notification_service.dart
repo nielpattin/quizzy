@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:http/http.dart' as http;
 import 'websocket_service.dart';
 import 'in_app_notification_service.dart';
+import 'http_client.dart';
 
 // Notification types
 enum NotificationType {
@@ -126,29 +129,32 @@ class RealTimeNotificationService {
   RealTimeNotificationService._internal();
 
   final WebSocketService _websocketService = WebSocketService();
-  final List<RealTimeNotification> _notifications = [];
 
   // Stream controllers
   final _notificationController = BehaviorSubject<RealTimeNotification>();
-  final _notificationsListController =
-      BehaviorSubject<List<RealTimeNotification>>();
-  final _unreadCountController = BehaviorSubject<int>.seeded(0);
+  final _newCountController = BehaviorSubject<int>.seeded(0);
 
   // Public streams
   Stream<RealTimeNotification> get notifications =>
       _notificationController.stream;
-  Stream<List<RealTimeNotification>> get notificationsList =>
-      _notificationsListController.stream;
-  Stream<int> get unreadCount => _unreadCountController.stream;
-
-  List<RealTimeNotification> get allNotifications =>
-      List.unmodifiable(_notifications);
-  int get unreadNotificationsCount =>
-      _notifications.where((n) => !n.isRead).length;
+  Stream<int> get newCount => _newCountController.stream;
 
   StreamSubscription? _websocketSubscription;
+  StreamSubscription? _connectionSubscription;
 
   void init() {
+    // Listen to WebSocket connection status
+    _connectionSubscription = _websocketService.connectionStatus.listen((
+      status,
+    ) {
+      if (status == ConnectionStatus.connected) {
+        debugPrint(
+          '[RealTimeNotification] WebSocket connected, fetching new count',
+        );
+        refreshNewCount();
+      }
+    });
+
     // Listen to WebSocket messages
     _websocketSubscription = _websocketService.messages.listen((message) {
       _handleWebSocketMessage(message);
@@ -169,107 +175,90 @@ class RealTimeNotificationService {
       debugPrint('[RealTimeNotification] Notification data: $notificationData');
 
       if (notificationData != null) {
-        debugPrint('[RealTimeNotification] Showing in-app notification');
-        debugPrint(
-          '[RealTimeNotification] Title: ${notificationData['title']}',
-        );
-        debugPrint(
-          '[RealTimeNotification] Subtitle: ${notificationData['subtitle']}',
-        );
+        // Show popup banner ONLY for follow notifications
+        if (notificationData['type'] == 'follow') {
+          debugPrint(
+            '[RealTimeNotification] Showing in-app notification for FOLLOW',
+          );
+          debugPrint(
+            '[RealTimeNotification] Title: ${notificationData['title']}',
+          );
+          debugPrint(
+            '[RealTimeNotification] Subtitle: ${notificationData['subtitle']}',
+          );
 
-        InAppNotificationService.showInAppNotification(
-          title: notificationData['title'] ?? 'New Notification',
-          body: notificationData['subtitle'] ?? '',
-          payload: {
-            'type': notificationData['type'],
-            'relatedPostId': notificationData['relatedPostId'],
-            'relatedUserId': notificationData['relatedUserId'],
-            'relatedQuizId': notificationData['relatedQuizId'],
-          },
-        );
+          InAppNotificationService.showInAppNotification(
+            title: notificationData['title'] ?? 'New Notification',
+            body: notificationData['subtitle'] ?? '',
+            payload: {
+              'type': notificationData['type'],
+              'relatedPostId': notificationData['relatedPostId'],
+              'relatedUserId': notificationData['relatedUserId'],
+              'relatedQuizId': notificationData['relatedQuizId'],
+            },
+          );
+        } else {
+          debugPrint(
+            '[RealTimeNotification] Skipping popup for type: ${notificationData['type']}',
+          );
+        }
       } else {
         debugPrint('[RealTimeNotification] ERROR: notificationData is NULL!');
         debugPrint(
           '[RealTimeNotification] Full message.data structure: ${message.data}',
         );
       }
+
+      // Always refresh new count for ALL notification types
+      refreshNewCount();
       return;
     }
 
     final notification = RealTimeNotification.fromWebSocketMessage(message);
-
-    _notifications.insert(0, notification);
-
-    if (_notifications.length > 50) {
-      _notifications.removeRange(50, _notifications.length);
-    }
-
     _notificationController.add(notification);
-    _notificationsListController.add(List.from(_notifications));
-    _updateUnreadCount();
   }
 
-  void markAsRead(String notificationId) {
-    final index = _notifications.indexWhere((n) => n.id == notificationId);
-    if (index != -1) {
-      // Create a new notification with isRead = true
-      final updatedNotification = RealTimeNotification(
-        id: _notifications[index].id,
-        type: _notifications[index].type,
-        title: _notifications[index].title,
-        message: _notifications[index].message,
-        data: _notifications[index].data,
-        timestamp: _notifications[index].timestamp,
-        isRead: true,
-        icon: _notifications[index].icon,
+  // Refresh new notification count from database
+  Future<void> refreshNewCount() async {
+    try {
+      final headers = await HttpClient.getHeaders();
+      final response = await http.get(
+        Uri.parse('${HttpClient.baseUrl}/api/notification/new-count'),
+        headers: headers,
       );
 
-      _notifications[index] = updatedNotification;
-      _notificationsListController.add(List.from(_notifications));
-      _updateUnreadCount();
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _newCountController.add(data['count'] as int);
+        debugPrint(
+          '[RealTimeNotification] New count updated: ${data['count']}',
+        );
+      }
+    } catch (e) {
+      debugPrint('[RealTimeNotification] Error refreshing new count: $e');
     }
   }
 
-  void markAllAsRead() {
-    final updatedNotifications = _notifications.map((notification) {
-      return RealTimeNotification(
-        id: notification.id,
-        type: notification.type,
-        title: notification.title,
-        message: notification.message,
-        data: notification.data,
-        timestamp: notification.timestamp,
-        isRead: true,
-        icon: notification.icon,
+  // Mark notifications as seen (resets "new since last seen" counter)
+  Future<void> markAsSeen() async {
+    try {
+      final headers = await HttpClient.getHeaders();
+      await http.put(
+        Uri.parse('${HttpClient.baseUrl}/api/notification/seen'),
+        headers: headers,
       );
-    }).toList();
-
-    _notifications.clear();
-    _notifications.addAll(updatedNotifications);
-    _notificationsListController.add(List.from(_notifications));
-    _updateUnreadCount();
-  }
-
-  void removeNotification(String notificationId) {
-    _notifications.removeWhere((n) => n.id == notificationId);
-    _notificationsListController.add(List.from(_notifications));
-    _updateUnreadCount();
-  }
-
-  void clearAllNotifications() {
-    _notifications.clear();
-    _notificationsListController.add([]);
-    _updateUnreadCount();
-  }
-
-  void _updateUnreadCount() {
-    _unreadCountController.add(unreadNotificationsCount);
+      // Reset count to 0 after marking seen
+      _newCountController.add(0);
+      debugPrint('[RealTimeNotification] Marked notifications as seen');
+    } catch (e) {
+      debugPrint('[RealTimeNotification] Error marking as seen: $e');
+    }
   }
 
   void dispose() {
     _websocketSubscription?.cancel();
+    _connectionSubscription?.cancel();
     _notificationController.close();
-    _notificationsListController.close();
-    _unreadCountController.close();
+    _newCountController.close();
   }
 }

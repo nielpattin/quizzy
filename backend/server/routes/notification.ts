@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import { authMiddleware } from '@/middleware/auth'
 import type { AuthContext } from '@/middleware/auth'
 import { db } from '@/db'
-import { notifications, users, posts } from '@/db/schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { notifications, users, posts, userNotificationState } from '@/db/schema'
+import { eq, and, desc, count, gt } from 'drizzle-orm'
 
 type Variables = {
   user: AuthContext
@@ -32,6 +32,9 @@ notificationRoutes.get('/', authMiddleware, async (c) => {
         subtitle: notifications.subtitle,
         isUnread: notifications.isUnread,
         createdAt: notifications.createdAt,
+        relatedPostId: notifications.relatedPostId,
+        relatedQuizId: notifications.relatedQuizId,
+        relatedUserId: notifications.relatedUserId,
         relatedUser: {
           id: users.id,
           username: users.username,
@@ -63,7 +66,7 @@ notificationRoutes.get('/unread-count', authMiddleware, async (c) => {
 
   try {
     const [result] = await db
-      .select({ count: notifications.id })
+      .select({ count: count() })
       .from(notifications)
       .where(and(
         eq(notifications.userId, userId),
@@ -74,6 +77,63 @@ notificationRoutes.get('/unread-count', authMiddleware, async (c) => {
   } catch (error) {
     console.error('Error fetching unread count:', error)
     return c.json({ error: 'Failed to fetch unread count' }, 500)
+  }
+})
+
+notificationRoutes.get('/new-count', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+
+  try {
+    // Get user's lastSeenAt, or use epoch if first time
+    const [userState] = await db
+      .select({ lastSeenAt: userNotificationState.lastSeenAt })
+      .from(userNotificationState)
+      .where(eq(userNotificationState.userId, userId))
+
+    const lastSeen = userState?.lastSeenAt || new Date(0)
+
+    // Count notifications created after lastSeenAt
+    const [result] = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        gt(notifications.createdAt, lastSeen)
+      ))
+
+    return c.json({ count: result?.count || 0 })
+  } catch (error) {
+    console.error('Error fetching new count:', error)
+    return c.json({ error: 'Failed to fetch new count' }, 500)
+  }
+})
+
+notificationRoutes.put('/seen', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+
+  try {
+    const now = new Date()
+
+    // Upsert user notification state
+    await db
+      .insert(userNotificationState)
+      .values({
+        userId,
+        lastSeenAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: userNotificationState.userId,
+        set: {
+          lastSeenAt: now,
+          updatedAt: now,
+        },
+      })
+
+    return c.json({ lastSeenAt: now.toISOString() })
+  } catch (error) {
+    console.error('Error updating seen timestamp:', error)
+    return c.json({ error: 'Failed to update seen timestamp' }, 500)
   }
 })
 

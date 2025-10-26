@@ -6,6 +6,7 @@ import "theme.dart";
 import "services/in_app_notification_service.dart";
 import "services/real_time_notification_service.dart";
 import "services/websocket_service.dart";
+import "widgets/debug_overlay.dart";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +60,8 @@ class QuizzyApp extends StatefulWidget {
 }
 
 class _QuizzyAppState extends State<QuizzyApp> {
+  final _debugOverlayController = DebugOverlayController();
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +73,12 @@ class _QuizzyAppState extends State<QuizzyApp> {
   }
 
   @override
+  void dispose() {
+    _debugOverlayController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
@@ -77,6 +86,12 @@ class _QuizzyAppState extends State<QuizzyApp> {
       theme: lightTheme,
       darkTheme: darkTheme,
       routerConfig: router,
+      builder: (context, child) {
+        return DebugOverlay(
+          controller: _debugOverlayController,
+          child: child ?? const SizedBox(),
+        );
+      },
     );
   }
 }
