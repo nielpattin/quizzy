@@ -12,6 +12,73 @@ type Variables = {
 
 const sessionRoutes = new Hono<{ Variables: Variables }>()
 
+async function checkAndCompleteSession(sessionId: string) {
+  try {
+    // Get session details
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session || session.endedAt) {
+      return // Session doesn't exist or already ended
+    }
+
+    // Get all questions for this session
+    const sessionQuestions = await db
+      .select()
+      .from(questionsSnapshots)
+      .where(eq(questionsSnapshots.snapshotId, session.quizSnapshotId))
+      .orderBy(questionsSnapshots.orderIndex)
+
+    const totalQuestions = sessionQuestions.length
+    if (totalQuestions === 0) {
+      return // No questions in session
+    }
+
+    // Get all participants and their answered questions
+    const participantsWithAnswers = await db
+      .select({
+        participantId: gameSessionParticipants.id,
+        userId: gameSessionParticipants.userId,
+        answeredQuestions: sql<number>`COUNT(DISTINCT ${questionTimings.questionSnapshotId})`.mapWith(Number),
+      })
+      .from(gameSessionParticipants)
+      .leftJoin(
+        questionTimings,
+        and(
+          eq(questionTimings.participantId, gameSessionParticipants.id),
+          sql`${questionTimings.submittedAt} IS NOT NULL`
+        )
+      )
+      .where(eq(gameSessionParticipants.sessionId, sessionId))
+      .groupBy(gameSessionParticipants.id, gameSessionParticipants.userId)
+
+    // Check if all participants have answered all questions
+    const allParticipantsCompleted = participantsWithAnswers.every(
+      p => p.answeredQuestions >= totalQuestions
+    )
+
+    // Also check if there are any active participants (at least one)
+    const hasActiveParticipants = participantsWithAnswers.length > 0
+
+    if (allParticipantsCompleted && hasActiveParticipants) {
+      // Automatically complete the session
+      await db
+        .update(gameSessions)
+        .set({
+          isLive: false,
+          endedAt: new Date(),
+        })
+        .where(eq(gameSessions.id, sessionId))
+
+      console.log(`Session ${sessionId} automatically completed - all participants finished all questions`)
+    }
+  } catch (error) {
+    console.error('Error checking session completion:', error)
+  }
+}
+
 function generateSessionCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let code = ''
@@ -57,29 +124,40 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
       ))
       .limit(1)
 
-    // If reusable session found, create new participant in existing session
+    // If reusable session found, reuse existing participant
     if (existingSessions.length > 0) {
       const existingSession = existingSessions[0].session
+      const existingParticipant = existingSessions[0].participant
 
-      const [newParticipant] = await db
-        .insert(gameSessionParticipants)
-        .values({
-          sessionId: existingSession.id,
-          userId,
-        })
-        .returning()
+      // Check if existing participant is still valid (not left)
+      if (existingParticipant && !existingParticipant.leftAt) {
+        // Reuse existing participant
+        return c.json({
+          ...existingSession,
+          participantId: existingParticipant.id,
+        }, 200)
+      } else {
+        // Create new participant only if existing one is invalid
+        const [newParticipant] = await db
+          .insert(gameSessionParticipants)
+          .values({
+            sessionId: existingSession.id,
+            userId,
+          })
+          .returning()
 
-      await db
-        .update(gameSessions)
-        .set({
-          joinedCount: existingSession.joinedCount + 1,
-        })
-        .where(eq(gameSessions.id, existingSession.id))
+        await db
+          .update(gameSessions)
+          .set({
+            joinedCount: existingSession.joinedCount + 1,
+          })
+          .where(eq(gameSessions.id, existingSession.id))
 
-      return c.json({
-        ...existingSession,
-        participantId: newParticipant.id,
-      }, 201)
+        return c.json({
+          ...existingSession,
+          participantId: newParticipant.id,
+        }, 201)
+      }
     }
 
     // No reusable session found, create new session
@@ -126,6 +204,8 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
         estimatedMinutes: body.estimatedMinutes || 10,
         code,
         quizVersion: quiz.version,
+        isLive: true, // Solo sessions start as live immediately
+        startedAt: new Date(), // Solo sessions start immediately
       })
       .returning()
 
@@ -144,6 +224,18 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
         joinedCount: 1,
       })
       .where(eq(gameSessions.id, newSession.id))
+
+    // Broadcast session created for solo sessions
+    await WebSocketService.broadcastSessionCreated(newSession.id, {
+      id: newSession.id,
+      title: newSession.title,
+      isLive: newSession.isLive,
+      joinedCount: newSession.joinedCount,
+      code: newSession.code,
+      startedAt: newSession.startedAt,
+      endedAt: newSession.endedAt,
+      createdAt: newSession.createdAt,
+    })
 
     return c.json({
       ...newSession,
@@ -220,6 +312,7 @@ sessionRoutes.get('/:id', async (c) => {
         },
         snapshot: {
           id: quizSnapshots.id,
+          quizId: quizSnapshots.quizId,
           title: quizSnapshots.title,
           description: quizSnapshots.description,
           questionCount: quizSnapshots.questionCount,
@@ -589,6 +682,9 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
       })
       .where(eq(gameSessionParticipants.id, participant.id))
 
+    // Check if session should be automatically completed
+    await checkAndCompleteSession(sessionId)
+
     return c.json({
       isCorrect,
       score,
@@ -734,14 +830,23 @@ sessionRoutes.get('/user/:userId/played', async (c) => {
     const playedSessions = await db
       .select({
         id: gameSessions.id,
+        hostId: gameSessions.hostId,
         title: gameSessions.title,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
         joinedCount: gameSessions.joinedCount,
+        code: gameSessions.code,
         startedAt: gameSessions.startedAt,
         endedAt: gameSessions.endedAt,
         createdAt: gameSessions.createdAt,
+        snapshot: {
+          id: quizSnapshots.id,
+          quizId: quizSnapshots.quizId,
+          title: quizSnapshots.title,
+          questionCount: quizSnapshots.questionCount,
+        },
         participant: {
+          id: gameSessionParticipants.id,
           score: gameSessionParticipants.score,
           rank: gameSessionParticipants.rank,
           joinedAt: gameSessionParticipants.joinedAt,
@@ -749,6 +854,7 @@ sessionRoutes.get('/user/:userId/played', async (c) => {
       })
       .from(gameSessionParticipants)
       .leftJoin(gameSessions, eq(gameSessionParticipants.sessionId, gameSessions.id))
+      .leftJoin(quizSnapshots, eq(gameSessions.quizSnapshotId, quizSnapshots.id))
       .where(eq(gameSessionParticipants.userId, targetUserId))
       .orderBy(desc(gameSessionParticipants.joinedAt))
 

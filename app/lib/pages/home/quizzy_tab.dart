@@ -305,19 +305,80 @@ class _QuizzyTabState extends State<QuizzyTab>
                   ],
                 ),
                 SizedBox(height: 16),
-                ...continuePlaying.map((item) {
-                  final quiz = item["quiz"] as Map<String, dynamic>?;
-                  final user = quiz?["user"] as Map<String, dynamic>?;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: ContinuePlayingItem(
-                      title: quiz?["title"] ?? "Untitled",
-                      author: user?["fullName"] ?? "Unknown",
-                      category: quiz?["category"]?["name"] ?? "General",
-                      count: quiz?["playCount"] ?? 0,
+                if (continuePlaying.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withValues(alpha: 0.2),
+                      ),
                     ),
-                  );
-                }),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.play_circle_outline,
+                          size: 48,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.4),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No sessions in progress',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Start playing quizzes to see them here!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ...continuePlaying.map((item) {
+                    final session = item as Map<String, dynamic>;
+                    final participant =
+                        session["participant"] as Map<String, dynamic>?;
+                    final isSoloSession =
+                        session["hostId"] == null || participant != null;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: ContinuePlayingItem(
+                        sessionId: session["id"]?.toString() ?? "",
+                        title: session["title"] ?? "Untitled",
+                        author: isSoloSession ? "You" : "Multiplayer",
+                        category: isSoloSession ? "Solo" : "Multiplayer",
+                        count: participant?["score"] ?? 0,
+                        isLive: session["isLive"] ?? false,
+                        score: participant?["score"],
+                        rank: participant?["rank"],
+                        code: session["code"],
+                        estimatedMinutes: session["estimatedMinutes"],
+                        joinedCount: session["joinedCount"],
+                      ),
+                    );
+                  }),
                 SizedBox(height: 24),
               ],
             ),

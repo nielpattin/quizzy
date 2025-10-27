@@ -271,19 +271,39 @@ async function handleJoinSession(ws: any, sessionId: string, context: WebSocketC
 // Handle session leave
 async function handleLeaveSession(ws: any, sessionId: string, context: WebSocketContext) {
   try {
-    // Remove from session participants
+    // Remove participant from database (same logic as HTTP leave endpoint)
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (session) {
+      // Delete participant from database
+      await db
+        .delete(gameSessionParticipants)
+        .where(and(
+          eq(gameSessionParticipants.sessionId, sessionId),
+          eq(gameSessionParticipants.userId, context.userId)
+        ))
+
+      // Update session joined count
+      await db
+        .update(gameSessions)
+        .set({
+          joinedCount: Math.max(0, session.joinedCount - 1),
+        })
+        .where(eq(gameSessions.id, sessionId))
+
+      // Broadcast participant left event
+      await WebSocketService.broadcastParticipantLeft(sessionId, context.userId)
+    }
+
+    // Remove from WebSocket session participants
     removeParticipantFromSession(sessionId, ws)
 
     // Clear session from context
     context.sessionId = undefined
     activeConnections.set(ws, context)
-
-    // Broadcast to other participants
-    broadcastToSession(sessionId, {
-      type: 'participant_left',
-      sessionId,
-      participantId: context.userId,
-    }, ws)
 
     console.log(`User ${context.userId} left session ${sessionId}`)
   } catch (error) {

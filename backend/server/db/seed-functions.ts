@@ -1544,6 +1544,107 @@ export const seedMinimalContent = async (db: any, categoryMap?: Map<string, stri
 			console.log(`    ✓ Created quiz "${quiz.title}" with ${SEED_QUESTIONS_COUNT} questions`);
 		}
 
+		// Create quiz snapshots and game sessions for each quiz
+		const userQuizzes = await db.select().from(schema.quizzes).where(eq(schema.quizzes.userId, owner.id));
+		for (const quiz of userQuizzes) {
+			// Create snapshot
+			const [snapshot] = await db.insert(schema.quizSnapshots).values({
+				quizId: quiz.id,
+				version: 1,
+				title: quiz.title,
+				description: quiz.description,
+				questionCount: SEED_QUESTIONS_COUNT,
+			}).returning();
+
+			// Copy questions to snapshots
+			const quizQuestions = await db.select().from(schema.questions).where(eq(schema.questions.quizId, quiz.id));
+			for (const question of quizQuestions) {
+				await db.insert(schema.questionsSnapshots).values({
+					snapshotId: snapshot.id,
+					type: question.type,
+					questionText: question.questionText,
+					data: question.data,
+					imageUrl: question.imageUrl,
+					orderIndex: question.orderIndex,
+				});
+			}
+
+			// Create 2 game sessions per quiz
+			for (let g = 0; g < 2; g++) {
+				const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+				const [session] = await db.insert(schema.gameSessions).values({
+					quizId: quiz.id,
+					quizSnapshotId: snapshot.id,
+					hostId: owner.id,
+					title: quiz.title,
+					estimatedMinutes: Math.floor(Math.random() * 20) + 10,
+					isLive: false,
+					joinedCount: g === 0 ? 1 : 2, // First session has only host, second has 2 participants
+					code: randomCode,
+					quizVersion: 1,
+				}).returning();
+
+				// Create participant for host (always joins own session)
+				const hostParticipant = await db.insert(schema.gameSessionParticipants).values({
+					sessionId: session.id,
+					userId: owner.id,
+					score: 0,
+					rank: 1,
+				}).returning();
+
+				// Create partial question timings (60% of questions answered)
+				const snapshotQuestions = await db.select().from(schema.questionsSnapshots).where(
+					eq(schema.questionsSnapshots.snapshotId, snapshot.id)
+				).orderBy(schema.questionsSnapshots.orderIndex);
+				
+				const answeredCount = Math.floor(snapshotQuestions.length * 0.6); // 60% completed
+				for (let q = 0; q < answeredCount; q++) {
+					await db.insert(schema.questionTimings).values({
+						participantId: hostParticipant[0].id,
+						questionSnapshotId: snapshotQuestions[q].id,
+						sessionId: session.id,
+						serverStartTime: new Date(Date.now() - 3600000),
+						deadlineTime: new Date(Date.now() - 3300000),
+						submittedAt: new Date(Date.now() - 3330000),
+					});
+				}
+
+				// Update host participant score based on answered questions
+				await db.update(schema.gameSessionParticipants).set({
+					score: answeredCount * 100, // 100 points per question
+				}).where(eq(schema.gameSessionParticipants.id, hostParticipant[0].id));
+
+				// For second session, add another participant (50% progress)
+				if (g === 1 && users.length > 1) {
+					const otherUser = users.find(u => u.id !== owner.id) || users[0];
+					const otherParticipant = await db.insert(schema.gameSessionParticipants).values({
+						sessionId: session.id,
+						userId: otherUser.id,
+						score: 0,
+						rank: 2,
+					}).returning();
+
+					const otherAnsweredCount = Math.floor(snapshotQuestions.length * 0.5);
+					for (let q = 0; q < otherAnsweredCount; q++) {
+						await db.insert(schema.questionTimings).values({
+							participantId: otherParticipant[0].id,
+							questionSnapshotId: snapshotQuestions[q].id,
+							sessionId: session.id,
+							serverStartTime: new Date(Date.now() - 3600000),
+							deadlineTime: new Date(Date.now() - 3300000),
+							submittedAt: new Date(Date.now() - 3330000),
+						});
+					}
+
+					await db.update(schema.gameSessionParticipants).set({
+						score: otherAnsweredCount * 100,
+					}).where(eq(schema.gameSessionParticipants.id, otherParticipant[0].id));
+				}
+			}
+
+			console.log(`    ✓ Created 2 game sessions with partial progress for "${quiz.title}"`);
+		}
+
 		// Create posts for this user
 		for (let i = 0; i < SEED_POSTS_COUNT; i++) {
 			const postType = i === 0 ? 'text' : (i === 1 ? 'image' : 'quiz');

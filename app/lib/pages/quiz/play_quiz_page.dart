@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "dart:async";
 import "../../services/api_service.dart";
+import "../../services/websocket_service.dart";
 import "./widgets/quiz_stats_header.dart";
 import "./widgets/quiz_question_card.dart";
 import "./widgets/quiz_option_button.dart";
@@ -75,6 +76,9 @@ class _PlayQuizPageState extends State<PlayQuizPage>
     try {
       final sessionResponse = await ApiService.createSession(widget.quizId);
       _sessionId = sessionResponse["id"];
+
+      // Join WebSocket session for real-time updates
+      await WebSocketService().joinSession(_sessionId!);
 
       final quizResponse = await ApiService.getQuiz(widget.quizId);
       if (quizResponse == null) throw Exception("Failed to load quiz");
@@ -436,6 +440,12 @@ class _PlayQuizPageState extends State<PlayQuizPage>
     _countdownTimer?.cancel();
     _autoAdvanceTimer?.cancel();
     _animationController.dispose();
+    
+    // Leave WebSocket session to clean up participant
+    if (_sessionId != null) {
+      WebSocketService().leaveSession();
+    }
+    
     super.dispose();
   }
 }

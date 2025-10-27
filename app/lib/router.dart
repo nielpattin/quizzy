@@ -25,6 +25,7 @@ import "pages/quiz/quiz_detail_page.dart";
 import "pages/quiz/category_page.dart";
 import "pages/quiz/trending_page.dart";
 import "pages/quiz/continue_playing_page.dart";
+import "pages/quiz/session_detail_page.dart";
 import "pages/quiz/create_quiz_page.dart";
 import "pages/quiz/edit_quiz_page.dart";
 import "pages/quiz/add_questions_page.dart";
@@ -512,6 +513,28 @@ final router = GoRouter(
           child: LiveQuizSessionPage(sessionId: sessionId),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/session/detail/:sessionId",
+      pageBuilder: (context, state) {
+        final sessionId = state.pathParameters["sessionId"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: SessionDetailPage(sessionId: sessionId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
           },
         );
       },

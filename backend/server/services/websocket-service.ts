@@ -40,6 +40,22 @@ export class WebSocketService {
     }
   }
 
+  // Broadcast session created event (called from HTTP session creation)
+  static async broadcastSessionCreated(sessionId: string, sessionData: any) {
+    try {
+      const message: WebSocketMessage = {
+        type: 'session_update',
+        sessionId,
+        data: sessionData,
+      }
+
+      broadcastToSession(sessionId, message)
+      console.log(`Broadcasted session created for session ${sessionId}`)
+    } catch (error) {
+      console.error('Error broadcasting session created:', error)
+    }
+  }
+
   // Broadcast participant left event (called from HTTP leave endpoint)
   static async broadcastParticipantLeft(sessionId: string, userId: string) {
     try {
