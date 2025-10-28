@@ -154,35 +154,8 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
       );
 
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Game Created!"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text("Session Code:", style: TextStyle(fontSize: 16)),
-                const SizedBox(height: 8),
-                Text(
-                  session["code"],
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text("Players can join using this code in the Join tab."),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => context.pop(),
-                child: const Text("OK"),
-              ),
-            ],
-          ),
-        );
+        // Navigate to session detail page
+        context.push('/quiz/session/detail/${session["id"]}');
       }
     } catch (e) {
       if (mounted) {
@@ -554,9 +527,9 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _createGame,
-                  icon: const Icon(Icons.group),
+                  icon: const Icon(Icons.play_arrow),
                   label: const Text(
-                    "Create Game",
+                    "Play",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -579,53 +552,24 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
   Widget _buildActionButtons() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    context.push("/quiz/${widget.quizId}/play");
-                  },
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text(
-                    "Play Solo",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _createGame,
-                  icon: const Icon(Icons.group),
-                  label: const Text(
-                    "Create Game",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _createGame,
+          icon: const Icon(Icons.play_arrow),
+          label: const Text(
+            "Play",
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-        ],
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
       ),
     );
   }

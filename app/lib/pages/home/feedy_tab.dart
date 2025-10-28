@@ -16,6 +16,8 @@ class FeedyTab extends StatefulWidget {
 
 class _FeedyTabState extends State<FeedyTab> {
   bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
   List<dynamic> _feedItems = [];
   int _currentPage = 0;
   final int _pageSize = 20;
@@ -62,6 +64,8 @@ class _FeedyTabState extends State<FeedyTab> {
       setState(() {
         _feedItems = [];
         _isLoading = true;
+        _hasError = false;
+        _errorMessage = null;
       });
     }
 
@@ -79,6 +83,8 @@ class _FeedyTabState extends State<FeedyTab> {
           }
           _currentPage++;
           _isLoading = false;
+          _hasError = false;
+          _errorMessage = null;
         });
       }
     } catch (e) {
@@ -86,6 +92,8 @@ class _FeedyTabState extends State<FeedyTab> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasError = true;
+          _errorMessage = e.toString();
         });
       }
     }
@@ -116,6 +124,8 @@ class _FeedyTabState extends State<FeedyTab> {
     setState(() {
       _feedItems = [];
       _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
     });
 
     try {
@@ -125,6 +135,8 @@ class _FeedyTabState extends State<FeedyTab> {
           _feedItems = data;
           _currentPage = 1;
           _isLoading = false;
+          _hasError = false;
+          _errorMessage = null;
         });
       }
     } catch (e) {
@@ -132,6 +144,8 @@ class _FeedyTabState extends State<FeedyTab> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasError = true;
+          _errorMessage = e.toString();
         });
       }
     }
@@ -264,6 +278,114 @@ class _FeedyTabState extends State<FeedyTab> {
       children: [
         if (_isLoading && _feedItems.isEmpty)
           const Center(child: CircularProgressIndicator())
+        else if (_hasError && _feedItems.isEmpty)
+          // Show offline/error state
+          RefreshIndicator(
+            onRefresh: _refreshFeed,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Container(
+                height: MediaQuery.of(context).size.height - 200,
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Builder(
+                    builder: (context) {
+                      // Check if it's a network/connection error
+                      final errorLower = _errorMessage?.toLowerCase() ?? '';
+                      final isNetworkError =
+                          errorLower.contains('connection refused') ||
+                          errorLower.contains('socketexception') ||
+                          errorLower.contains('network error');
+
+                      if (isNetworkError) {
+                        // Show offline UI
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.cloud_off_outlined,
+                              size: 80,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.3),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Unable to Connect',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Backend server is not running',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Pull down to retry',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      // Generic error
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.error.withValues(alpha: 0.6),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading feed',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              'Something went wrong. Pull down to retry.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          )
         else if (_feedItems.isEmpty)
           Center(
             child: Column(

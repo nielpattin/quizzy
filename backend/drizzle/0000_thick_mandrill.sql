@@ -75,11 +75,16 @@ CREATE TABLE "game_sessions" (
 	"host_id" uuid NOT NULL,
 	"quiz_snapshot_id" uuid NOT NULL,
 	"title" text NOT NULL,
+	"description" text,
 	"estimated_minutes" integer NOT NULL,
 	"is_live" boolean DEFAULT false NOT NULL,
+	"is_public" boolean DEFAULT false NOT NULL,
 	"joined_count" integer DEFAULT 0 NOT NULL,
+	"max_players" integer DEFAULT 1000 NOT NULL,
 	"code" varchar(10),
 	"quiz_version" integer NOT NULL,
+	"has_end_time" boolean DEFAULT false NOT NULL,
+	"end_time" timestamp with time zone,
 	"started_at" timestamp with time zone,
 	"ended_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -343,7 +348,6 @@ CREATE INDEX "images_created_at_idx" ON "images" USING btree ("created_at");--> 
 CREATE INDEX "notifications_user_id_idx" ON "notifications" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "notifications_is_unread_idx" ON "notifications" USING btree ("is_unread");--> statement-breakpoint
 CREATE INDEX "notifications_created_at_idx" ON "notifications" USING btree ("created_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "notifications_unique_idx" ON "notifications" ("user_id", "type", "related_user_id", "related_post_id", "related_quiz_id") NULLS NOT DISTINCT;--> statement-breakpoint
 CREATE INDEX "post_answers_post_id_idx" ON "post_answers" USING btree ("post_id");--> statement-breakpoint
 CREATE INDEX "post_answers_user_id_idx" ON "post_answers" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "post_answers_post_id_user_id_idx" ON "post_answers" USING btree ("post_id","user_id");--> statement-breakpoint

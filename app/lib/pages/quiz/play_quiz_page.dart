@@ -13,8 +13,14 @@ import "./quiz_dialogs.dart";
 class PlayQuizPage extends StatefulWidget {
   final String quizId;
   final bool isPreview;
+  final String? sessionId;
 
-  const PlayQuizPage({required this.quizId, this.isPreview = false, super.key});
+  const PlayQuizPage({
+    required this.quizId,
+    this.isPreview = false,
+    this.sessionId,
+    super.key,
+  });
 
   @override
   State<PlayQuizPage> createState() => _PlayQuizPageState();
@@ -74,8 +80,13 @@ class _PlayQuizPageState extends State<PlayQuizPage>
 
   Future<void> _loadQuizData() async {
     try {
-      final sessionResponse = await ApiService.createSession(widget.quizId);
-      _sessionId = sessionResponse["id"];
+      // Use provided sessionId or create a new one
+      if (widget.sessionId != null) {
+        _sessionId = widget.sessionId;
+      } else {
+        final sessionResponse = await ApiService.createSession(widget.quizId);
+        _sessionId = sessionResponse["id"];
+      }
 
       // Join WebSocket session for real-time updates
       await WebSocketService().joinSession(_sessionId!);
@@ -440,12 +451,12 @@ class _PlayQuizPageState extends State<PlayQuizPage>
     _countdownTimer?.cancel();
     _autoAdvanceTimer?.cancel();
     _animationController.dispose();
-    
+
     // Leave WebSocket session to clean up participant
     if (_sessionId != null) {
       WebSocketService().leaveSession();
     }
-    
+
     super.dispose();
   }
 }

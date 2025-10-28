@@ -106,7 +106,7 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
       return c.json({ error: 'Quiz not found' }, 404)
     }
 
-    // Check for reusable session: same quiz, same version, user has participant, not ended
+    // Check for reusable session: same quiz, same version, current user is host, user has participant, not ended
     const existingSessions = await db
       .select({
         session: gameSessions,
@@ -119,6 +119,7 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
       .where(and(
         eq(quizSnapshots.quizId, quiz.id),
         eq(gameSessions.quizVersion, quiz.version),
+        eq(gameSessions.hostId, userId),
         eq(gameSessionParticipants.userId, userId),
         sql`${gameSessions.endedAt} IS NULL`
       ))
@@ -201,7 +202,12 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
         hostId: userId,
         quizSnapshotId: snapshot.id,
         title: body.title || quiz.title,
+        description: body.description || null,
         estimatedMinutes: body.estimatedMinutes || 10,
+        isPublic: body.isPublic !== undefined ? body.isPublic : false,
+        maxPlayers: body.maxPlayers || 1000,
+        hasEndTime: body.hasEndTime !== undefined ? body.hasEndTime : false,
+        endTime: body.endTime ? new Date(body.endTime) : null,
         code,
         quizVersion: quiz.version,
         isLive: true, // Solo sessions start as live immediately
@@ -296,11 +302,17 @@ sessionRoutes.get('/:id', async (c) => {
     const [session] = await db
       .select({
         id: gameSessions.id,
+        hostId: gameSessions.hostId,
         title: gameSessions.title,
+        description: gameSessions.description,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
+        isPublic: gameSessions.isPublic,
         joinedCount: gameSessions.joinedCount,
+        maxPlayers: gameSessions.maxPlayers,
         code: gameSessions.code,
+        hasEndTime: gameSessions.hasEndTime,
+        endTime: gameSessions.endTime,
         startedAt: gameSessions.startedAt,
         endedAt: gameSessions.endedAt,
         createdAt: gameSessions.createdAt,
@@ -331,6 +343,58 @@ sessionRoutes.get('/:id', async (c) => {
   } catch (error) {
     console.error('Error fetching session:', error)
     return c.json({ error: 'Failed to fetch session' }, 500)
+  }
+})
+
+sessionRoutes.put('/:id', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const sessionId = c.req.param('id')
+  const body = await c.req.json()
+
+  try {
+    // Get current session
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+
+    // Only host can update session
+    if (session.hostId !== userId) {
+      return c.json({ error: 'Only the host can update this session' }, 403)
+    }
+
+    // Prepare update data
+    const updateData: any = {}
+    
+    if (body.title !== undefined) updateData.title = body.title
+    if (body.description !== undefined) updateData.description = body.description
+    if (body.isPublic !== undefined) updateData.isPublic = body.isPublic
+    if (body.maxPlayers !== undefined) updateData.maxPlayers = body.maxPlayers
+    if (body.hasEndTime !== undefined) updateData.hasEndTime = body.hasEndTime
+    if (body.endTime !== undefined) updateData.endTime = body.endTime ? new Date(body.endTime) : null
+
+    // Update session
+    const [updatedSession] = await db
+      .update(gameSessions)
+      .set(updateData)
+      .where(eq(gameSessions.id, sessionId))
+      .returning()
+
+    // Broadcast session update
+    await WebSocketService.broadcastSessionUpdate(sessionId, {
+      isPublic: updatedSession.isPublic,
+      maxPlayers: updatedSession.maxPlayers,
+      title: updatedSession.title,
+    })
+
+    return c.json(updatedSession, 200)
+  } catch (error) {
+    console.error('Error updating session:', error)
+    return c.json({ error: 'Failed to update session' }, 500)
   }
 })
 
@@ -389,81 +453,7 @@ sessionRoutes.post('/:id/join', authMiddleware, async (c) => {
   }
 })
 
-sessionRoutes.post('/:id/start', authMiddleware, async (c) => {
-  const { userId } = c.get('user') as AuthContext
-  const sessionId = c.req.param('id')
 
-  try {
-    const [session] = await db
-      .select()
-      .from(gameSessions)
-      .where(eq(gameSessions.id, sessionId))
-
-    if (!session) {
-      return c.json({ error: 'Session not found' }, 404)
-    }
-
-    if (session.hostId !== userId) {
-      return c.json({ error: 'Only the host can start the session' }, 403)
-    }
-
-    if (session.startedAt) {
-      return c.json({ error: 'Session already started' }, 400)
-    }
-
-    const [updatedSession] = await db
-      .update(gameSessions)
-      .set({
-        isLive: true,
-        startedAt: new Date(),
-      })
-      .where(eq(gameSessions.id, sessionId))
-      .returning()
-
-    return c.json(updatedSession)
-  } catch (error) {
-    console.error('Error starting session:', error)
-    return c.json({ error: 'Failed to start session' }, 500)
-  }
-})
-
-sessionRoutes.post('/:id/end', authMiddleware, async (c) => {
-  const { userId } = c.get('user') as AuthContext
-  const sessionId = c.req.param('id')
-
-  try {
-    const [session] = await db
-      .select()
-      .from(gameSessions)
-      .where(eq(gameSessions.id, sessionId))
-
-    if (!session) {
-      return c.json({ error: 'Session not found' }, 404)
-    }
-
-    if (session.hostId !== userId) {
-      return c.json({ error: 'Only the host can end the session' }, 403)
-    }
-
-    if (session.endedAt) {
-      return c.json({ error: 'Session already ended' }, 400)
-    }
-
-    const [updatedSession] = await db
-      .update(gameSessions)
-      .set({
-        isLive: false,
-        endedAt: new Date(),
-      })
-      .where(eq(gameSessions.id, sessionId))
-      .returning()
-
-    return c.json(updatedSession)
-  } catch (error) {
-    console.error('Error ending session:', error)
-    return c.json({ error: 'Failed to end session' }, 500)
-  }
-})
 
 sessionRoutes.get('/:id/leaderboard', async (c) => {
   const sessionId = c.req.param('id')
@@ -770,56 +760,6 @@ sessionRoutes.post('/:id/leave', authMiddleware, async (c) => {
   } catch (error) {
     console.error('Error leaving session:', error)
     return c.json({ error: 'Failed to leave session' }, 500)
-  }
-})
-
-sessionRoutes.post('/:id/score', authMiddleware, async (c) => {
-  const { userId } = c.get('user') as AuthContext
-  const sessionId = c.req.param('id')
-  const body = await c.req.json()
-
-  try {
-    if (!body.score || body.score < 0) {
-      return c.json({ error: 'Valid score is required' }, 400)
-    }
-
-    const [session] = await db
-      .select()
-      .from(gameSessions)
-      .where(eq(gameSessions.id, sessionId))
-
-    if (!session) {
-      return c.json({ error: 'Session not found' }, 404)
-    }
-
-    const [existingParticipant] = await db
-      .select()
-      .from(gameSessionParticipants)
-      .where(and(
-        eq(gameSessionParticipants.sessionId, sessionId),
-        eq(gameSessionParticipants.userId, userId)
-      ))
-
-    if (!existingParticipant) {
-      return c.json({ error: 'Not a participant in this session' }, 400)
-    }
-
-    const [updatedParticipant] = await db
-      .update(gameSessionParticipants)
-      .set({
-        score: body.score,
-        rank: body.rank, // Optional rank update
-      })
-      .where(and(
-        eq(gameSessionParticipants.sessionId, sessionId),
-        eq(gameSessionParticipants.userId, userId)
-      ))
-      .returning()
-
-    return c.json(updatedParticipant)
-  } catch (error) {
-    console.error('Error updating score:', error)
-    return c.json({ error: 'Failed to update score' }, 500)
   }
 })
 

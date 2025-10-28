@@ -67,47 +67,6 @@ websocketRoutes.get('/session/:sessionId/participants', async (c) => {
   }
 })
 
-// Broadcast a test message to a session (for testing purposes)
-websocketRoutes.post('/session/:sessionId/broadcast', authMiddleware, async (c) => {
-  const { userId } = c.get('user') as AuthContext
-  const sessionId = c.req.param('sessionId')
-  const body = await c.req.json()
-
-  try {
-    if (!body.message || !body.type) {
-      return c.json({ error: 'Message type and content are required' }, 400)
-    }
-
-    // Custom message broadcasting removed - not needed for Mode 1
-
-    return c.json({ 
-      message: 'Message broadcast functionality removed',
-      sessionId,
-      type: body.type,
-    })
-  } catch (error) {
-    console.error('Error broadcasting test message:', error)
-    return c.json({ error: 'Failed to broadcast message' }, 500)
-  }
-})
-
-// Get WebSocket connection health check
-websocketRoutes.get('/health', async (c) => {
-  try {
-    const connectionCount = getActiveConnectionsCount()
-    const isHealthy = connectionCount >= 0
-
-    return c.json({
-      status: isHealthy ? 'healthy' : 'unhealthy',
-      activeConnections: connectionCount,
-      timestamp: new Date().toISOString(),
-    })
-  } catch (error) {
-    console.error('Error checking WebSocket health:', error)
-    return c.json({ error: 'Failed to check health' }, 500)
-  }
-})
-
 // Get WebSocket connection health check
 websocketRoutes.get('/health', async (c) => {
   try {

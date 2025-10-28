@@ -35,14 +35,20 @@ Future<void> main() async {
       '[AUTH_LISTENER] Session: ${session != null ? "EXISTS (user: ${session.user.id})" : "NULL"}',
     );
 
-    if ((event == AuthChangeEvent.signedIn ||
-            event == AuthChangeEvent.initialSession) &&
-        session != null) {
+    // Only connect on explicit sign-in event, not initialSession
+    // This ensures token refresh happens first in splash page
+    if (event == AuthChangeEvent.signedIn && session != null) {
       debugPrint(
-        '[AUTH_LISTENER] User signed in or has active session, initializing real-time services...',
+        '[AUTH_LISTENER] User signed in, initializing real-time services...',
       );
       RealTimeNotificationService().init();
       WebSocketService().connect();
+    } else if (event == AuthChangeEvent.initialSession && session != null) {
+      debugPrint(
+        '[AUTH_LISTENER] Initial session detected, deferring WebSocket connection until after token refresh',
+      );
+      // Only init notification service, WebSocket will connect after token refresh
+      RealTimeNotificationService().init();
     } else if (event == AuthChangeEvent.signedOut) {
       debugPrint('[AUTH_LISTENER] User signed out, disconnecting WebSocket...');
       WebSocketService().disconnect();

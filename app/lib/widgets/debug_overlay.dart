@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter/foundation.dart";
+import "package:flutter_dotenv/flutter_dotenv.dart";
 import "../pages/profile/debug_page.dart";
 
 /// Controller for the debug overlay visibility
@@ -43,6 +44,16 @@ class DebugOverlay extends StatelessWidget {
     super.key,
   });
 
+  /// Check if debug button should be visible based on Flutter debug mode AND .env DEBUG variable
+  bool _shouldShowDebugButton() {
+    // Never show in release mode for security
+    if (!kDebugMode) return false;
+
+    // Check .env DEBUG variable
+    final debugEnv = dotenv.env['DEBUG']?.toLowerCase();
+    return debugEnv == 'true' || debugEnv == '1';
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -54,8 +65,8 @@ class DebugOverlay extends StatelessWidget {
         return Stack(
           children: [
             child,
-            // Floating debug button (always visible in debug mode)
-            if (!controller.visible && kDebugMode)
+            // Floating debug button (visible when DEBUG=true in .env AND in debug mode)
+            if (!controller.visible && _shouldShowDebugButton())
               Positioned(
                 top: 50,
                 left: 0,

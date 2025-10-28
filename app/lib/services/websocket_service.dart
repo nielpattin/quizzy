@@ -265,9 +265,41 @@ class WebSocketService {
     _updateConnectionStatus(ConnectionStatus.connecting);
 
     try {
-      final session = Supabase.instance.client.auth.currentSession;
+      Session? session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
         throw Exception('No active session');
+      }
+
+      // Check if token expires soon (within 5 minutes) and refresh proactively
+      final expiresAt = session.expiresAt;
+      if (expiresAt != null) {
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        final timeUntilExpiry = expiresAt - now;
+
+        if (timeUntilExpiry < 300) {
+          debugPrint(
+            '[WebSocket] Token expires in ${timeUntilExpiry}s, refreshing before connect...',
+          );
+          try {
+            final response = await Supabase.instance.client.auth
+                .refreshSession();
+            if (response.session != null) {
+              session = response.session;
+              debugPrint(
+                '[WebSocket] Token refreshed successfully for connection',
+              );
+            }
+          } catch (refreshError) {
+            debugPrint(
+              '[WebSocket] Token refresh failed: $refreshError, attempting connection anyway...',
+            );
+          }
+        }
+      }
+
+      // Final null check after potential refresh
+      if (session == null) {
+        throw Exception('Session became null after token refresh');
       }
 
       final serverUrl = dotenv.env['SERVER_URL']!;
@@ -280,6 +312,8 @@ class WebSocketService {
         _handleMessage,
         onError: _handleError,
         onDone: _handleDisconnect,
+        cancelOnError:
+            false, // Don't cancel stream on error - keep reconnecting
       );
 
       // Don't set connected status immediately - wait for server confirmation
@@ -287,7 +321,7 @@ class WebSocketService {
     } catch (e) {
       _updateConnectionStatus(ConnectionStatus.error);
       _scheduleReconnect();
-      debugPrint('WebSocket connection error: $e');
+      debugPrint('[WebSocket] Connection error (will retry): $e');
     }
   }
 
@@ -439,9 +473,15 @@ class WebSocketService {
     }
   }
 
-  void _handleError(Object error) {
+  void _handleError(Object error, [StackTrace? stackTrace]) {
     if (_isDisposed) return;
-    debugPrint('WebSocket error: $error');
+
+    // Log error but don't crash - just schedule reconnect
+    debugPrint('[WebSocket] Error caught: $error');
+    if (stackTrace != null) {
+      debugPrint('[WebSocket] Stack trace: $stackTrace');
+    }
+
     _updateConnectionStatus(ConnectionStatus.error);
     _scheduleReconnect();
   }

@@ -5,6 +5,7 @@ import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "dart:convert";
 import "dart:async";
+import "../../services/websocket_service.dart";
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -65,6 +66,21 @@ class _SplashPageState extends State<SplashPage>
         final response = await Supabase.instance.client.auth.refreshSession();
         if (response.session != null) {
           debugPrint('[SPLASH] Token refreshed successfully');
+
+          // Reconnect WebSocket with fresh token
+          try {
+            debugPrint('[SPLASH] Reconnecting WebSocket with fresh token...');
+            await WebSocketService().disconnect();
+            await Future.delayed(Duration(milliseconds: 100));
+            await WebSocketService().connect();
+            debugPrint('[SPLASH] WebSocket reconnected');
+          } catch (wsError) {
+            // Log but don't crash - WebSocket will auto-reconnect
+            debugPrint(
+              '[SPLASH] WebSocket reconnection failed (will auto-retry): $wsError',
+            );
+          }
+
           return response.session;
         }
       }

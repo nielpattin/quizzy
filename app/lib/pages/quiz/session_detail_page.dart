@@ -1,10 +1,12 @@
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "package:intl/intl.dart";
+import "package:qr_flutter/qr_flutter.dart";
 import "../../services/api_service.dart";
 
 class SessionDetailPage extends StatefulWidget {
@@ -50,6 +52,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
       }
 
       final sessionData = jsonDecode(sessionResponse.body);
+      print('🔍 DEBUG Raw Session Data: $sessionData');
       final quizId = sessionData["snapshot"]?["quizId"];
 
       // Load quiz details
@@ -95,8 +98,175 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
 
   void _startNewSession() {
     if (_quizData != null) {
-      context.push('/quiz/${_quizData!["id"]}/play');
+      // Navigate to play quiz page with current session
+      final quizId = _quizData!["id"];
+      context.push('/quiz/$quizId/play?sessionId=${widget.sessionId}');
     }
+  }
+
+  Future<void> _shareSession() async {
+    final isPublic = _sessionData?["isPublic"] ?? false;
+
+    // If session is private, prompt to make it public
+    if (!isPublic) {
+      final shouldMakePublic = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Switch To Public Mode?"),
+          content: const Text(
+            "This session is currently private. Would you like to make it public so others can join using the code or QR?",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text("Keep Private"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text("Make Public"),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldMakePublic == true) {
+        await _updateSessionVisibility(true);
+      } else {
+        return; // User chose to keep it private
+      }
+    }
+
+    // Show share options
+    _showShareOptions();
+  }
+
+  Future<void> _updateSessionVisibility(bool isPublic) async {
+    try {
+      final authSession = Supabase.instance.client.auth.currentSession;
+      if (authSession == null) return;
+
+      final serverUrl = dotenv.env["SERVER_URL"];
+      final response = await http.put(
+        Uri.parse("$serverUrl/api/session/${widget.sessionId}"),
+        headers: {
+          "Authorization": "Bearer ${authSession.accessToken}",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({"isPublic": isPublic}),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _sessionData?["isPublic"] = isPublic;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isPublic ? "Session is now public" : "Session is now private",
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error updating session: ${e.toString()}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showShareOptions() {
+    final code = _sessionData?["code"];
+    if (code == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Share Session",
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+
+            // QR Code
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: QrImageView(
+                data: code,
+                version: QrVersions.auto,
+                size: 200.0,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Session Code
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    code,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    icon: const Icon(Icons.copy),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: code));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Code copied to clipboard"),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Share this code or QR with others to join",
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _continueParticipant(Map<String, dynamic> participant) {
@@ -108,6 +278,18 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isHost =
+        _sessionData != null && _sessionData!["hostId"] == currentUserId;
+
+    // Debug log
+    if (_sessionData != null) {
+      print('🔍 DEBUG Session Detail:');
+      print('  Current User ID: $currentUserId');
+      print('  Session Host ID: ${_sessionData!["hostId"]}');
+      print('  Is Host: $isHost');
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -118,7 +300,40 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
           ),
         ),
         backgroundColor: Theme.of(context).colorScheme.surface,
-        actions: const [SizedBox(width: 16)],
+        actions: [
+          // Debug info badge
+          if (_sessionData != null)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isHost ? Colors.green : Colors.orange,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isHost ? 'HOST' : 'GUEST',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          if (!_isLoading && isHost)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                final result = await context.push(
+                  '/quiz/session/edit/${widget.sessionId}',
+                );
+                if (result == true && mounted) {
+                  _loadSessionData(); // Reload data after edit
+                }
+              },
+              tooltip: "Edit Session",
+            ),
+          const SizedBox(width: 8),
+        ],
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: _isLoading
@@ -313,12 +528,36 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
               ],
             ),
             const SizedBox(height: 12),
+            if (_sessionData!["description"] != null &&
+                _sessionData!["description"].toString().isNotEmpty) ...[
+              Text(
+                _sessionData!["description"],
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             _buildInfoRow("Created", formattedDate),
             if (_sessionData!["code"] != null)
               _buildInfoRow("Session Code", _sessionData!["code"]),
             _buildInfoRow("Status", _sessionData!["isLive"] ? "Live" : "Ended"),
+            _buildInfoRow(
+              "Visibility",
+              _sessionData!["isPublic"] == true ? "Public" : "Private",
+            ),
             if (_sessionData!["joinedCount"] != null)
               _buildInfoRow("Participants", "${_sessionData!["joinedCount"]}"),
+            if (_sessionData!["maxPlayers"] != null)
+              _buildInfoRow("Max Players", "${_sessionData!["maxPlayers"]}"),
+            if (_sessionData!["hasEndTime"] == true &&
+                _sessionData!["endTime"] != null)
+              _buildInfoRow(
+                "Ends At",
+                DateFormat(
+                  'MMM dd, yyyy • HH:mm',
+                ).format(DateTime.parse(_sessionData!["endTime"])),
+              ),
           ],
         ),
       ),
@@ -352,21 +591,45 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
   }
 
   Widget _buildActionButtons(ThemeData theme) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _startNewSession,
-        icon: const Icon(Icons.play_arrow),
-        label: const Text("Start New Session"),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Column(
+      children: [
+        // Play Alone Button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _startNewSession,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text("Play Alone"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+
+        // Share Button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _shareSession,
+            icon: const Icon(Icons.share),
+            label: const Text("Share Code / QR"),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.colorScheme.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: BorderSide(color: theme.colorScheme.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

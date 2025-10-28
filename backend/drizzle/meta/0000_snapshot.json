@@ -1,5 +1,5 @@
 {
-  "id": "4fe6ad93-1796-4a0b-ba0d-a3043f4ba3b6",
+  "id": "00a7222d-a607-4104-a10c-78a659696cf0",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -800,6 +800,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "estimated_minutes": {
           "name": "estimated_minutes",
           "type": "integer",
@@ -813,12 +819,26 @@
           "notNull": true,
           "default": false
         },
+        "is_public": {
+          "name": "is_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "joined_count": {
           "name": "joined_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "max_players": {
+          "name": "max_players",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1000
         },
         "code": {
           "name": "code",
@@ -831,6 +851,19 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "has_end_time": {
+          "name": "has_end_time",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "started_at": {
           "name": "started_at",

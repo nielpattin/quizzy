@@ -81,14 +81,109 @@ class _QuizzyTabState extends State<QuizzyTab>
 
         if (snapshot.hasError) {
           debugPrint("[QuizzyTab] Error loading data: ${snapshot.error}");
-          return Center(
-            child: Text(
-              'Error loading data',
-              style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
+
+          // Check if it's a network/connection error
+          final errorMessage = snapshot.error.toString().toLowerCase();
+          final isNetworkError =
+              errorMessage.contains('connection refused') ||
+              errorMessage.contains('socketexception') ||
+              errorMessage.contains('network error');
+
+          if (isNetworkError) {
+            // Show friendly offline state
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Container(
+                  height: MediaQuery.of(context).size.height - 200,
+                  padding: const EdgeInsets.all(32),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.cloud_off_outlined,
+                          size: 80,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Unable to Connect',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Backend server is not running',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Pull down to retry',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
+            );
+          }
+
+          // Generic error for non-network issues
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.error.withValues(alpha: 0.6),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading data',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    'Something went wrong. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         }

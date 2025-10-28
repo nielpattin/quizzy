@@ -32,6 +32,7 @@ import "pages/quiz/add_questions_page.dart";
 import "pages/quiz/play_quiz_page.dart";
 import "pages/quiz/create_question_page.dart";
 import "pages/session/live_quiz_session_page.dart";
+import "pages/session/edit_session_page.dart";
 import "pages/library/create_collection_page.dart";
 import "utils/route_observer.dart";
 
@@ -495,9 +496,14 @@ final router = GoRouter(
       pageBuilder: (context, state) {
         final quizId = state.pathParameters["id"]!;
         final isPreview = state.uri.queryParameters["preview"] == "true";
+        final sessionId = state.uri.queryParameters["sessionId"];
         return CustomTransitionPage(
           key: state.pageKey,
-          child: PlayQuizPage(quizId: quizId, isPreview: isPreview),
+          child: PlayQuizPage(
+            quizId: quizId,
+            isPreview: isPreview,
+            sessionId: sessionId,
+          ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
@@ -524,6 +530,28 @@ final router = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: SessionDetailPage(sessionId: sessionId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/session/edit/:sessionId",
+      pageBuilder: (context, state) {
+        final sessionId = state.pathParameters["sessionId"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: EditSessionPage(sessionId: sessionId),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position:
