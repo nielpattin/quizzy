@@ -1,8 +1,8 @@
 import "package:flutter/material.dart";
-import "package:cached_network_image/cached_network_image.dart";
 import "package:go_router/go_router.dart";
 import "../../../models/post.dart";
 import "../../../widgets/user_avatar.dart";
+import "../../../widgets/optimized_image.dart";
 
 class FeedCard extends StatefulWidget {
   final String postId;
@@ -280,82 +280,24 @@ class _FeedCardState extends State<FeedCard>
             if (widget.postType == PostType.image && widget.imageUrl != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: ClipRRect(
+                child: OptimizedImage(
+                  imageUrl: widget.imageUrl!,
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                   borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(
-                    imageUrl: widget.imageUrl!,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      height: 200,
-                      width: double.infinity,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 200,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          size: 48,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.3),
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
               ),
             if (widget.postType == PostType.quiz) ...[
               if (widget.imageUrl != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: ClipRRect(
+                  child: OptimizedImage(
+                    imageUrl: widget.imageUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
                     borderRadius: BorderRadius.circular(12),
-                    child: CachedNetworkImage(
-                      imageUrl: widget.imageUrl!,
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        height: 200,
-                        width: double.infinity,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        height: 200,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.broken_image_outlined,
-                            size: 48,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.3),
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ),
               if (widget.imageUrl != null) const SizedBox(height: 12),

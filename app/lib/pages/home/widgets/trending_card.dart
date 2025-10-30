@@ -1,7 +1,7 @@
-import "package:cached_network_image/cached_network_image.dart";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../../widgets/user_avatar.dart";
+import "../../../widgets/optimized_image.dart";
 
 class TrendingCard extends StatelessWidget {
   final String title;
@@ -110,33 +110,14 @@ class TrendingCard extends StatelessWidget {
               child: Stack(
                 children: [
                   if (imageUrl != null && imageUrl!.isNotEmpty)
-                    ClipRRect(
+                    OptimizedImage(
+                      imageUrl: imageUrl!,
+                      width: double.infinity,
+                      height: 80,
+                      fit: BoxFit.cover,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(12),
                         topRight: Radius.circular(12),
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl!,
-                        width: double.infinity,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          decoration: BoxDecoration(
-                            gradient: _getGradientForCategory(category),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          decoration: BoxDecoration(
-                            gradient: _getGradientForCategory(category),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.image_not_supported,
-                              color: Colors.white.withValues(alpha: 0.5),
-                              size: 28,
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                   Positioned(

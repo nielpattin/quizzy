@@ -29,12 +29,12 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    debugPrint("DEBUG: QRTab initState - tab is initializing");
+    // debugPrint("DEBUG: QRTab initState - tab is initializing");
     WidgetsBinding.instance.addObserver(this);
     _cameraController = MobileScannerController(
       autoStart: false, // We'll control when to start the camera
     );
-    debugPrint("DEBUG: QRTab camera controller created");
+    // debugPrint("DEBUG: QRTab camera controller created");
     _isCameraInitialized = true;
 
     // Listen to camera state changes
@@ -64,7 +64,7 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    debugPrint("DEBUG: QRTab didChangeDependencies called");
+    // debugPrint("DEBUG: QRTab didChangeDependencies called");
 
     // Update the camera state manager that we're on the join page
     _cameraStateManager.setOnJoinPage(true);
@@ -78,11 +78,11 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
       );
 
       if (isVisible && !_isPageVisible) {
-        debugPrint("DEBUG: QRTab became visible in didChangeDependencies");
+        // debugPrint("DEBUG: QRTab became visible in didChangeDependencies");
         _isPageVisible = true;
         // Camera will be started by the camera state manager if needed
       } else if (!isVisible && _isPageVisible) {
-        debugPrint("DEBUG: QRTab became hidden in didChangeDependencies");
+        // debugPrint("DEBUG: QRTab became hidden in didChangeDependencies");
         _isPageVisible = false;
         // Camera will be stopped by the camera state manager if needed
       }
@@ -91,28 +91,28 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    debugPrint("DEBUG: QRTab dispose - tab is being disposed");
+    // debugPrint("DEBUG: QRTab dispose - tab is being disposed");
     // Set disposed flag to prevent any setState calls
     _isDisposed = true;
-    debugPrint("DEBUG: QRTab disposed flag set to true");
+    // debugPrint("DEBUG: QRTab disposed flag set to true");
     // Cancel any pending camera operations
     _cameraOperationTimer?.cancel();
-    debugPrint("DEBUG: QRTab camera operation timer cancelled");
+    // debugPrint("DEBUG: QRTab camera operation timer cancelled");
     // Stop camera before disposing if it's initialized
     if (_isCameraInitialized) {
-      debugPrint("DEBUG: QRTab stopping camera directly in dispose");
+      // debugPrint("DEBUG: QRTab stopping camera directly in dispose");
       // Always use the direct method in dispose to avoid setState calls
       _stopCameraDirectly();
-      debugPrint("DEBUG: QRTab disposing camera controller");
+      // debugPrint("DEBUG: QRTab disposing camera controller");
       _cameraController.dispose();
     }
-    debugPrint("DEBUG: QRTab removing camera state manager listener");
+    // debugPrint("DEBUG: QRTab removing camera state manager listener");
     _cameraStateManager.removeListener(_onCameraStateChanged);
     debugPrint(
       "DEBUG: QRTab notifying camera state manager that we're no longer on QR tab",
     );
     _cameraStateManager.setOnQRTab(false);
-    debugPrint("DEBUG: QRTab removing WidgetsBinding observer");
+    // debugPrint("DEBUG: QRTab removing WidgetsBinding observer");
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -123,11 +123,11 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
     );
     // Cancel any pending camera operations
     _cameraOperationTimer?.cancel();
-    debugPrint("DEBUG: QRTab cancelled any pending camera operations");
+    // debugPrint("DEBUG: QRTab cancelled any pending camera operations");
 
     // Set camera state to starting only if widget is still mounted and not disposed
     if (mounted && !_isDisposed) {
-      debugPrint("DEBUG: QRTab setting camera state to starting");
+      // debugPrint("DEBUG: QRTab setting camera state to starting");
       setState(() {
         _cameraState = CameraState.starting;
       });
@@ -140,14 +140,14 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
 
     // Debounce camera start operation
     _cameraOperationTimer = Timer(const Duration(milliseconds: 300), () async {
-      debugPrint("DEBUG: QRTab executing debounced camera start");
+      // debugPrint("DEBUG: QRTab executing debounced camera start");
       try {
-        debugPrint("DEBUG: QRTab attempting to start camera...");
+        // debugPrint("DEBUG: QRTab attempting to start camera...");
         await _cameraController.start();
-        debugPrint("DEBUG: QRTab camera started successfully");
+        // debugPrint("DEBUG: QRTab camera started successfully");
         // Update state only if widget is still mounted and not disposed
         if (mounted && !_isDisposed) {
-          debugPrint("DEBUG: QRTab setting camera state to started");
+          // debugPrint("DEBUG: QRTab setting camera state to started");
           setState(() {
             _cameraState = CameraState.started;
           });
@@ -157,10 +157,10 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
           );
         }
       } catch (e) {
-        debugPrint("DEBUG: QRTab error starting camera: $e");
+        // debugPrint("DEBUG: QRTab error starting camera: $e");
         // Update state only if widget is still mounted and not disposed
         if (mounted && !_isDisposed) {
-          debugPrint("DEBUG: QRTab setting camera state to idle due to error");
+          // debugPrint("DEBUG: QRTab setting camera state to idle due to error");
           setState(() {
             _cameraState = CameraState.idle;
           });
@@ -168,7 +168,7 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
 
         // Handle specific MobileScannerException
         if (e.toString().contains("controllerInitializing")) {
-          debugPrint("DEBUG: QRTab camera is still initializing, retrying...");
+          // debugPrint("DEBUG: QRTab camera is still initializing, retrying...");
           // Retry after a short delay
           _cameraOperationTimer = Timer(const Duration(milliseconds: 500), () {
             debugPrint(
@@ -193,14 +193,14 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
     );
     // Cancel any pending camera operations
     _cameraOperationTimer?.cancel();
-    debugPrint("DEBUG: QRTab cancelled any pending camera operations");
+    // debugPrint("DEBUG: QRTab cancelled any pending camera operations");
 
     try {
-      debugPrint("DEBUG: QRTab stopping camera directly...");
+      // debugPrint("DEBUG: QRTab stopping camera directly...");
       await _cameraController.stop();
-      debugPrint("DEBUG: QRTab camera stopped directly");
+      // debugPrint("DEBUG: QRTab camera stopped directly");
     } catch (e) {
-      debugPrint("DEBUG: QRTab error stopping camera directly: $e");
+      // debugPrint("DEBUG: QRTab error stopping camera directly: $e");
     }
   }
 
@@ -210,11 +210,11 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
     );
     // Cancel any pending camera operations
     _cameraOperationTimer?.cancel();
-    debugPrint("DEBUG: QRTab cancelled any pending camera operations");
+    // debugPrint("DEBUG: QRTab cancelled any pending camera operations");
 
     // Set camera state to stopping only if widget is still mounted and not disposed
     if (mounted && !_isDisposed) {
-      debugPrint("DEBUG: QRTab setting camera state to stopping");
+      // debugPrint("DEBUG: QRTab setting camera state to stopping");
       setState(() {
         _cameraState = CameraState.stopping;
       });
@@ -227,14 +227,14 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
 
     // Debounce camera stop operation
     _cameraOperationTimer = Timer(const Duration(milliseconds: 100), () async {
-      debugPrint("DEBUG: QRTab executing debounced camera stop");
+      // debugPrint("DEBUG: QRTab executing debounced camera stop");
       try {
-        debugPrint("DEBUG: QRTab attempting to stop camera...");
+        // debugPrint("DEBUG: QRTab attempting to stop camera...");
         await _cameraController.stop();
-        debugPrint("DEBUG: QRTab camera stopped successfully");
+        // debugPrint("DEBUG: QRTab camera stopped successfully");
         // Update state only if widget is still mounted and not disposed
         if (mounted && !_isDisposed) {
-          debugPrint("DEBUG: QRTab setting camera state to stopped");
+          // debugPrint("DEBUG: QRTab setting camera state to stopped");
           setState(() {
             _cameraState = CameraState.stopped;
           });
@@ -244,10 +244,10 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
           );
         }
       } catch (e) {
-        debugPrint("DEBUG: QRTab error stopping camera: $e");
+        // debugPrint("DEBUG: QRTab error stopping camera: $e");
         // Update state only if widget is still mounted and not disposed
         if (mounted && !_isDisposed) {
-          debugPrint("DEBUG: QRTab setting camera state to idle due to error");
+          // debugPrint("DEBUG: QRTab setting camera state to idle due to error");
           setState(() {
             _cameraState = CameraState.idle;
           });
@@ -267,11 +267,11 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.paused:
         // App is paused (user went to home screen, etc.)
-        debugPrint("DEBUG: QRTab app paused - stopping camera");
+        // debugPrint("DEBUG: QRTab app paused - stopping camera");
         // Only stop if camera is currently active
         if (_cameraState == CameraState.started ||
             _cameraState == CameraState.starting) {
-          debugPrint("DEBUG: QRTab stopping camera due to app pause");
+          // debugPrint("DEBUG: QRTab stopping camera due to app pause");
           _stopCameraSafely();
         } else {
           debugPrint(
@@ -281,11 +281,11 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
         break;
       case AppLifecycleState.inactive:
         // App is inactive (app is transitioning, etc.)
-        debugPrint("DEBUG: QRTab app inactive - stopping camera");
+        // debugPrint("DEBUG: QRTab app inactive - stopping camera");
         // Only stop if camera is currently active
         if (_cameraState == CameraState.started ||
             _cameraState == CameraState.starting) {
-          debugPrint("DEBUG: QRTab stopping camera due to app inactive");
+          // debugPrint("DEBUG: QRTab stopping camera due to app inactive");
           _stopCameraSafely();
         } else {
           debugPrint(
@@ -302,7 +302,7 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
         if (_cameraStateManager.isCameraActive &&
             (_cameraState == CameraState.idle ||
                 _cameraState == CameraState.stopped)) {
-          debugPrint("DEBUG: QRTab starting camera due to app resume");
+          // debugPrint("DEBUG: QRTab starting camera due to app resume");
           _startCameraSafely();
         } else {
           debugPrint(
@@ -318,11 +318,11 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
         break;
       case AppLifecycleState.hidden:
         // App is hidden (new in Flutter 3.13)
-        debugPrint("DEBUG: QRTab app hidden - stopping camera");
+        // debugPrint("DEBUG: QRTab app hidden - stopping camera");
         // Only stop if camera is currently active
         if (_cameraState == CameraState.started ||
             _cameraState == CameraState.starting) {
-          debugPrint("DEBUG: QRTab stopping camera due to app hidden");
+          // debugPrint("DEBUG: QRTab stopping camera due to app hidden");
           _stopCameraSafely();
         } else {
           debugPrint(
@@ -350,7 +350,7 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
       // Camera should be active
       if (_cameraState == CameraState.idle ||
           _cameraState == CameraState.stopped) {
-        debugPrint("DEBUG: QRTab starting camera due to global state change");
+        // debugPrint("DEBUG: QRTab starting camera due to global state change");
         _startCameraSafely();
       } else {
         debugPrint(
@@ -361,7 +361,7 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
       // Camera should be inactive
       if (_cameraState == CameraState.started ||
           _cameraState == CameraState.starting) {
-        debugPrint("DEBUG: QRTab stopping camera due to global state change");
+        // debugPrint("DEBUG: QRTab stopping camera due to global state change");
         _stopCameraSafely();
       } else {
         debugPrint(
@@ -378,7 +378,7 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
     final barcode = capture.barcodes.firstOrNull;
     if (barcode?.rawValue != null) {
       final code = barcode!.rawValue!;
-      debugPrint("DEBUG: QRTab barcode detected with value: $code");
+      // debugPrint("DEBUG: QRTab barcode detected with value: $code");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Scanned code: $code"),
@@ -386,7 +386,7 @@ class _QRTabState extends State<QRTab> with WidgetsBindingObserver {
         ),
       );
     } else {
-      debugPrint("DEBUG: QRTab no valid barcode found in capture");
+      // debugPrint("DEBUG: QRTab no valid barcode found in capture");
     }
   }
 

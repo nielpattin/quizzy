@@ -162,17 +162,13 @@ class RealTimeNotificationService {
   }
 
   void _handleWebSocketMessage(WebSocketMessage message) {
-    debugPrint(
-      '[RealTimeNotification] Received WebSocket message type: ${message.type}',
-    );
-    debugPrint('[RealTimeNotification] Message data: ${message.data}');
-
+    // Only log and process notification type messages for this service
     if (message.type == WebSocketMessageType.notification) {
-      debugPrint('[RealTimeNotification] Processing notification message');
+      debugPrint('[RealTimeNotification] 🔔 Notification received');
+      debugPrint('[RealTimeNotification] Data: ${message.data}');
 
       // message.data now contains the notification directly (not nested under 'notification')
       final notificationData = message.data;
-      debugPrint('[RealTimeNotification] Notification data: $notificationData');
 
       if (notificationData != null) {
         // Show popup banner ONLY for follow notifications
@@ -203,17 +199,16 @@ class RealTimeNotificationService {
           );
         }
       } else {
-        debugPrint('[RealTimeNotification] ERROR: notificationData is NULL!');
         debugPrint(
-          '[RealTimeNotification] Full message.data structure: ${message.data}',
+          '[RealTimeNotification] ⚠️ ERROR: notificationData is NULL!',
         );
       }
 
       // Always refresh new count for ALL notification types
       refreshNewCount();
-      return;
     }
 
+    // Still create notification object for internal tracking (but don't log for non-notification types)
     final notification = RealTimeNotification.fromWebSocketMessage(message);
     _notificationController.add(notification);
   }

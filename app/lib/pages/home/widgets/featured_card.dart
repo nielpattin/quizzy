@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "package:cached_network_image/cached_network_image.dart";
 import "../../../widgets/user_avatar.dart";
+import "../../../widgets/optimized_image.dart";
 
 class FeaturedCard extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -35,32 +35,12 @@ class FeaturedCard extends StatelessWidget {
                     : null,
               ),
               child: imageUrl != null
-                  ? ClipRRect(
+                  ? OptimizedImage(
+                      imageUrl: imageUrl,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
                       borderRadius: BorderRadius.circular(16),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.grey[700]!, Colors.grey[900]!],
-                            ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.grey[700]!, Colors.grey[900]!],
-                            ),
-                          ),
-                        ),
-                      ),
                     )
                   : null,
             ),

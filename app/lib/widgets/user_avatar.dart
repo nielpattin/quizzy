@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:quizzy/widgets/optimized_image.dart';
 
 class UserAvatar extends StatelessWidget {
   final String? imageUrl;
@@ -21,20 +21,13 @@ class UserAvatar extends StatelessWidget {
     final defaultIconSize = iconSize ?? radius;
 
     if (imageUrl != null && imageUrl!.isNotEmpty) {
-      return CircleAvatar(
+      return OptimizedAvatarImage(
+        imageUrl: imageUrl!,
         radius: radius,
-        backgroundColor: bgColor,
-        child: ClipOval(
-          child: CachedNetworkImage(
-            imageUrl: imageUrl!,
-            width: radius * 2,
-            height: radius * 2,
-            fit: BoxFit.cover,
-            placeholder: (context, url) =>
-                Icon(Icons.person, color: Colors.white, size: defaultIconSize),
-            errorWidget: (context, url, error) =>
-                Icon(Icons.person, color: Colors.white, size: defaultIconSize),
-          ),
+        errorWidget: CircleAvatar(
+          radius: radius,
+          backgroundColor: bgColor,
+          child: Icon(Icons.person, color: Colors.white, size: defaultIconSize),
         ),
       );
     }

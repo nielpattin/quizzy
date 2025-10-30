@@ -1,11 +1,11 @@
 import "dart:math";
 import "package:flutter/material.dart";
-import "package:cached_network_image/cached_network_image.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "../../services/api_service.dart";
 import "../../models/post.dart";
 import "../../widgets/user_avatar.dart";
+import "../../widgets/optimized_image.dart";
 import "../home/widgets/quick_question_modal.dart";
 
 class PostDetailsPage extends StatefulWidget {
@@ -294,75 +294,21 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
           ),
           const SizedBox(height: 12),
           if (post.postType == PostType.image && post.imageUrl != null)
-            ClipRRect(
+            OptimizedImage(
+              imageUrl: post.imageUrl!,
+              width: double.infinity,
+              height: 200,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: post.imageUrl!,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 200,
-                  width: double.infinity,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      size: 48,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                  ),
-                ),
-              ),
             ),
           if (post.postType == PostType.quiz) ...[
             if (post.imageUrl != null)
-              ClipRRect(
+              OptimizedImage(
+                imageUrl: post.imageUrl!,
+                width: double.infinity,
+                height: 200,
+                fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
-                  imageUrl: post.imageUrl!,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 200,
-                    width: double.infinity,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        size: 48,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ),
-                ),
               ),
             if (post.imageUrl != null) const SizedBox(height: 12),
             if (post.postType == PostType.quiz && !post.hasAnswered)

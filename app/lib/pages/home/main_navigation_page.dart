@@ -70,14 +70,9 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   }
 
   void _onNavTap(int index, BuildContext context) {
-    final previousIndex = _currentIndex;
     setState(() {
       _currentIndex = index;
     });
-
-    debugPrint(
-      "DEBUG: MainNavigationPage navigation changed from $previousIndex to $index",
-    );
 
     // Update camera state when navigation changes
     _updateCameraState();
@@ -85,17 +80,11 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   /// Update camera state based on current navigation index
   void _updateCameraState() {
-    debugPrint(
-      "DEBUG: MainNavigationPage updating camera state for index $_currentIndex",
-    );
-
     if (_currentIndex == 2) {
       // We're on the join page
-      debugPrint("DEBUG: MainNavigationPage setting onJoinPage to true");
       _cameraStateManager.setOnJoinPage(true);
     } else {
       // We're not on the join page
-      debugPrint("DEBUG: MainNavigationPage setting onJoinPage to false");
       _cameraStateManager.setOnJoinPage(false);
     }
   }

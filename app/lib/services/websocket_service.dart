@@ -94,7 +94,8 @@ class WebSocketMessage {
         messageType = WebSocketMessageType.notification;
         break;
       default:
-        messageType = WebSocketMessageType.error;
+        // Silently treat unknown types as notifications to reduce log spam
+        messageType = WebSocketMessageType.notification;
     }
 
     return WebSocketMessage(
@@ -156,19 +157,58 @@ class Participant {
   });
 
   factory Participant.fromJson(Map<String, dynamic> json) {
-    return Participant(
-      id: json['id'],
-      userId: json['userId'] ?? json['user']['id'],
-      username: json['username'] ?? json['user']['username'],
-      fullName: json['fullName'] ?? json['user']['fullName'],
-      profilePictureUrl:
-          json['profilePictureUrl'] ?? json['user']['profilePictureUrl'],
-      score: json['score'] ?? 0,
-      rank: json['rank'],
-      joinedAt: json['joinedAt'] != null
-          ? DateTime.parse(json['joinedAt'])
-          : DateTime.now(),
-    );
+    try {
+      // Handle both direct fields and nested user object
+      final String id = json['id'] as String;
+      final String userId =
+          json['userId'] as String? ??
+          json['user']?['id'] as String? ??
+          json['id'] as String;
+      final String username =
+          json['username'] as String? ??
+          json['user']?['username'] as String? ??
+          'Unknown';
+      final String? fullName =
+          json['fullName'] as String? ?? json['user']?['fullName'] as String?;
+      final String? profilePictureUrl =
+          json['profilePictureUrl'] as String? ??
+          json['user']?['profilePictureUrl'] as String?;
+      final int score = json['score'] as int? ?? 0;
+      final int? rank = json['rank'] as int?;
+
+      // Parse joinedAt - handle both string and DateTime, default to now if missing
+      DateTime joinedAt;
+      if (json['joinedAt'] != null) {
+        if (json['joinedAt'] is String) {
+          joinedAt = DateTime.parse(json['joinedAt'] as String);
+        } else if (json['joinedAt'] is DateTime) {
+          joinedAt = json['joinedAt'] as DateTime;
+        } else {
+          debugPrint(
+            '[Participant] ⚠️ joinedAt has unexpected type: ${json['joinedAt'].runtimeType}',
+          );
+          joinedAt = DateTime.now();
+        }
+      } else {
+        joinedAt = DateTime.now();
+      }
+
+      return Participant(
+        id: id,
+        userId: userId,
+        username: username,
+        fullName: fullName,
+        profilePictureUrl: profilePictureUrl,
+        score: score,
+        rank: rank,
+        joinedAt: joinedAt,
+      );
+    } catch (e, stack) {
+      debugPrint('[Participant] ❌ Error parsing JSON: $e');
+      debugPrint('[Participant] JSON data: $json');
+      debugPrint('[Participant] Stack trace: $stack');
+      rethrow;
+    }
   }
 }
 
@@ -177,7 +217,7 @@ class LiveSession {
   final String id;
   final String title;
   final bool isLive;
-  final int joinedCount;
+  final int participantCount;
   final String? code;
   final DateTime? startedAt;
   final DateTime? endedAt;
@@ -188,7 +228,7 @@ class LiveSession {
     required this.id,
     required this.title,
     required this.isLive,
-    required this.joinedCount,
+    required this.participantCount,
     this.code,
     this.startedAt,
     this.endedAt,
@@ -208,7 +248,7 @@ class LiveSession {
       id: json['id'],
       title: json['title'],
       isLive: json['isLive'] ?? false,
-      joinedCount: json['joinedCount'] ?? 0,
+      participantCount: json['participantCount'] ?? 0,
       code: json['code'],
       startedAt: json['startedAt'] != null
           ? DateTime.parse(json['startedAt'])
@@ -340,15 +380,50 @@ class WebSocketService {
   }
 
   Future<void> joinSession(String sessionId) async {
+    debugPrint('[WebSocket] joinSession called for session: $sessionId');
+
+    // Ensure we're connected first
     if (currentStatus != ConnectionStatus.connected) {
+      debugPrint('[WebSocket] Not connected, connecting first...');
       await connect();
+
+      // Wait for connection to be established (max 5 seconds)
+      debugPrint('[WebSocket] Waiting for connection to be established...');
+      final completer = Completer<void>();
+      late StreamSubscription<ConnectionStatus> subscription;
+
+      subscription = connectionStatus.listen((status) {
+        debugPrint('[WebSocket] Connection status changed to: $status');
+        if (status == ConnectionStatus.connected) {
+          subscription.cancel();
+          completer.complete();
+        } else if (status == ConnectionStatus.error) {
+          subscription.cancel();
+          completer.completeError('Failed to connect');
+        }
+      });
+
+      // Wait up to 5 seconds for connection
+      await completer.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          subscription.cancel();
+          throw TimeoutException('WebSocket connection timeout');
+        },
+      );
+
+      debugPrint('[WebSocket] Connection established, ready to join session');
     }
 
     _currentSessionId = sessionId;
+    debugPrint('[WebSocket] Sending join_session message for: $sessionId');
     _sendMessage({'type': 'join_session', 'sessionId': sessionId});
   }
 
   Future<void> leaveSession() async {
+    debugPrint(
+      '[WebSocket] leaveSession called for session: $_currentSessionId',
+    );
     if (_currentSessionId != null) {
       _sendMessage({'type': 'leave_session', 'sessionId': _currentSessionId});
       _currentSessionId = null;
@@ -357,7 +432,12 @@ class WebSocketService {
 
   void _sendMessage(Map<String, dynamic> message) {
     if (_channel != null && currentStatus == ConnectionStatus.connected) {
-      _channel!.sink.add(jsonEncode(message));
+      final messageStr = jsonEncode(message);
+      _channel!.sink.add(messageStr);
+    } else {
+      debugPrint(
+        '[WebSocket] ⚠️ Cannot send message - not connected. Status: $currentStatus',
+      );
     }
   }
 
@@ -377,10 +457,12 @@ class WebSocketService {
 
       switch (message.type) {
         case WebSocketMessageType.sessionJoined:
+          debugPrint('[WebSocket] session_joined: ${message.sessionId}');
           _currentSessionId = message.sessionId;
           break;
 
         case WebSocketMessageType.sessionLeft:
+          debugPrint('[WebSocket] session_left: ${message.sessionId}');
           _currentSessionId = null;
           _sessionController.add(null);
           _participantsController.add([]);
@@ -388,46 +470,110 @@ class WebSocketService {
           break;
 
         case WebSocketMessageType.sessionStarted:
+          debugPrint('[WebSocket] session_started: ${message.sessionId}');
         case WebSocketMessageType.sessionEnded:
+          debugPrint('[WebSocket] session_ended: ${message.sessionId}');
         case WebSocketMessageType.sessionUpdate:
+          debugPrint('[WebSocket] session_update: ${message.sessionId}');
         case WebSocketMessageType.sessionState:
+          debugPrint('[WebSocket] session_state: ${message.sessionId}');
           if (message.data != null) {
             final session = LiveSession.fromJson(message.data!);
             _sessionController.add(session);
+
+            // Extract and set participants from session state
+            if (message.data!['participants'] != null) {
+              final participants = (message.data!['participants'] as List)
+                  .map((p) => Participant.fromJson(p))
+                  .toList();
+              _participantsController.add(participants);
+              debugPrint(
+                '[WebSocket] Session state loaded: ${session.title}, ${participants.length} participants',
+              );
+            } else {
+              debugPrint(
+                '[WebSocket] Session updated: ${session.title}, live: ${session.isLive}',
+              );
+            }
           }
           break;
 
         case WebSocketMessageType.participantJoined:
+          debugPrint('[WebSocket] participant_joined received');
+          debugPrint('[WebSocket] Raw participant data: ${message.data}');
           if (message.data != null) {
-            final participant = Participant.fromJson(message.data!);
-            final currentParticipants = List<Participant>.from(
-              _participantsController.value,
-            );
-            currentParticipants.add(participant);
-            _participantsController.add(currentParticipants);
+            try {
+              final participant = Participant.fromJson(message.data!);
+              debugPrint(
+                '[WebSocket] ✅ Parsed participant: ${participant.username} (${participant.userId})',
+              );
+              final currentParticipants = List<Participant>.from(
+                _participantsController.value,
+              );
+
+              // Check if participant already exists (deduplicate by userId)
+              final existingIndex = currentParticipants.indexWhere(
+                (p) => p.userId == participant.userId,
+              );
+
+              if (existingIndex == -1) {
+                // New participant - add to list
+                currentParticipants.add(participant);
+                debugPrint(
+                  '[WebSocket] ➕ Added new participant: ${participant.username}',
+                );
+              } else {
+                // Duplicate - update existing participant (in case of score/rank changes)
+                currentParticipants[existingIndex] = participant;
+                debugPrint(
+                  '[WebSocket] 🔄 Updated existing participant: ${participant.username}',
+                );
+              }
+
+              _participantsController.add(currentParticipants);
+              debugPrint(
+                '[WebSocket] Participants list updated: ${currentParticipants.length} total',
+              );
+            } catch (e, stack) {
+              debugPrint('[WebSocket] ❌ ERROR parsing participant: $e');
+              debugPrint('[WebSocket] Stack trace: $stack');
+              debugPrint('[WebSocket] Problematic data: ${message.data}');
+            }
+          } else {
+            debugPrint('[WebSocket] ⚠️ participant_joined data is null');
           }
           break;
 
         case WebSocketMessageType.participantLeft:
+          debugPrint('[WebSocket] participant_left received');
         case WebSocketMessageType.participantDisconnected:
+          debugPrint('[WebSocket] participant_disconnected received');
           if (message.data != null) {
             final participantId =
                 message.data!['participantId'] ?? message.data!['userId'];
+            debugPrint('[WebSocket] Removing participant: $participantId');
             final currentParticipants = List<Participant>.from(
               _participantsController.value,
             );
             currentParticipants.removeWhere((p) => p.userId == participantId);
             _participantsController.add(currentParticipants);
+            debugPrint(
+              '[WebSocket] Participants list updated: ${currentParticipants.length} remaining',
+            );
           }
           break;
 
         case WebSocketMessageType.leaderboardUpdate:
+          debugPrint('[WebSocket] leaderboard_update received');
           if (message.data != null) {
             if (message.data!['leaderboard'] != null) {
               final leaderboard = (message.data!['leaderboard'] as List)
                   .map((p) => Participant.fromJson(p))
                   .toList();
               _leaderboardController.add(leaderboard);
+              debugPrint(
+                '[WebSocket] Leaderboard updated: ${leaderboard.length} participants',
+              );
             } else if (message.data!['participant'] != null) {
               // Update single participant in leaderboard
               final updatedParticipant = Participant.fromJson(
@@ -442,6 +588,9 @@ class WebSocketService {
               if (index != -1) {
                 currentLeaderboard[index] = updatedParticipant;
                 _leaderboardController.add(currentLeaderboard);
+                debugPrint(
+                  '[WebSocket] Leaderboard participant updated: ${updatedParticipant.username}',
+                );
               }
             }
           }
@@ -458,15 +607,24 @@ class WebSocketService {
         case WebSocketMessageType.connected:
           _updateConnectionStatus(ConnectionStatus.connected);
           _startPingTimer();
-          debugPrint('WebSocket connected successfully');
+          debugPrint('[WebSocket] ✅ Connected successfully');
           break;
 
         case WebSocketMessageType.error:
-          debugPrint('WebSocket error: ${message.message}');
+          // Only log meaningful errors, not "Unknown message type"
+          if (message.message != null &&
+              message.message != 'Unknown message type') {
+            debugPrint('[WebSocket] ❌ Error: ${message.message}');
+          }
+          break;
+
+        case WebSocketMessageType.notification:
+          debugPrint('[WebSocket] 🔔 Notification received');
           break;
 
         default:
-          debugPrint('Unknown WebSocket message type: ${message.type}');
+          debugPrint('[WebSocket] ℹ️ Unhandled message type: ${message.type}');
+        // Don't treat unhandled messages as errors - just log them
       }
     } catch (e) {
       debugPrint('Error handling WebSocket message: $e');

@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "package:cached_network_image/cached_network_image.dart";
 import "../../../utils/image_helper.dart";
+import "../../../widgets/optimized_image.dart";
 
 class ProfileTabsContent extends StatelessWidget {
   final List<dynamic> quizzes;
@@ -110,7 +110,7 @@ class ProfileTabsContent extends StatelessWidget {
         itemCount: sessions.length,
         itemBuilder: (context, index) {
           final session = sessions[index];
-          final totalPlayers = session["joinedCount"] ?? 0;
+          final totalPlayers = session["participantCount"] ?? 0;
           final startedAt = session["startedAt"];
 
           String date = "Unknown date";
@@ -249,20 +249,14 @@ class _QuizCard extends StatelessWidget {
               child: Stack(
                 children: [
                   if (imageUrl != null && imageUrl!.isNotEmpty)
-                    ClipRRect(
+                    OptimizedImage(
+                      imageUrl: imageUrl!,
+                      width: double.infinity,
+                      height: 120,
+                      fit: BoxFit.cover,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(12),
                         topRight: Radius.circular(12),
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl!,
-                        width: double.infinity,
-                        height: 120,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            Container(color: color.withValues(alpha: 0.3)),
-                        errorWidget: (context, url, error) =>
-                            Container(color: color.withValues(alpha: 0.3)),
                       ),
                     ),
                   Positioned(

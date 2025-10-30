@@ -1,4 +1,5 @@
-import "dart:io";
+import "package:flutter/foundation.dart"
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import "package:flutter/material.dart";
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:go_router/go_router.dart";
@@ -29,7 +30,13 @@ class InAppNotificationService {
   }
 
   static Future<bool> requestPermissions() async {
-    if (Platform.isAndroid) {
+    // Skip platform checks on web
+    if (kIsWeb) {
+      return true;
+    }
+
+    // Check if we're on Android using defaultTargetPlatform
+    if (defaultTargetPlatform == TargetPlatform.android) {
       final androidPlugin = _notifications
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin

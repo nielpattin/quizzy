@@ -59,9 +59,6 @@ class DebugOverlay extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        debugPrint(
-          '[DebugOverlay] Rebuilding... Visible: ${controller.visible}',
-        );
         return Stack(
           children: [
             child,

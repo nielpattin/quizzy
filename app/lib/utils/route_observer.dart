@@ -56,12 +56,6 @@ class NavigationObserver extends NavigatorObserver {
   void didPush(Route route, Route? previousRoute) {
     super.didPush(route, previousRoute);
     _routeStack.add(route);
-    debugPrint(
-      "DEBUG: NavigationObserver - didPush: ${route.settings.name}, previous: ${previousRoute?.settings.name}",
-    );
-    debugPrint(
-      "DEBUG: NavigationObserver - isNavigatingAwayFromJoinPage: $isNavigatingAwayFromJoinPage",
-    );
     _notifyListeners();
   }
 
@@ -69,12 +63,6 @@ class NavigationObserver extends NavigatorObserver {
   void didPop(Route route, Route? previousRoute) {
     super.didPop(route, previousRoute);
     _routeStack.remove(route);
-    debugPrint(
-      "DEBUG: NavigationObserver - didPop: ${route.settings.name}, previous: ${previousRoute?.settings.name}",
-    );
-    debugPrint(
-      "DEBUG: NavigationObserver - isNavigatingAwayFromJoinPage: $isNavigatingAwayFromJoinPage",
-    );
     _notifyListeners();
   }
 
@@ -87,12 +75,6 @@ class NavigationObserver extends NavigatorObserver {
     if (newRoute != null) {
       _routeStack.add(newRoute);
     }
-    debugPrint(
-      "DEBUG: NavigationObserver - didReplace: new=${newRoute?.settings.name}, old=${oldRoute?.settings.name}",
-    );
-    debugPrint(
-      "DEBUG: NavigationObserver - isNavigatingAwayFromJoinPage: $isNavigatingAwayFromJoinPage",
-    );
     _notifyListeners();
   }
 
@@ -100,19 +82,12 @@ class NavigationObserver extends NavigatorObserver {
   void didRemove(Route route, Route? previousRoute) {
     super.didRemove(route, previousRoute);
     _routeStack.remove(route);
-    debugPrint(
-      "DEBUG: NavigationObserver - didRemove: ${route.settings.name}, previous: ${previousRoute?.settings.name}",
-    );
-    debugPrint(
-      "DEBUG: NavigationObserver - isNavigatingAwayFromJoinPage: $isNavigatingAwayFromJoinPage",
-    );
     _notifyListeners();
   }
 
   /// Clear the route stack (useful for testing)
   void clear() {
     _routeStack.clear();
-    debugPrint("DEBUG: NavigationObserver - route stack cleared");
     _notifyListeners();
   }
 }

@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
-import "package:cached_network_image/cached_network_image.dart";
 import "../../../models/post.dart";
 import "../../../services/api_service.dart";
+import "../../../widgets/optimized_image.dart";
 
 class QuickQuestionModal extends StatefulWidget {
   final Post post;
@@ -92,41 +92,12 @@ class _QuickQuestionModalState extends State<QuickQuestionModal> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (widget.post.imageUrl != null) ...[
-                ClipRRect(
+                OptimizedImage(
+                  imageUrl: widget.post.imageUrl!,
+                  width: double.infinity,
+                  height: 200,
+                  fit: BoxFit.cover,
                   borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(
-                    imageUrl: widget.post.imageUrl!,
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      height: 200,
-                      width: double.infinity,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 200,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          size: 48,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.3),
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -299,39 +270,12 @@ class _QuickQuestionModalState extends State<QuickQuestionModal> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.post.imageUrl != null) ...[
-            ClipRRect(
+            OptimizedImage(
+              imageUrl: widget.post.imageUrl!,
+              width: double.infinity,
+              height: 200,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: widget.post.imageUrl!,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 200,
-                  width: double.infinity,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      size: 48,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                  ),
-                ),
-              ),
             ),
             const SizedBox(height: 16),
           ],

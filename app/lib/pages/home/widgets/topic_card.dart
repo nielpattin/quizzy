@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:cached_network_image/cached_network_image.dart";
+import "../../../widgets/optimized_image.dart";
 
 class TopicCard extends StatelessWidget {
   final String label;
@@ -23,33 +23,12 @@ class TopicCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (imageUrl != null)
-              ClipRRect(
+              OptimizedImage(
+                imageUrl: imageUrl!,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl!,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: Theme.of(context).colorScheme.surface,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Theme.of(context).colorScheme.surface,
-                    child: Icon(
-                      Icons.category,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.5),
-                      size: 32,
-                    ),
-                  ),
-                ),
               )
             else
               Container(

@@ -232,6 +232,21 @@ class ApiService {
     });
   }
 
+  // Get current user's participant history in a specific session
+  static Future<Map<String, dynamic>> getMyParticipants(
+    String sessionId,
+  ) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse(
+          "${HttpClient.baseUrl}/api/session/$sessionId/participants/me",
+        ),
+        headers: headers,
+      );
+    });
+  }
+
   static Future<dynamic> getUserProfile(String userId) async {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();

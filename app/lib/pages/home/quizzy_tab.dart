@@ -15,13 +15,9 @@ class QuizzyTab extends StatefulWidget {
   State<QuizzyTab> createState() => _QuizzyTabState();
 }
 
-class _QuizzyTabState extends State<QuizzyTab>
-    with AutomaticKeepAliveClientMixin {
+class _QuizzyTabState extends State<QuizzyTab> {
   Future<Map<String, dynamic>>? _dataFuture;
   late PageController _featuredPageController;
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -71,7 +67,6 @@ class _QuizzyTabState extends State<QuizzyTab>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return FutureBuilder<Map<String, dynamic>>(
       future: _dataFuture,
       builder: (context, snapshot) {
@@ -454,23 +449,24 @@ class _QuizzyTabState extends State<QuizzyTab>
                     final session = item as Map<String, dynamic>;
                     final participant =
                         session["participant"] as Map<String, dynamic>?;
-                    final isSoloSession =
-                        session["hostId"] == null || participant != null;
+                    final host = session["host"] as Map<String, dynamic>?;
+                    final category =
+                        session["category"] as Map<String, dynamic>?;
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
                       child: ContinuePlayingItem(
                         sessionId: session["id"]?.toString() ?? "",
                         title: session["title"] ?? "Untitled",
-                        author: isSoloSession ? "You" : "Multiplayer",
-                        category: isSoloSession ? "Solo" : "Multiplayer",
+                        author:
+                            host?["fullName"] ?? host?["username"] ?? "Unknown",
+                        authorProfileUrl: host?["profilePictureUrl"],
+                        category: category?["name"] ?? "Quiz",
                         count: participant?["score"] ?? 0,
                         isLive: session["isLive"] ?? false,
-                        score: participant?["score"],
+                        imageUrl: session["imageUrl"],
                         rank: participant?["rank"],
-                        code: session["code"],
-                        estimatedMinutes: session["estimatedMinutes"],
-                        joinedCount: session["joinedCount"],
+                        participantCount: session["participantCount"],
                       ),
                     );
                   }),

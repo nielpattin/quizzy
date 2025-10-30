@@ -24,33 +24,22 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    debugPrint(
-      "DEBUG: JoinPage initState - widget is initializing with showBottomNav: ${widget.showBottomNav}",
-    );
     WidgetsBinding.instance.addObserver(this);
 
     // Update the camera state manager that we're on the join page
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint(
-        "DEBUG: JoinPage notifying camera state manager that we're on join page",
-      );
       _cameraStateManager.setOnJoinPage(true);
     });
   }
 
   @override
   void dispose() {
-    debugPrint("DEBUG: JoinPage dispose - widget is being disposed");
-    debugPrint(
-      "DEBUG: JoinPage notifying camera state manager that we're no longer on join page",
-    );
     _cameraStateManager.setOnJoinPage(false);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   void _onTabChanged(int tabIndex) {
-    debugPrint("DEBUG: JoinPage tab switching from $_selectedTab to $tabIndex");
     setState(() {
       _selectedTab = tabIndex;
     });
@@ -59,14 +48,7 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
     _shouldCameraBeActive = (_selectedTab == 1);
 
     // Update the camera state manager
-    debugPrint(
-      "DEBUG: JoinPage notifying camera state manager that we're ${_selectedTab == 1 ? 'on' : 'not on'} QR tab",
-    );
     _cameraStateManager.setOnQRTab(_selectedTab == 1);
-
-    debugPrint(
-      "DEBUG: JoinPage tab switched to $tabIndex, camera should be active: $_shouldCameraBeActive",
-    );
   }
 
   @override
@@ -78,10 +60,10 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
 
       if (isVisible && !_isPageVisible) {
         _isPageVisible = true;
-        debugPrint("DEBUG: JoinPage became visible");
+        // debugPrint("DEBUG: JoinPage became visible");
       } else if (!isVisible && _isPageVisible) {
         _isPageVisible = false;
-        debugPrint("DEBUG: JoinPage became hidden");
+        // debugPrint("DEBUG: JoinPage became hidden");
       }
     }
   }
@@ -90,35 +72,31 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    debugPrint("DEBUG: JoinPage app lifecycle state changed to: $state");
+    // debugPrint("DEBUG: JoinPage app lifecycle state changed to: $state");
 
     switch (state) {
       case AppLifecycleState.resumed:
         // App is resumed - camera will be handled by QRTab based on its own visibility logic
-        debugPrint("DEBUG: JoinPage app resumed");
+        // debugPrint("DEBUG: JoinPage app resumed");
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
         // App is paused/hidden - camera will be handled by QRTab based on its own lifecycle
-        debugPrint("DEBUG: JoinPage app paused/hidden");
+        // debugPrint("DEBUG: JoinPage app paused/hidden");
         break;
       case AppLifecycleState.detached:
         // App is being detached
-        debugPrint("DEBUG: JoinPage app detached");
+        // debugPrint("DEBUG: JoinPage app detached");
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint("DEBUG: JoinPage build - current tab: $_selectedTab");
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
-        debugPrint(
-          "DEBUG: JoinPage back navigation detected - didPop: $didPop, result: $result",
-        );
         if (didPop) {
           _shouldCameraBeActive = false; // Reset camera state
         }
@@ -154,9 +132,6 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
                 color: Theme.of(context).colorScheme.onSurface,
               ),
               onPressed: () {
-                debugPrint(
-                  "DEBUG: JoinPage search button pressed - navigating to /search",
-                );
                 _shouldCameraBeActive = false; // Reset camera state
                 context.push("/search");
               },
@@ -167,9 +142,6 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
                 color: Theme.of(context).colorScheme.onSurface,
               ),
               onPressed: () {
-                debugPrint(
-                  "DEBUG: JoinPage notifications button pressed - navigating to /notification",
-                );
                 _shouldCameraBeActive = false; // Reset camera state
                 context.push("/notification");
               },

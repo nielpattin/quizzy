@@ -1,5 +1,9 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:supabase_flutter/supabase_flutter.dart";
+import "package:flutter_dotenv/flutter_dotenv.dart";
+import "package:http/http.dart" as http;
+import "dart:convert";
 import "../../services/api_service.dart";
 
 class CodeTab extends StatefulWidget {
@@ -16,35 +20,35 @@ class _CodeTabState extends State<CodeTab> {
   @override
   void initState() {
     super.initState();
-    debugPrint("DEBUG: CodeTab initState - widget is initializing");
+    // debugPrint("DEBUG: CodeTab initState - widget is initializing");
   }
 
   @override
   void dispose() {
-    debugPrint("DEBUG: CodeTab dispose - widget is being disposed");
+    // debugPrint("DEBUG: CodeTab dispose - widget is being disposed");
     _codeController.dispose();
     super.dispose();
   }
 
   Future<void> _joinSession() async {
-    debugPrint("DEBUG: CodeTab _joinSession called");
+    // debugPrint("DEBUG: CodeTab _joinSession called");
     final code = _codeController.text.trim().toUpperCase();
-    debugPrint("DEBUG: CodeTab entered code: $code");
+    // debugPrint("DEBUG: CodeTab entered code: $code");
 
-    if (code.isEmpty || code.length != 6) {
+    if (code.isEmpty || code.length < 4) {
       debugPrint(
-        "DEBUG: CodeTab validation failed - code is empty or not 6 characters",
+        "DEBUG: CodeTab validation failed - code is empty or less than 4 characters",
       );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Please enter a valid 6-character code"),
+          content: Text("Please enter a valid code (at least 4 characters)"),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    debugPrint("DEBUG: CodeTab validation passed - setting loading state");
+    // debugPrint("DEBUG: CodeTab validation passed - setting loading state");
     setState(() => _isLoading = true);
 
     try {
@@ -57,10 +61,11 @@ class _CodeTabState extends State<CodeTab> {
       );
 
       if (mounted) {
-        debugPrint("DEBUG: CodeTab showing game found dialog");
+        // debugPrint("DEBUG: CodeTab showing game found dialog");
+        final parentContext = context; // Capture parent context before dialog
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Text("Found Game!"),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -76,23 +81,60 @@ class _CodeTabState extends State<CodeTab> {
             actions: [
               TextButton(
                 onPressed: () {
-                  debugPrint("DEBUG: CodeTab dialog cancel button pressed");
-                  context.pop();
+                  // debugPrint("DEBUG: CodeTab dialog cancel button pressed");
+                  Navigator.of(dialogContext).pop();
                 },
                 child: const Text("Cancel"),
               ),
               ElevatedButton(
-                onPressed: () {
-                  debugPrint("DEBUG: CodeTab dialog join button pressed");
-                  context.pop();
-                  debugPrint("DEBUG: CodeTab showing phase 2 notification");
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        "Game sessions will be available in Phase 2",
-                      ),
-                    ),
-                  );
+                onPressed: () async {
+                  // debugPrint("DEBUG: CodeTab dialog join button pressed");
+                  Navigator.of(dialogContext).pop(); // Close dialog
+                  final sessionId = session["id"];
+                  debugPrint("DEBUG: CodeTab joining session: $sessionId");
+
+                  // Call HTTP join endpoint to create participant record
+                  try {
+                    final authSession =
+                        Supabase.instance.client.auth.currentSession;
+                    if (authSession == null) {
+                      throw Exception("No active session");
+                    }
+
+                    final serverUrl = dotenv.env["SERVER_URL"];
+                    final response = await http.post(
+                      Uri.parse("$serverUrl/api/session/$sessionId/join"),
+                      headers: {
+                        "Authorization": "Bearer ${authSession.accessToken}",
+                        "Content-Type": "application/json",
+                      },
+                    );
+
+                    if (response.statusCode != 200 &&
+                        response.statusCode != 201) {
+                      final error = jsonDecode(response.body);
+                      throw Exception(
+                        error["error"] ?? "Failed to join session",
+                      );
+                    }
+
+                    debugPrint("DEBUG: CodeTab successfully joined session");
+
+                    // Navigate to session detail page using parentContext
+                    if (mounted) {
+                      parentContext.push('/quiz/session/detail/$sessionId');
+                    }
+                  } catch (e) {
+                    debugPrint("DEBUG: CodeTab failed to join session: $e");
+                    if (mounted) {
+                      ScaffoldMessenger.of(parentContext).showSnackBar(
+                        SnackBar(
+                          content: Text("Failed to join: ${e.toString()}"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 },
                 child: const Text("Join"),
               ),
@@ -100,12 +142,12 @@ class _CodeTabState extends State<CodeTab> {
           ),
         );
       } else {
-        debugPrint("DEBUG: CodeTab not showing dialog - widget not mounted");
+        // debugPrint("DEBUG: CodeTab not showing dialog - widget not mounted");
       }
     } catch (e) {
-      debugPrint("DEBUG: CodeTab API call failed with error: ${e.toString()}");
+      // debugPrint("DEBUG: CodeTab API call failed with error: ${e.toString()}");
       if (mounted) {
-        debugPrint("DEBUG: CodeTab showing error snackbar");
+        // debugPrint("DEBUG: CodeTab showing error snackbar");
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
@@ -116,7 +158,7 @@ class _CodeTabState extends State<CodeTab> {
       }
     } finally {
       if (mounted) {
-        debugPrint("DEBUG: CodeTab resetting loading state");
+        // debugPrint("DEBUG: CodeTab resetting loading state");
         setState(() => _isLoading = false);
       } else {
         debugPrint(
@@ -128,7 +170,7 @@ class _CodeTabState extends State<CodeTab> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint("DEBUG: CodeTab build called - loading state: $_isLoading");
+    // debugPrint("DEBUG: CodeTab build called - loading state: $_isLoading");
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -163,6 +205,7 @@ class _CodeTabState extends State<CodeTab> {
           TextField(
             controller: _codeController,
             textAlign: TextAlign.center,
+            textCapitalization: TextCapitalization.characters,
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface,
               fontSize: 32,
@@ -170,7 +213,7 @@ class _CodeTabState extends State<CodeTab> {
               letterSpacing: 8,
             ),
             decoration: InputDecoration(
-              hintText: "000000",
+              hintText: "ABC123",
               hintStyle: TextStyle(
                 color: Theme.of(
                   context,
@@ -185,8 +228,8 @@ class _CodeTabState extends State<CodeTab> {
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 24),
             ),
-            keyboardType: TextInputType.number,
-            maxLength: 6,
+            keyboardType: TextInputType.text,
+            maxLength: 10,
           ),
           SizedBox(height: 32),
           SizedBox(
