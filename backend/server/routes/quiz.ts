@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { authMiddleware, type AuthContext } from '../middleware/auth'
 import { db } from '../db/index'
-import { quizzes, questions, users, categories } from '../db/schema'
+import { quizzes, questions, users, categories, gameSessions, quizSnapshots } from '../db/schema'
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { WebSocketService } from '../services/websocket-service'
 
@@ -183,6 +183,7 @@ quizRoutes.get('/user/:userId', async (c) => {
   const targetUserId = c.req.param('userId')
 
   try {
+    // First get all user quizzes
     const userQuizzes = await db
       .select({
         id: quizzes.id,
@@ -195,7 +196,6 @@ quizRoutes.get('/user/:userId', async (c) => {
         },
         imageUrl: quizzes.imageUrl,
         questionCount: quizzes.questionCount,
-        playCount: quizzes.playCount,
         favoriteCount: quizzes.favoriteCount,
         isPublic: quizzes.isPublic,
         createdAt: quizzes.createdAt,
@@ -206,7 +206,25 @@ quizRoutes.get('/user/:userId', async (c) => {
       .where(and(eq(quizzes.userId, targetUserId), eq(quizzes.isDeleted, false)))
       .orderBy(desc(quizzes.createdAt))
 
-    return c.json(userQuizzes)
+    // For each quiz, calculate total plays from all its sessions
+    const quizzesWithPlayCount = await Promise.all(
+      userQuizzes.map(async (quiz) => {
+        const [playCountResult] = await db
+          .select({ 
+            totalPlays: sql<number>`COALESCE(SUM(${gameSessions.participantCount}), 0)::int` 
+          })
+          .from(gameSessions)
+          .innerJoin(quizSnapshots, eq(gameSessions.quizSnapshotId, quizSnapshots.id))
+          .where(eq(quizSnapshots.quizId, quiz.id))
+
+        return {
+          ...quiz,
+          playCount: playCountResult?.totalPlays || 0,
+        }
+      })
+    )
+
+    return c.json(quizzesWithPlayCount)
   } catch (error) {
     console.error('Error fetching user quizzes:', error)
     return c.json({ error: 'Failed to fetch user quizzes' }, 500)
