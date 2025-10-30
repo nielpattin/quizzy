@@ -104,12 +104,8 @@ class _QuizzesList extends StatefulWidget {
   State<_QuizzesList> createState() => _QuizzesListState();
 }
 
-class _QuizzesListState extends State<_QuizzesList>
-    with AutomaticKeepAliveClientMixin {
+class _QuizzesListState extends State<_QuizzesList> {
   Future<List<Quiz>>? _quizzesFuture;
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -129,7 +125,6 @@ class _QuizzesListState extends State<_QuizzesList>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return FutureBuilder<List<Quiz>>(
       future: _quizzesFuture,
       builder: (context, snapshot) {
@@ -231,12 +226,8 @@ class _CollectionsList extends StatefulWidget {
   State<_CollectionsList> createState() => _CollectionsListState();
 }
 
-class _CollectionsListState extends State<_CollectionsList>
-    with AutomaticKeepAliveClientMixin {
+class _CollectionsListState extends State<_CollectionsList> {
   Future<List<Collection>>? _collectionsFuture;
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -252,7 +243,6 @@ class _CollectionsListState extends State<_CollectionsList>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return FutureBuilder<List<Collection>>(
       future: _collectionsFuture,
       builder: (context, snapshot) {

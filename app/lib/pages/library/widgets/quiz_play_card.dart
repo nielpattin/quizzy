@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
-import "package:cached_network_image/cached_network_image.dart";
 import "meta_chip.dart";
+import "../../../widgets/optimized_image.dart";
 
 class QuizPlayCard extends StatelessWidget {
   final String title;
@@ -55,34 +55,13 @@ class QuizPlayCard extends StatelessWidget {
                       : null,
                 ),
                 child: imageUrl != null
-                    ? ClipRRect(
+                    ? OptimizedImage(
+                        imageUrl: imageUrl!,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(14),
-                        ),
-                        child: CachedNetworkImage(
-                          imageUrl: imageUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: gradient,
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: gradient,
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                          ),
                         ),
                       )
                     : null,

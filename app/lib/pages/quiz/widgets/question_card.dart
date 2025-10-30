@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:cached_network_image/cached_network_image.dart";
+import "../../../widgets/optimized_image.dart";
 
 class QuestionCard extends StatelessWidget {
   final Map<String, dynamic> question;
@@ -46,34 +46,12 @@ class QuestionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (question["imageUrl"] != null) ...[
-            ClipRRect(
+            OptimizedImage(
+              imageUrl: question["imageUrl"],
+              height: 120,
+              width: double.infinity,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(10),
-              child: CachedNetworkImage(
-                imageUrl: question["imageUrl"],
-                height: 120,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 120,
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  height: 120,
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    color: Color(0xFF616161),
-                  ),
-                ),
-              ),
             ),
             const SizedBox(height: 12),
           ],

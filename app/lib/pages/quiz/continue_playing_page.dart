@@ -85,7 +85,7 @@ class _ContinuePlayingPageState extends State<ContinuePlayingPage> {
   }
 
   void _joinSession(String sessionId) {
-    context.push('/quiz/session/live/$sessionId');
+    context.push('/quiz/session/detail/$sessionId');
   }
 
   @override
@@ -235,7 +235,7 @@ class _ContinuePlayingPageState extends State<ContinuePlayingPage> {
                   Icon(Icons.people, size: 16, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
-                    '${session['joinedCount'] ?? 0} participants',
+                    '${session['participantCount'] ?? 0} participants',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.grey[600],
                     ),

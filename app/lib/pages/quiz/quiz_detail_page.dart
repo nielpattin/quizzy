@@ -154,8 +154,8 @@ class _QuizDetailPageState extends State<QuizDetailPage> {
       );
 
       if (mounted) {
-        // Navigate to session detail page
-        context.push('/quiz/session/detail/${session["id"]}');
+        // Navigate to session setup page
+        context.push('/quiz/session/setup/${session["id"]}');
       }
     } catch (e) {
       if (mounted) {

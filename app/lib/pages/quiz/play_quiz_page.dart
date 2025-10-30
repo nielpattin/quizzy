@@ -58,7 +58,6 @@ class _PlayQuizPageState extends State<PlayQuizPage>
   Timer? _autoAdvanceTimer;
   double _autoAdvanceSeconds =
       5.0; // Countdown after showing result (now double for smooth progress)
-  bool _isHoldingNextButton = false; // Track if user is holding button
 
   @override
   void initState() {
@@ -165,12 +164,8 @@ class _PlayQuizPageState extends State<PlayQuizPage>
     ) {
       if (_autoAdvanceSeconds > 0) {
         setState(() {
-          // Speed: normal = 0.1s per tick, holding = 0.3s per tick (3x faster)
-          final decrement = _isHoldingNextButton ? 0.3 : 0.1;
-          _autoAdvanceSeconds = (_autoAdvanceSeconds - decrement).clamp(
-            0.0,
-            5.0,
-          );
+          // Constant speed: 0.1s per tick
+          _autoAdvanceSeconds = (_autoAdvanceSeconds - 0.1).clamp(0.0, 5.0);
         });
       } else {
         timer.cancel();
@@ -288,10 +283,17 @@ class _PlayQuizPageState extends State<PlayQuizPage>
   }
 
   void _showFinalResults() {
+    // Calculate correct answers count from _answerResults
+    final correctCount = _answerResults
+        .where((result) => result == true)
+        .length;
+
     showQuizCompleteDialog(
       context,
-      score: _score,
+      score: correctCount, // Pass correct count, not score points
       totalQuestions: _totalQuestionCount,
+      quizId: widget.quizId,
+      sessionId: _sessionId, // Pass session ID for Play Again navigation
     );
   }
 
@@ -435,11 +437,8 @@ class _PlayQuizPageState extends State<PlayQuizPage>
           if (_showResult)
             QuizProgressButton(
               progress: 1 - (_autoAdvanceSeconds / 5.0),
-              isHolding: _isHoldingNextButton,
               isLastQuestion: _currentQuestionIndex >= _totalQuestionCount - 1,
-              onTapDown: () => setState(() => _isHoldingNextButton = true),
-              onTapUp: () => setState(() => _isHoldingNextButton = false),
-              onTapCancel: () => setState(() => _isHoldingNextButton = false),
+              onTap: _nextQuestion,
             ),
         ],
       ),

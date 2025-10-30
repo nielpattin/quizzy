@@ -2,19 +2,13 @@ import 'package:flutter/material.dart';
 
 class QuizProgressButton extends StatelessWidget {
   final double progress; // 0.0 to 1.0
-  final bool isHolding;
   final bool isLastQuestion;
-  final VoidCallback onTapDown;
-  final VoidCallback onTapUp;
-  final VoidCallback onTapCancel;
+  final VoidCallback onTap;
 
   const QuizProgressButton({
     required this.progress,
-    required this.isHolding,
     required this.isLastQuestion,
-    required this.onTapDown,
-    required this.onTapUp,
-    required this.onTapCancel,
+    required this.onTap,
     super.key,
   });
 
@@ -34,60 +28,56 @@ class QuizProgressButton extends StatelessWidget {
           ),
         ],
       ),
-      child: GestureDetector(
-        onTapDown: (_) => onTapDown(),
-        onTapUp: (_) => onTapUp(),
-        onTapCancel: onTapCancel,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           height: 56,
           decoration: BoxDecoration(
             color: const Color(0xFF64A7FF),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Stack(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Progress bar background
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              // Animated progress fill
-              FractionallySizedBox(
-                widthFactor: progress,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
+              // Circular progress indicator
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Stack(
+                    children: [
+                      // Background circle
+                      CircularProgressIndicator(
+                        value: 1.0,
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      // Progress circle (depletes as time runs out)
+                      CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 3,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              // Arrow icon that moves with progress
-              Positioned.fill(
-                child: Align(
-                  alignment: Alignment(-1 + (2 * progress), 0),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Icon(
-                      Icons.arrow_forward,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                ),
-              ),
-              // Text overlay
-              Center(
-                child: Text(
-                  isHolding
-                      ? "Hold to skip..."
-                      : (isLastQuestion ? "View Results" : "Next Question"),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+              // Static arrow icon
+              const Icon(Icons.arrow_forward, color: Colors.white, size: 24),
+              const SizedBox(width: 12),
+              // Button text
+              Text(
+                isLastQuestion ? "View Results" : "Next",
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
             ],

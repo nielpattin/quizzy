@@ -26,14 +26,17 @@ import "pages/quiz/category_page.dart";
 import "pages/quiz/trending_page.dart";
 import "pages/quiz/continue_playing_page.dart";
 import "pages/quiz/session_detail_page.dart";
+import "pages/quiz/session_setup_page.dart";
+import "pages/quiz/session_lobby_page.dart";
 import "pages/quiz/create_quiz_page.dart";
 import "pages/quiz/edit_quiz_page.dart";
 import "pages/quiz/add_questions_page.dart";
 import "pages/quiz/play_quiz_page.dart";
 import "pages/quiz/create_question_page.dart";
-import "pages/session/live_quiz_session_page.dart";
 import "pages/session/edit_session_page.dart";
+import "pages/session/host_control_panel_page.dart";
 import "pages/library/create_collection_page.dart";
+import "pages/library/library_page.dart";
 import "utils/route_observer.dart";
 
 final router = GoRouter(
@@ -97,7 +100,38 @@ final router = GoRouter(
 
     GoRoute(
       path: "/library",
-      builder: (context, state) => const MainNavigationPage(initialIndex: 1),
+      builder: (context, state) {
+        // Check for query parameters to set initial state
+        final category = state.uri.queryParameters['category'];
+        final tab = state.uri.queryParameters['tab'];
+
+        // Determine indices based on query params
+        int categoryIndex = 0; // default: Created
+        int gameTabIndex = 0; // default: Mine
+
+        if (category == 'game') {
+          categoryIndex = 2; // Game tab
+          if (tab == 'recent') {
+            gameTabIndex = 1; // Recent
+          } else {
+            gameTabIndex = 0; // Mine (default)
+          }
+        } else if (category == 'favorites') {
+          categoryIndex = 1; // Favorites tab
+        }
+
+        // If query params are provided, go directly to LibraryPage with initial state
+        if (category != null) {
+          return LibraryPage(
+            showBottomNav: true,
+            initialCategoryIndex: categoryIndex,
+            initialGameTabIndex: gameTabIndex,
+          );
+        }
+
+        // Otherwise use MainNavigationPage (for bottom nav navigation)
+        return const MainNavigationPage(initialIndex: 1);
+      },
     ),
     GoRoute(
       path: "/library/create-collection",
@@ -511,14 +545,67 @@ final router = GoRouter(
       },
     ),
     GoRoute(
-      path: "/quiz/session/live/:sessionId",
+      path: "/quiz/session/setup/:sessionId",
       pageBuilder: (context, state) {
         final sessionId = state.pathParameters["sessionId"]!;
         return CustomTransitionPage(
           key: state.pageKey,
-          child: LiveQuizSessionPage(sessionId: sessionId),
+          child: SessionSetupPage(sessionId: sessionId),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/session/lobby/:sessionId",
+      pageBuilder: (context, state) {
+        final sessionId = state.pathParameters["sessionId"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: SessionLobbyPage(sessionId: sessionId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/quiz/session/host-control/:sessionId",
+      pageBuilder: (context, state) {
+        final sessionId = state.pathParameters["sessionId"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: HostControlPanelPage(sessionId: sessionId),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: child,
+            );
           },
         );
       },

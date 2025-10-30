@@ -11,16 +11,24 @@ import "../../services/api_service.dart";
 
 class LibraryPage extends StatefulWidget {
   final bool showBottomNav;
-  const LibraryPage({super.key, this.showBottomNav = true});
+  final int initialCategoryIndex;
+  final int initialGameTabIndex;
+
+  const LibraryPage({
+    super.key,
+    this.showBottomNav = true,
+    this.initialCategoryIndex = 0,
+    this.initialGameTabIndex = 0,
+  });
 
   @override
   State<LibraryPage> createState() => _LibraryPageState();
 }
 
 class _LibraryPageState extends State<LibraryPage> {
-  int _selectedCategoryIndex = 0;
+  late int _selectedCategoryIndex;
   int _createdTabIndex = 0;
-  int _gameTabIndex = 0;
+  late int _gameTabIndex;
   SortOption _sort = SortOption.newest;
   VoidCallback? _refreshCollectionsCallback;
   int _unreadNotificationCount = 0;
@@ -28,6 +36,8 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   void initState() {
     super.initState();
+    _selectedCategoryIndex = widget.initialCategoryIndex;
+    _gameTabIndex = widget.initialGameTabIndex;
     _loadUnreadCount();
   }
 

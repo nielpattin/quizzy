@@ -57,12 +57,8 @@ class _FavoritesList extends StatefulWidget {
   State<_FavoritesList> createState() => _FavoritesListState();
 }
 
-class _FavoritesListState extends State<_FavoritesList>
-    with AutomaticKeepAliveClientMixin {
+class _FavoritesListState extends State<_FavoritesList> {
   Future<List<Quiz>>? _quizzesFuture;
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -82,7 +78,6 @@ class _FavoritesListState extends State<_FavoritesList>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return FutureBuilder<List<Quiz>>(
       future: _quizzesFuture,
       builder: (context, snapshot) {

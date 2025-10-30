@@ -2,9 +2,13 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "dart:convert";
+import "dart:io";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "package:intl/intl.dart";
+import "package:image_picker/image_picker.dart";
+import "../../services/upload_service.dart";
+import "../quiz/widgets/cover_image_picker.dart";
 
 class EditSessionPage extends StatefulWidget {
   final String sessionId;
@@ -19,15 +23,18 @@ class _EditSessionPageState extends State<EditSessionPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _imagePicker = ImagePicker();
 
   bool _isLoading = true;
   bool _isSaving = false;
   String? _errorMessage;
 
   bool _isPublic = false;
-  double _maxPlayers = 1000;
   bool _hasEndTime = false;
   DateTime? _endTime;
+
+  File? _coverImage;
+  String? _existingImageUrl;
 
   Map<String, dynamic>? _sessionData;
 
@@ -67,8 +74,8 @@ class _EditSessionPageState extends State<EditSessionPage> {
         _sessionData = sessionData;
         _titleController.text = sessionData["title"] ?? "";
         _descriptionController.text = sessionData["description"] ?? "";
+        _existingImageUrl = sessionData["imageUrl"];
         _isPublic = sessionData["isPublic"] ?? false;
-        _maxPlayers = (sessionData["maxPlayers"] ?? 1000).toDouble();
         _hasEndTime = sessionData["hasEndTime"] ?? false;
         if (sessionData["endTime"] != null) {
           _endTime = DateTime.parse(sessionData["endTime"]);
@@ -108,6 +115,13 @@ class _EditSessionPageState extends State<EditSessionPage> {
         throw Exception("No active session");
       }
 
+      // Upload image if a new one was selected
+      String? imageUrl = _existingImageUrl;
+      if (_coverImage != null) {
+        final imageData = await UploadService.uploadImage(_coverImage!);
+        imageUrl = imageData["url"] as String?;
+      }
+
       final serverUrl = dotenv.env["SERVER_URL"];
       final response = await http.put(
         Uri.parse("$serverUrl/api/session/${widget.sessionId}"),
@@ -120,8 +134,9 @@ class _EditSessionPageState extends State<EditSessionPage> {
           "description": _descriptionController.text.isEmpty
               ? null
               : _descriptionController.text,
+          "imageUrl": imageUrl,
           "isPublic": _isPublic,
-          "maxPlayers": _maxPlayers.toInt(),
+          // maxParticipants is locked at session creation and cannot be edited
           "hasEndTime": _hasEndTime,
           "endTime": _hasEndTime && _endTime != null
               ? _endTime!.toIso8601String()
@@ -189,6 +204,34 @@ class _EditSessionPageState extends State<EditSessionPage> {
     }
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _coverImage = File(pickedFile.path);
+          _existingImageUrl =
+              null; // Clear existing URL when new image is picked
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error picking image: ${e.toString()}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -240,13 +283,17 @@ class _EditSessionPageState extends State<EditSessionPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    CoverImagePicker(
+                      coverImage: _coverImage,
+                      imageUrl: _existingImageUrl,
+                      onTap: _pickImage,
+                    ),
+                    const SizedBox(height: 20),
                     _buildTitleField(theme),
                     const SizedBox(height: 20),
                     _buildDescriptionField(theme),
                     const SizedBox(height: 20),
                     _buildPublicSwitch(theme),
-                    const SizedBox(height: 20),
-                    _buildMaxPlayersSlider(theme),
                     const SizedBox(height: 20),
                     _buildEndTimeSection(theme),
                   ],
@@ -341,81 +388,6 @@ class _EditSessionPageState extends State<EditSessionPage> {
           });
         },
         activeColor: theme.colorScheme.primary,
-      ),
-    );
-  }
-
-  Widget _buildMaxPlayersSlider(ThemeData theme) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Max Players",
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    "${_maxPlayers.toInt()}",
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Slider(
-              value: _maxPlayers,
-              min: 2,
-              max: 1000,
-              divisions: 998,
-              label: "${_maxPlayers.toInt()} players",
-              onChanged: (value) {
-                setState(() {
-                  _maxPlayers = value;
-                });
-              },
-              activeColor: theme.colorScheme.primary,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "2",
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-                Text(
-                  "1000",
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

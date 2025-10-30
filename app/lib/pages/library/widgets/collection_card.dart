@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
-import "package:cached_network_image/cached_network_image.dart";
 import "meta_chip.dart";
+import "../../../widgets/optimized_image.dart";
 
 class CollectionCard extends StatelessWidget {
   final String title;
@@ -38,43 +38,28 @@ class CollectionCard extends StatelessWidget {
                 top: Radius.circular(14),
               ),
             ),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(14),
-              ),
-              child: imageUrl != null && imageUrl!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: imageUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: gradient,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
+            child: imageUrl != null && imageUrl!.isNotEmpty
+                ? OptimizedImage(
+                    imageUrl: imageUrl!,
+                    width: double.infinity,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(14),
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: gradient,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: gradient,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                      gradient: LinearGradient(
+                        colors: gradient,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                     ),
-            ),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.all(12),

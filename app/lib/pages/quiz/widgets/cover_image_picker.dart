@@ -1,6 +1,6 @@
 import "dart:io";
 import "package:flutter/material.dart";
-import "package:cached_network_image/cached_network_image.dart";
+import "../../../widgets/optimized_image.dart";
 
 class CoverImagePicker extends StatelessWidget {
   final File? coverImage;
@@ -59,64 +59,12 @@ class CoverImagePicker extends StatelessWidget {
         onTap: onTap,
         child: Stack(
           children: [
-            ClipRRect(
+            OptimizedImage(
+              imageUrl: imageUrl!,
+              height: 160,
+              width: double.infinity,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(16),
-              child: CachedNetworkImage(
-                imageUrl: imageUrl!,
-                height: 160,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 160,
-                  color: Theme.of(context).colorScheme.surface,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  height: 160,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Theme.of(context).colorScheme.surface,
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.image_outlined,
-                          size: 48,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Image unavailable",
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.5),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
             ),
             Positioned(
               top: 10,

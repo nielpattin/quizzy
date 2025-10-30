@@ -177,7 +177,7 @@ class SessionStatusCard extends StatelessWidget {
                       context,
                       Icons.people,
                       'Participants',
-                      '${session.joinedCount}',
+                      '${session.participantCount}',
                     ),
                     if (session.code != null) ...[
                       const SizedBox(height: 8),
