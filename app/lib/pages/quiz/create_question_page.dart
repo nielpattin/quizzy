@@ -1,7 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:image_picker/image_picker.dart";
-import "dart:io";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
@@ -34,7 +33,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
   String _timeLimit = "20 sec";
   String _points = "100 coki";
   int? _correctAnswerIndex;
-  File? _coverImage;
+  XFile? _coverImage;
   late String _currentQuestionType;
   final List<TextEditingController> _answerControllers = [];
   int _answerCount = 4;
@@ -148,7 +147,7 @@ class _CreateQuestionPageState extends State<CreateQuestionPage> {
 
       if (pickedFile != null) {
         setState(() {
-          _coverImage = File(pickedFile.path);
+          _coverImage = pickedFile;
           _existingImageUrl = null;
         });
       }

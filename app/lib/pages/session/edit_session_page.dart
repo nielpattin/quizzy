@@ -2,7 +2,6 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "dart:convert";
-import "dart:io";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "package:intl/intl.dart";
@@ -33,7 +32,7 @@ class _EditSessionPageState extends State<EditSessionPage> {
   bool _hasEndTime = false;
   DateTime? _endTime;
 
-  File? _coverImage;
+  XFile? _coverImage;
   String? _existingImageUrl;
 
   Map<String, dynamic>? _sessionData;
@@ -215,7 +214,7 @@ class _EditSessionPageState extends State<EditSessionPage> {
 
       if (pickedFile != null) {
         setState(() {
-          _coverImage = File(pickedFile.path);
+          _coverImage = pickedFile;
           _existingImageUrl =
               null; // Clear existing URL when new image is picked
         });

@@ -1,7 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:image_picker/image_picker.dart";
-import "dart:io";
 import "../../services/api_service.dart";
 import "../../services/upload_service.dart";
 import "../quiz/widgets/cover_image_picker.dart";
@@ -19,7 +18,7 @@ class _CreateCollectionPageState extends State<CreateCollectionPage> {
   final _descriptionController = TextEditingController();
   bool _isPublic = true;
   bool _isLoading = false;
-  File? _coverImage;
+  XFile? _coverImage;
 
   @override
   void dispose() {
@@ -39,7 +38,7 @@ class _CreateCollectionPageState extends State<CreateCollectionPage> {
 
     if (pickedFile != null) {
       setState(() {
-        _coverImage = File(pickedFile.path);
+        _coverImage = pickedFile;
       });
     }
   }

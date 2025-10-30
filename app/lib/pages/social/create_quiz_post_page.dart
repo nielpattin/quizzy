@@ -1,4 +1,4 @@
-import "dart:io";
+import "dart:typed_data";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:image_picker/image_picker.dart";
@@ -21,7 +21,7 @@ class _CreateQuizPostPageState extends State<CreateQuizPostPage> {
   ];
   int? _correctAnswerIndex;
   final Set<int> _correctAnswersSet = {};
-  File? _selectedImage;
+  XFile? _selectedImage;
   bool _isSubmitting = false;
 
   @override
@@ -68,7 +68,7 @@ class _CreateQuizPostPageState extends State<CreateQuizPostPage> {
 
     if (pickedFile != null) {
       setState(() {
-        _selectedImage = File(pickedFile.path);
+        _selectedImage = pickedFile;
       });
     }
   }
@@ -195,9 +195,19 @@ class _CreateQuizPostPageState extends State<CreateQuizPostPage> {
                         child: _selectedImage != null
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  _selectedImage!,
-                                  fit: BoxFit.cover,
+                                child: FutureBuilder<Uint8List>(
+                                  future: _selectedImage!.readAsBytes(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.hasData) {
+                                      return Image.memory(
+                                        snapshot.data!,
+                                        fit: BoxFit.cover,
+                                      );
+                                    }
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  },
                                 ),
                               )
                             : Center(

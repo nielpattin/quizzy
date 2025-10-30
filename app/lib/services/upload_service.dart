@@ -1,12 +1,12 @@
 import "dart:convert";
-import "dart:io";
 import "package:http/http.dart" as http;
+import "package:image_picker/image_picker.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "api_exception.dart";
 import "http_client.dart";
 
 class UploadService {
-  static Future<Map<String, dynamic>> uploadImage(File imageFile) async {
+  static Future<Map<String, dynamic>> uploadImage(XFile imageFile) async {
     try {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
@@ -18,8 +18,11 @@ class UploadService {
         Uri.parse("${HttpClient.baseUrl}/api/upload/image"),
       );
       request.headers["Authorization"] = "Bearer ${session.accessToken}";
+
+      // Use fromBytes with readAsBytes() for web compatibility
+      final bytes = await imageFile.readAsBytes();
       request.files.add(
-        await http.MultipartFile.fromPath("image", imageFile.path),
+        http.MultipartFile.fromBytes("image", bytes, filename: imageFile.name),
       );
 
       final response = await request.send();

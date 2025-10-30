@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "dart:convert";
-import "dart:io";
+import "dart:typed_data";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "package:image_picker/image_picker.dart";
@@ -26,7 +26,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   bool _isLoading = false;
   bool _loadingCollections = false;
   bool _loadingCategories = false;
-  File? _selectedImageFile;
+  XFile? _selectedImageFile;
   List<Map<String, dynamic>> _collections = [];
   List<Map<String, dynamic>> _categories = [];
 
@@ -88,7 +88,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     if (image == null) return;
 
     setState(() {
-      _selectedImageFile = File(image.path);
+      _selectedImageFile = image;
     });
   }
 
@@ -190,11 +190,22 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        _selectedImageFile!,
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
+                      child: FutureBuilder<Uint8List>(
+                        future: _selectedImageFile!.readAsBytes(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return Image.memory(
+                              snapshot.data!,
+                              height: 200,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            );
+                          }
+                          return const SizedBox(
+                            height: 200,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        },
                       ),
                     ),
                     Positioned(

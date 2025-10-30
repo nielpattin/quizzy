@@ -1,4 +1,4 @@
-import "dart:io";
+import "dart:typed_data";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:image_picker/image_picker.dart";
@@ -14,7 +14,7 @@ class CreatePostPage extends StatefulWidget {
 class _CreatePostPageState extends State<CreatePostPage> {
   final TextEditingController _textController = TextEditingController();
   bool _isSubmitting = false;
-  File? _selectedImage;
+  XFile? _selectedImage;
 
   @override
   void dispose() {
@@ -33,7 +33,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
     if (pickedFile != null) {
       setState(() {
-        _selectedImage = File(pickedFile.path);
+        _selectedImage = pickedFile;
       });
     }
   }
@@ -136,11 +136,24 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Image.file(
-                              _selectedImage!,
-                              width: double.infinity,
-                              height: 300,
-                              fit: BoxFit.cover,
+                            child: FutureBuilder<Uint8List>(
+                              future: _selectedImage!.readAsBytes(),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasData) {
+                                  return Image.memory(
+                                    snapshot.data!,
+                                    width: double.infinity,
+                                    height: 300,
+                                    fit: BoxFit.cover,
+                                  );
+                                }
+                                return const SizedBox(
+                                  height: 300,
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(height: 8),

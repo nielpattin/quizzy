@@ -1,9 +1,10 @@
-import "dart:io";
+import "dart:typed_data";
 import "package:flutter/material.dart";
+import "package:image_picker/image_picker.dart";
 import "../../../widgets/optimized_image.dart";
 
 class CoverImagePicker extends StatelessWidget {
-  final File? coverImage;
+  final XFile? coverImage;
   final String? imageUrl;
   final VoidCallback onTap;
 
@@ -26,9 +27,22 @@ class CoverImagePicker extends StatelessWidget {
               height: 160,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                image: DecorationImage(
-                  image: FileImage(coverImage!),
-                  fit: BoxFit.cover,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: FutureBuilder<Uint8List>(
+                  future: coverImage!.readAsBytes(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return Image.memory(
+                        snapshot.data!,
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      );
+                    }
+                    return const Center(child: CircularProgressIndicator());
+                  },
                 ),
               ),
             ),
