@@ -23,11 +23,8 @@ class CoverImagePicker extends StatelessWidget {
         onTap: onTap,
         child: Stack(
           children: [
-            Container(
-              height: 160,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-              ),
+            AspectRatio(
+              aspectRatio: 16 / 9,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: FutureBuilder<Uint8List>(
@@ -36,7 +33,6 @@ class CoverImagePicker extends StatelessWidget {
                     if (snapshot.hasData) {
                       return Image.memory(
                         snapshot.data!,
-                        height: 160,
                         width: double.infinity,
                         fit: BoxFit.cover,
                       );
@@ -73,12 +69,14 @@ class CoverImagePicker extends StatelessWidget {
         onTap: onTap,
         child: Stack(
           children: [
-            OptimizedImage(
-              imageUrl: imageUrl!,
-              height: 160,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              borderRadius: BorderRadius.circular(16),
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: OptimizedImage(
+                imageUrl: imageUrl!,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
             Positioned(
               top: 10,

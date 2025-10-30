@@ -303,6 +303,16 @@ class _AddQuestionsPageState extends State<AddQuestionsPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF1A2433),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go("/quiz/${widget.quizId}");
+            }
+          },
+        ),
         title: const Text(
           "Questions",
           style: TextStyle(
