@@ -1,8 +1,9 @@
 import { db } from './db/index'
-import { gameSessions, gameSessionParticipants, users } from './db/schema'
-import { eq, and } from 'drizzle-orm'
+import { gameSessions, gameSessionParticipants, users, questionTimings } from './db/schema'
+import { eq, and, desc } from 'drizzle-orm'
 import { supabase } from './lib/supabase'
 import { RedisConnectionStore } from './services/redis-connection-store'
+import { WebSocketService } from './services/websocket-service'
 
 // WebSocket connection context type
 export interface WebSocketContext {
@@ -22,6 +23,8 @@ export type WebSocketMessage =
   | { type: 'join_session'; sessionId: string }
   | { type: 'leave_session'; sessionId: string }
   | { type: 'session_update'; sessionId: string; data: any }
+  | { type: 'session_state'; sessionId: string; data: any }
+  | { type: 'session_started'; sessionId: string }
   | { type: 'participant_joined'; sessionId: string; participant: any }
   | { type: 'participant_left'; sessionId: string; participantId: string }
   | { type: 'error'; message: string }
@@ -190,6 +193,11 @@ export async function handleWebSocketMessage(ws: any, message: string, context: 
         sendToConnection(ws, { type: 'pong' })
         break
 
+      case 'pong':
+        // Client pong received, connection is alive
+        await RedisConnectionStore.updateHeartbeat(context.userId)
+        break
+
       default:
         sendToConnection(ws, { type: 'error', message: 'Unknown message type' })
     }
@@ -202,21 +210,41 @@ export async function handleWebSocketMessage(ws: any, message: string, context: 
 // Handle session join
 async function handleJoinSession(ws: any, sessionId: string, context: WebSocketContext) {
   try {
+    console.log(`[WebSocket] Received join_session for session ${sessionId} from user ${context.userId}`)
+    
     // Validate session exists
     const session = await validateSession(sessionId)
     if (!session) {
+      console.log(`[WebSocket] Session not found: ${sessionId}`)
       sendToConnection(ws, { type: 'error', message: 'Session not found' })
       return
     }
 
     // Check if session has ended
     if (session.endedAt) {
-      sendToConnection(ws, { type: 'error', message: 'Session has ended' })
-      return
+      // Allow existing participants to rejoin for "Play Again"
+      const existingParticipants = await db
+        .select()
+        .from(gameSessionParticipants)
+        .where(and(
+          eq(gameSessionParticipants.sessionId, sessionId),
+          eq(gameSessionParticipants.userId, context.userId)
+        ))
+      
+      // If no previous participation, reject
+      if (existingParticipants.length === 0) {
+        console.log(`[WebSocket] Session has ended and user has no previous participation: ${sessionId}`)
+        sendToConnection(ws, { type: 'error', message: 'Session has ended' })
+        return
+      }
+      
+      console.log(`[WebSocket] Session has ended but allowing existing participant to rejoin for Play Again: ${sessionId}`)
+      // Continue to allow rejoin for Play Again
     }
 
-    // Remove from previous session if any
-    if (context.sessionId) {
+    // Remove from previous session if switching to a different session
+    // Don't leave if re-joining the same session (prevents deleting participant record)
+    if (context.sessionId && context.sessionId !== sessionId) {
       await handleLeaveSession(ws, context.sessionId, context)
     }
 
@@ -230,40 +258,103 @@ async function handleJoinSession(ws: any, sessionId: string, context: WebSocketC
     // Get user info
     const userInfo = await getUserInfo(context.userId)
     if (!userInfo) {
+      console.log(`[WebSocket] User not found: ${context.userId}`)
       sendToConnection(ws, { type: 'error', message: 'User not found' })
       return
     }
 
-    // Broadcast to other participants
-    broadcastToSession(sessionId, {
-      type: 'participant_joined',
-      sessionId,
-      participant: {
-        id: context.userId,
+    // Get participant record from database (if exists)
+    const [participantRecord] = await db
+      .select()
+      .from(gameSessionParticipants)
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, context.userId)
+      ))
+      .limit(1)
+
+    // Broadcast if user is a participant
+    // Note: HTTP endpoint also broadcasts, but frontend deduplicates by userId
+    // This ensures joiners who connect after HTTP broadcast still see themselves
+    if (participantRecord) {
+      console.log(`[WebSocket] User ${context.userId} is a participant - broadcasting`)
+      
+      // Broadcast complete participant data to ALL participants
+      const participantData = {
+        id: participantRecord.id,
+        userId: context.userId,
         username: userInfo.username,
         fullName: userInfo.fullName,
         profilePictureUrl: userInfo.profilePictureUrl,
-      },
-    }, ws)
+        score: participantRecord.score,
+        rank: participantRecord.rank,
+        joinedAt: participantRecord.joinedAt.toISOString(),
+      }
 
-    // Send confirmation to joining user
+      broadcastToSession(sessionId, {
+        type: 'participant_joined',
+        sessionId,
+        participant: participantData,
+      })
+
+      console.log(`[WebSocket] Broadcasted participant_joined for user ${context.userId}`)
+    } else {
+      console.log(`[WebSocket] User ${context.userId} joined WebSocket as observer (not a participant)`)
+    }
+
+    // Fetch unique participants (latest attempt per user) for this session
+    // Get all participants first, then deduplicate in memory to get latest per userId
+    const allParticipantRecords = await db
+      .select({
+        id: gameSessionParticipants.id,
+        userId: gameSessionParticipants.userId,
+        score: gameSessionParticipants.score,
+        rank: gameSessionParticipants.rank,
+        joinedAt: gameSessionParticipants.joinedAt,
+        username: users.username,
+        fullName: users.fullName,
+        profilePictureUrl: users.profilePictureUrl,
+      })
+      .from(gameSessionParticipants)
+      .innerJoin(users, eq(gameSessionParticipants.userId, users.id))
+      .where(eq(gameSessionParticipants.sessionId, sessionId))
+      .orderBy(desc(gameSessionParticipants.joinedAt))
+
+    // Deduplicate: keep only latest participant per userId
+    const uniqueParticipants = new Map()
+    for (const participant of allParticipantRecords) {
+      if (!uniqueParticipants.has(participant.userId)) {
+        uniqueParticipants.set(participant.userId, participant)
+      }
+    }
+    const allParticipants = Array.from(uniqueParticipants.values())
+
+    // Send session state with full participant list to joining user
     sendToConnection(ws, {
-      type: 'session_update',
+      type: 'session_state',
       sessionId,
       data: {
-        session: {
-          id: session.id,
-          title: session.title,
-          isLive: session.isLive,
-          joinedCount: getSessionParticipantCount(sessionId),
-        },
-        participantCount: getSessionParticipantCount(sessionId),
+        id: session.id,
+        title: session.title,
+        isLive: session.isLive,
+        participantCount: session.participantCount, // Database value (completed plays)
+        playerCount: session.playerCount, // Unique users who joined
+        participants: allParticipants.map(p => ({
+          id: p.id,
+          userId: p.userId,
+          username: p.username,
+          fullName: p.fullName,
+          profilePictureUrl: p.profilePictureUrl,
+          score: p.score,
+          rank: p.rank,
+          joinedAt: p.joinedAt.toISOString(),
+        })),
       },
     })
 
-    console.log(`User ${context.userId} joined session ${sessionId}`)
+    console.log(`[WebSocket] User ${context.userId} successfully joined session ${sessionId} with ${allParticipants.length} participants`)
   } catch (error) {
-    console.error('Error handling session join:', error)
+    console.error('[WebSocket] Error handling session join:', error)
     sendToConnection(ws, { type: 'error', message: 'Failed to join session' })
   }
 }
@@ -278,24 +369,50 @@ async function handleLeaveSession(ws: any, sessionId: string, context: WebSocket
       .where(eq(gameSessions.id, sessionId))
 
     if (session) {
-      // Delete participant from database
-      await db
-        .delete(gameSessionParticipants)
+      // Find the LATEST participant for this user in this session
+      const [existingParticipant] = await db
+        .select()
+        .from(gameSessionParticipants)
         .where(and(
           eq(gameSessionParticipants.sessionId, sessionId),
           eq(gameSessionParticipants.userId, context.userId)
         ))
+        .orderBy(desc(gameSessionParticipants.joinedAt))
+        .limit(1)
 
-      // Update session joined count
-      await db
-        .update(gameSessions)
-        .set({
-          joinedCount: Math.max(0, session.joinedCount - 1),
-        })
-        .where(eq(gameSessions.id, sessionId))
+      if (existingParticipant) {
+        // Check if participant has started playing (has any question_timings)
+        const timings = await db
+          .select()
+          .from(questionTimings)
+          .where(eq(questionTimings.participantId, existingParticipant.id))
+          .limit(1)
 
-      // Broadcast participant left event
-      await WebSocketService.broadcastParticipantLeft(sessionId, context.userId)
+        // Only delete participant if they haven't started playing
+        // If they have timings, preserve their game progress
+        if (timings.length === 0) {
+          // No timings = lobby member only, safe to delete
+          // Delete by ID to avoid deleting all participants for this user
+          await db
+            .delete(gameSessionParticipants)
+            .where(eq(gameSessionParticipants.id, existingParticipant.id))
+
+          // Update session joined count
+          await db
+            .update(gameSessions)
+            .set({
+              participantCount: Math.max(0, session.participantCount - 1),
+            })
+            .where(eq(gameSessions.id, sessionId))
+
+          console.log(`[WebSocket] Deleted lobby participant ${context.userId} from session ${sessionId}`)
+        } else {
+          console.log(`[WebSocket] Preserved participant ${context.userId} with game progress in session ${sessionId}`)
+        }
+
+        // Broadcast participant left event
+        await WebSocketService.broadcastParticipantLeft(sessionId, context.userId)
+      }
     }
 
     // Remove from WebSocket session participants
@@ -390,7 +507,7 @@ export async function getSessionRealtimeInfo(sessionId: string) {
         id: gameSessions.id,
         title: gameSessions.title,
         isLive: gameSessions.isLive,
-        joinedCount: gameSessions.joinedCount,
+        participantCount: gameSessions.participantCount,
         startedAt: gameSessions.startedAt,
         endedAt: gameSessions.endedAt,
       })

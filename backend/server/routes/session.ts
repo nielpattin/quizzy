@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import type { AuthContext } from '../middleware/auth'
 import { db } from '../db/index'
-import { gameSessions, gameSessionParticipants, quizSnapshots, questionsSnapshots, quizzes, questions, users, questionTimings } from '../db/schema'
+import { gameSessions, gameSessionParticipants, quizSnapshots, questionsSnapshots, quizzes, questions, users, questionTimings, categories } from '../db/schema'
 import { eq, and, desc, ilike, sql } from 'drizzle-orm'
 import { WebSocketService } from '../services/websocket-service'
 
@@ -63,16 +63,21 @@ async function checkAndCompleteSession(sessionId: string) {
     const hasActiveParticipants = participantsWithAnswers.length > 0
 
     if (allParticipantsCompleted && hasActiveParticipants) {
-      // Automatically complete the session
-      await db
-        .update(gameSessions)
-        .set({
-          isLive: false,
-          endedAt: new Date(),
-        })
-        .where(eq(gameSessions.id, sessionId))
+      // Only auto-end solo sessions (maxParticipants === 1)
+      // Multiplayer sessions should only be ended by the host
+      if (session.maxParticipants === 1) {
+        await db
+          .update(gameSessions)
+          .set({
+            isLive: false,
+            endedAt: new Date(),
+          })
+          .where(eq(gameSessions.id, sessionId))
 
-      console.log(`Session ${sessionId} automatically completed - all participants finished all questions`)
+        console.log(`Solo session ${sessionId} automatically completed - all participants finished all questions`)
+      } else {
+        console.log(`Multiplayer session ${sessionId} - all participants completed but not auto-ending (host must end session)`)
+      }
     }
   } catch (error) {
     console.error('Error checking session completion:', error)
@@ -106,59 +111,30 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
       return c.json({ error: 'Quiz not found' }, 404)
     }
 
-    // Check for reusable session: same quiz, same version, current user is host, user has participant, not ended
+    // Check for reusable session: same quiz, same version, current user is host, not ended
     const existingSessions = await db
       .select({
         session: gameSessions,
         snapshot: quizSnapshots,
-        participant: gameSessionParticipants,
       })
       .from(gameSessions)
       .innerJoin(quizSnapshots, eq(gameSessions.quizSnapshotId, quizSnapshots.id))
-      .innerJoin(gameSessionParticipants, eq(gameSessionParticipants.sessionId, gameSessions.id))
       .where(and(
         eq(quizSnapshots.quizId, quiz.id),
         eq(gameSessions.quizVersion, quiz.version),
         eq(gameSessions.hostId, userId),
-        eq(gameSessionParticipants.userId, userId),
         sql`${gameSessions.endedAt} IS NULL`
       ))
       .limit(1)
 
-    // If reusable session found, reuse existing participant
+    // If reusable session found, return it (host doesn't need participant record)
     if (existingSessions.length > 0) {
       const existingSession = existingSessions[0].session
-      const existingParticipant = existingSessions[0].participant
 
-      // Check if existing participant is still valid (not left)
-      if (existingParticipant && !existingParticipant.leftAt) {
-        // Reuse existing participant
-        return c.json({
-          ...existingSession,
-          participantId: existingParticipant.id,
-        }, 200)
-      } else {
-        // Create new participant only if existing one is invalid
-        const [newParticipant] = await db
-          .insert(gameSessionParticipants)
-          .values({
-            sessionId: existingSession.id,
-            userId,
-          })
-          .returning()
-
-        await db
-          .update(gameSessions)
-          .set({
-            joinedCount: existingSession.joinedCount + 1,
-          })
-          .where(eq(gameSessions.id, existingSession.id))
-
-        return c.json({
-          ...existingSession,
-          participantId: newParticipant.id,
-        }, 201)
-      }
+      return c.json({
+        ...existingSession,
+        participantId: null, // Host is not a participant
+      }, 200)
     }
 
     // No reusable session found, create new session
@@ -204,48 +180,39 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
         title: body.title || quiz.title,
         description: body.description || null,
         estimatedMinutes: body.estimatedMinutes || 10,
-        isPublic: body.isPublic !== undefined ? body.isPublic : false,
-        maxPlayers: body.maxPlayers || 1000,
+        isPublic: body.isPublic !== undefined ? body.isPublic : false, // Default: private session
+        maxParticipants: body.maxParticipants || 1, // Default: solo play (1 participant slot)
         hasEndTime: body.hasEndTime !== undefined ? body.hasEndTime : false,
         endTime: body.endTime ? new Date(body.endTime) : null,
         code,
         quizVersion: quiz.version,
-        isLive: true, // Solo sessions start as live immediately
-        startedAt: new Date(), // Solo sessions start immediately
+        isLive: false, // Session starts as NOT live, host must explicitly start it
+        startedAt: null, // Will be set when session actually starts
       })
       .returning()
 
-    // Auto-create first participant for session creator
-    const [firstParticipant] = await db
-      .insert(gameSessionParticipants)
-      .values({
-        sessionId: newSession.id,
-        userId,
-      })
-      .returning()
+    // Don't auto-create participant for host
+    // Host can join as player separately if they want to participate
+    // This allows the host to act as facilitator only (like Kahoot)
 
-    await db
-      .update(gameSessions)
-      .set({
-        joinedCount: 1,
+    // Broadcast session created (only if public)
+    if (newSession.isPublic) {
+      await WebSocketService.broadcastSessionCreated(newSession.id, {
+        id: newSession.id,
+        title: newSession.title,
+        isLive: newSession.isLive,
+        participantCount: 0, // Start with 0 participants
+        playerCount: 0, // Start with 0 players
+        code: newSession.code,
+        startedAt: newSession.startedAt,
+        endedAt: newSession.endedAt,
+        createdAt: newSession.createdAt,
       })
-      .where(eq(gameSessions.id, newSession.id))
-
-    // Broadcast session created for solo sessions
-    await WebSocketService.broadcastSessionCreated(newSession.id, {
-      id: newSession.id,
-      title: newSession.title,
-      isLive: newSession.isLive,
-      joinedCount: newSession.joinedCount,
-      code: newSession.code,
-      startedAt: newSession.startedAt,
-      endedAt: newSession.endedAt,
-      createdAt: newSession.createdAt,
-    })
+    }
 
     return c.json({
       ...newSession,
-      participantId: firstParticipant.id,
+      participantId: null, // Host is not a participant by default
     }, 201)
   } catch (error) {
     console.error('Error creating game session:', error)
@@ -261,9 +228,11 @@ sessionRoutes.get('/code/:code', async (c) => {
       .select({
         id: gameSessions.id,
         title: gameSessions.title,
+        imageUrl: gameSessions.imageUrl,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
-        joinedCount: gameSessions.joinedCount,
+        participantCount: gameSessions.participantCount,
+        playerCount: gameSessions.playerCount,
         code: gameSessions.code,
         startedAt: gameSessions.startedAt,
         createdAt: gameSessions.createdAt,
@@ -305,11 +274,13 @@ sessionRoutes.get('/:id', async (c) => {
         hostId: gameSessions.hostId,
         title: gameSessions.title,
         description: gameSessions.description,
+        imageUrl: gameSessions.imageUrl,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
         isPublic: gameSessions.isPublic,
-        joinedCount: gameSessions.joinedCount,
-        maxPlayers: gameSessions.maxPlayers,
+        participantCount: gameSessions.participantCount,
+        playerCount: gameSessions.playerCount,
+        maxParticipants: gameSessions.maxParticipants,
         code: gameSessions.code,
         hasEndTime: gameSessions.hasEndTime,
         endTime: gameSessions.endTime,
@@ -372,8 +343,18 @@ sessionRoutes.put('/:id', authMiddleware, async (c) => {
     
     if (body.title !== undefined) updateData.title = body.title
     if (body.description !== undefined) updateData.description = body.description
+    if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl
     if (body.isPublic !== undefined) updateData.isPublic = body.isPublic
-    if (body.maxPlayers !== undefined) updateData.maxPlayers = body.maxPlayers
+    
+    // Allow maxPlayers to be updated ONLY if session hasn't started (not live and only host joined)
+    if (body.maxParticipants !== undefined) {
+      if (!session.isLive && session.participantCount <= 1) {
+        updateData.maxParticipants = body.maxParticipants
+      } else {
+        return c.json({ error: 'Cannot change max players after session has started or participants have joined' }, 400)
+      }
+    }
+    
     if (body.hasEndTime !== undefined) updateData.hasEndTime = body.hasEndTime
     if (body.endTime !== undefined) updateData.endTime = body.endTime ? new Date(body.endTime) : null
 
@@ -384,17 +365,64 @@ sessionRoutes.put('/:id', authMiddleware, async (c) => {
       .where(eq(gameSessions.id, sessionId))
       .returning()
 
-    // Broadcast session update
-    await WebSocketService.broadcastSessionUpdate(sessionId, {
-      isPublic: updatedSession.isPublic,
-      maxPlayers: updatedSession.maxPlayers,
-      title: updatedSession.title,
-    })
+    // TODO: Broadcast session update to participants if needed
+    // await WebSocketService.broadcastSessionUpdate(sessionId, updatedSession)
 
     return c.json(updatedSession, 200)
   } catch (error) {
     console.error('Error updating session:', error)
     return c.json({ error: 'Failed to update session' }, 500)
+  }
+})
+
+// Start a session (set isLive = true)
+sessionRoutes.post('/:id/start', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const sessionId = c.req.param('id')
+
+  try {
+    // Get current session
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+
+    // Only host can start session
+    if (session.hostId !== userId) {
+      return c.json({ error: 'Only the host can start this session' }, 403)
+    }
+
+    // Check session hasn't ended
+    if (session.endedAt) {
+      return c.json({ error: 'Session has already ended' }, 400)
+    }
+
+    // Check session isn't already live
+    if (session.isLive) {
+      return c.json({ error: 'Session is already live' }, 400)
+    }
+
+    // Update session to live
+    const [updatedSession] = await db
+      .update(gameSessions)
+      .set({
+        isLive: true,
+        startedAt: new Date(),
+      })
+      .where(eq(gameSessions.id, sessionId))
+      .returning()
+
+    // Broadcast session started event to all participants
+    await WebSocketService.broadcastSessionStarted(sessionId)
+
+    return c.json(updatedSession, 200)
+  } catch (error) {
+    console.error('Error starting session:', error)
+    return c.json({ error: 'Failed to start session' }, 500)
   }
 })
 
@@ -412,11 +440,33 @@ sessionRoutes.post('/:id/join', authMiddleware, async (c) => {
       return c.json({ error: 'Session not found' }, 404)
     }
 
-    if (session.endedAt) {
-      return c.json({ error: 'Session has ended' }, 400)
+    // Allow rejoining sessions that were auto-ended (for "Play Again" functionality)
+    // Only prevent joining if session is truly ended (not live and explicitly ended by host)
+    // Auto-ended sessions (endedAt set but could be from auto-completion) can be rejoined
+    if (session.endedAt && !session.isLive) {
+      // Check if this user already has participants - if yes, allow Play Again
+      const existingUserParticipants = await db
+        .select()
+        .from(gameSessionParticipants)
+        .where(and(
+          eq(gameSessionParticipants.sessionId, sessionId),
+          eq(gameSessionParticipants.userId, userId)
+        ))
+      
+      // If user has no previous attempts, session is truly ended - reject
+      if (existingUserParticipants.length === 0) {
+        return c.json({ error: 'Session has ended' }, 400)
+      }
+      // Otherwise allow Play Again - user is rejoining for another attempt
     }
 
-    const [existingParticipant] = await db
+    // Check if session has capacity
+    if (session.participantCount >= session.maxParticipants) {
+      return c.json({ error: 'Session is full' }, 400)
+    }
+
+    // Check if this is user's first join (for playerCount tracking)
+    const existingParticipants = await db
       .select()
       .from(gameSessionParticipants)
       .where(and(
@@ -424,10 +474,9 @@ sessionRoutes.post('/:id/join', authMiddleware, async (c) => {
         eq(gameSessionParticipants.userId, userId)
       ))
 
-    if (existingParticipant) {
-      return c.json({ message: 'Already joined this session', participant: existingParticipant })
-    }
+    const isFirstJoin = existingParticipants.length === 0
 
+    // Create new participant (allow multiple attempts)
     const [newParticipant] = await db
       .insert(gameSessionParticipants)
       .values({
@@ -436,10 +485,13 @@ sessionRoutes.post('/:id/join', authMiddleware, async (c) => {
       })
       .returning()
 
+    // Update session counts
+    // Note: participantCount tracks total completed plays, not joins
+    // It will be incremented when participant completes all questions
     await db
       .update(gameSessions)
       .set({
-        joinedCount: session.joinedCount + 1,
+        playerCount: isFirstJoin ? session.playerCount + 1 : session.playerCount,
       })
       .where(eq(gameSessions.id, sessionId))
 
@@ -454,6 +506,113 @@ sessionRoutes.post('/:id/join', authMiddleware, async (c) => {
 })
 
 
+
+sessionRoutes.get('/:id/participants', async (c) => {
+  const sessionId = c.req.param('id')
+
+  try {
+    const participants = await db
+      .select({
+        id: gameSessionParticipants.id,
+        userId: gameSessionParticipants.userId,
+        score: gameSessionParticipants.score,
+        rank: gameSessionParticipants.rank,
+        joinedAt: gameSessionParticipants.joinedAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+      })
+      .from(gameSessionParticipants)
+      .leftJoin(users, eq(gameSessionParticipants.userId, users.id))
+      .where(eq(gameSessionParticipants.sessionId, sessionId))
+      .orderBy(gameSessionParticipants.joinedAt)
+
+    return c.json(participants)
+  } catch (error) {
+    console.error('Error fetching participants:', error)
+    return c.json({ error: 'Failed to fetch participants' }, 500)
+  }
+})
+
+// Get current user's participants in this session with progress info
+sessionRoutes.get('/:id/participants/me', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const sessionId = c.req.param('id')
+
+  try {
+    // Get session to fetch total questions
+    const [session] = await db
+      .select({
+        quizSnapshotId: gameSessions.quizSnapshotId,
+      })
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+
+    // Get total questions for this session
+    const totalQuestionsResult = await db
+      .select({
+        count: sql<number>`COUNT(*)`.mapWith(Number),
+      })
+      .from(questionsSnapshots)
+      .where(eq(questionsSnapshots.snapshotId, session.quizSnapshotId))
+
+    const totalQuestions = totalQuestionsResult[0]?.count || 0
+
+    // Get user's participants with answered question count
+    // Only include participants who have started playing (have at least one question_timing record)
+    const participants = await db
+      .select({
+        id: gameSessionParticipants.id,
+        sessionId: gameSessionParticipants.sessionId,
+        userId: gameSessionParticipants.userId,
+        score: gameSessionParticipants.score,
+        rank: gameSessionParticipants.rank,
+        joinedAt: gameSessionParticipants.joinedAt,
+        answeredQuestions: sql<number>`COUNT(DISTINCT CASE WHEN ${questionTimings.submittedAt} IS NOT NULL THEN ${questionTimings.questionSnapshotId} END)`.mapWith(Number),
+        totalTimings: sql<number>`COUNT(${questionTimings.id})`.mapWith(Number),
+      })
+      .from(gameSessionParticipants)
+      .leftJoin(
+        questionTimings,
+        eq(questionTimings.participantId, gameSessionParticipants.id)
+      )
+      .where(and(
+        eq(gameSessionParticipants.sessionId, sessionId),
+        eq(gameSessionParticipants.userId, userId)
+      ))
+      .groupBy(
+        gameSessionParticipants.id,
+        gameSessionParticipants.sessionId,
+        gameSessionParticipants.userId,
+        gameSessionParticipants.score,
+        gameSessionParticipants.rank,
+        gameSessionParticipants.joinedAt
+      )
+      .having(sql`COUNT(${questionTimings.id}) > 0`)
+      .orderBy(desc(gameSessionParticipants.joinedAt))
+
+    // Add computed fields - assign attempt numbers chronologically
+    // With DESC order: index 0 = newest (highest #), index N = oldest (#1)
+    const participantsWithProgress = participants.map((p, index) => ({
+      ...p,
+      totalQuestions,
+      isCompleted: p.answeredQuestions >= totalQuestions,
+      attemptNumber: participants.length - index, // Latest gets highest number
+    }))
+
+    return c.json({ participants: participantsWithProgress })
+  } catch (error) {
+    console.error('Error fetching user participants:', error)
+    return c.json({ error: 'Failed to fetch user participants' }, 500)
+  }
+})
 
 sessionRoutes.get('/:id/leaderboard', async (c) => {
   const sessionId = c.req.param('id')
@@ -525,7 +684,7 @@ sessionRoutes.get('/:id/question/:index', authMiddleware, async (c) => {
       return c.json({ error: 'Session not found' }, 404)
     }
 
-    // Find participant record
+    // Find the LATEST participant for this user in this session (for "Play Again" support)
     const [participant] = await db
       .select()
       .from(gameSessionParticipants)
@@ -533,6 +692,8 @@ sessionRoutes.get('/:id/question/:index', authMiddleware, async (c) => {
         eq(gameSessionParticipants.sessionId, sessionId),
         eq(gameSessionParticipants.userId, userId)
       ))
+      .orderBy(desc(gameSessionParticipants.joinedAt))
+      .limit(1)
 
     if (!participant) {
       return c.json({ error: 'Not a participant in this session' }, 404)
@@ -609,7 +770,7 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
       return c.json({ error: 'questionId and answer are required' }, 400)
     }
 
-    // Find participant record
+    // Find the LATEST participant for this user in this session (for "Play Again" support)
     const [participant] = await db
       .select()
       .from(gameSessionParticipants)
@@ -617,6 +778,8 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
         eq(gameSessionParticipants.sessionId, sessionId),
         eq(gameSessionParticipants.userId, userId)
       ))
+      .orderBy(desc(gameSessionParticipants.joinedAt))
+      .limit(1)
 
     if (!participant) {
       return c.json({ error: 'Not a participant in this session' }, 404)
@@ -672,6 +835,46 @@ sessionRoutes.post('/:id/answer', authMiddleware, async (c) => {
       })
       .where(eq(gameSessionParticipants.id, participant.id))
 
+    // Check if this participant just completed all questions for the first time
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+    
+    if (session) {
+      // Get total questions for this session
+      const sessionQuestions = await db
+        .select()
+        .from(questionsSnapshots)
+        .where(eq(questionsSnapshots.snapshotId, session.quizSnapshotId))
+      
+      const totalQuestions = sessionQuestions.length
+      
+      // Count how many questions this participant has answered (including the one just submitted)
+      const [answeredCount] = await db
+        .select({
+          count: sql<number>`COUNT(DISTINCT ${questionTimings.questionSnapshotId})`.mapWith(Number)
+        })
+        .from(questionTimings)
+        .where(and(
+          eq(questionTimings.participantId, participant.id),
+          sql`${questionTimings.submittedAt} IS NOT NULL`
+        ))
+      
+      // If participant just completed all questions (answeredCount equals totalQuestions)
+      // Increment participantCount (total plays)
+      if (answeredCount.count === totalQuestions) {
+        await db
+          .update(gameSessions)
+          .set({
+            participantCount: sql`${gameSessions.participantCount} + 1`,
+          })
+          .where(eq(gameSessions.id, sessionId))
+        
+        console.log(`Participant ${participant.id} completed all ${totalQuestions} questions - incrementing play count to ${session.participantCount + 1}`)
+      }
+    }
+
     // Check if session should be automatically completed
     await checkAndCompleteSession(sessionId)
 
@@ -694,9 +897,11 @@ sessionRoutes.get('/user/:userId/hosted', async (c) => {
       .select({
         id: gameSessions.id,
         title: gameSessions.title,
+        imageUrl: gameSessions.imageUrl,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
-        joinedCount: gameSessions.joinedCount,
+        participantCount: gameSessions.participantCount,
+        playerCount: gameSessions.playerCount,
         code: gameSessions.code,
         startedAt: gameSessions.startedAt,
         endedAt: gameSessions.endedAt,
@@ -727,6 +932,7 @@ sessionRoutes.post('/:id/leave', authMiddleware, async (c) => {
       return c.json({ error: 'Session not found' }, 404)
     }
 
+    // Find the LATEST participant for this user in this session
     const [existingParticipant] = await db
       .select()
       .from(gameSessionParticipants)
@@ -734,29 +940,45 @@ sessionRoutes.post('/:id/leave', authMiddleware, async (c) => {
         eq(gameSessionParticipants.sessionId, sessionId),
         eq(gameSessionParticipants.userId, userId)
       ))
+      .orderBy(desc(gameSessionParticipants.joinedAt))
+      .limit(1)
 
     if (!existingParticipant) {
       return c.json({ error: 'Not a participant in this session' }, 400)
     }
 
-    await db
-      .delete(gameSessionParticipants)
-      .where(and(
-        eq(gameSessionParticipants.sessionId, sessionId),
-        eq(gameSessionParticipants.userId, userId)
-      ))
+    // Check if participant has started playing (has any question_timings)
+    const timings = await db
+      .select()
+      .from(questionTimings)
+      .where(eq(questionTimings.participantId, existingParticipant.id))
+      .limit(1)
 
-    await db
-      .update(gameSessions)
-      .set({
-        joinedCount: Math.max(0, session.joinedCount - 1),
+    // Only delete participant if they haven't started playing
+    // If they have timings, preserve their game progress
+    if (timings.length === 0) {
+      // No timings = lobby member only, safe to delete
+      // Delete by ID to avoid deleting all participants for this user
+      await db
+        .delete(gameSessionParticipants)
+        .where(eq(gameSessionParticipants.id, existingParticipant.id))
+
+      // Note: No need to decrement participantCount since it only tracks completed plays
+      // and this participant never completed (no timings)
+
+      // Broadcast participant left event
+      await WebSocketService.broadcastParticipantLeft(sessionId, userId)
+
+      return c.json({ message: 'Left session successfully' })
+    } else {
+      // Has timings = game in progress, keep participant record
+      // Just acknowledge the leave request (user navigating away)
+      // The participant record preserves their progress
+      return c.json({ 
+        message: 'Progress saved', 
+        note: 'Participant record preserved for game continuation' 
       })
-      .where(eq(gameSessions.id, sessionId))
-
-    // Broadcast participant left event
-    await WebSocketService.broadcastParticipantLeft(sessionId, userId)
-
-    return c.json({ message: 'Left session successfully' })
+    }
   } catch (error) {
     console.error('Error leaving session:', error)
     return c.json({ error: 'Failed to leave session' }, 500)
@@ -772,13 +994,25 @@ sessionRoutes.get('/user/:userId/played', async (c) => {
         id: gameSessions.id,
         hostId: gameSessions.hostId,
         title: gameSessions.title,
+        imageUrl: gameSessions.imageUrl,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
-        joinedCount: gameSessions.joinedCount,
+        participantCount: gameSessions.participantCount,
         code: gameSessions.code,
         startedAt: gameSessions.startedAt,
         endedAt: gameSessions.endedAt,
         createdAt: gameSessions.createdAt,
+        host: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePictureUrl: users.profilePictureUrl,
+        },
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+        },
         snapshot: {
           id: quizSnapshots.id,
           quizId: quizSnapshots.quizId,
@@ -795,10 +1029,26 @@ sessionRoutes.get('/user/:userId/played', async (c) => {
       .from(gameSessionParticipants)
       .leftJoin(gameSessions, eq(gameSessionParticipants.sessionId, gameSessions.id))
       .leftJoin(quizSnapshots, eq(gameSessions.quizSnapshotId, quizSnapshots.id))
+      .leftJoin(quizzes, eq(quizSnapshots.quizId, quizzes.id))
+      .leftJoin(categories, eq(quizzes.categoryId, categories.id))
+      .leftJoin(users, eq(gameSessions.hostId, users.id))
       .where(eq(gameSessionParticipants.userId, targetUserId))
       .orderBy(desc(gameSessionParticipants.joinedAt))
 
-    return c.json(playedSessions)
+    // Deduplicate sessions - keep only the most recent participant for each session
+    const uniqueSessions = new Map()
+    
+    for (const session of playedSessions) {
+      const sessionId = session.id
+      
+      // If we haven't seen this session yet, or this participant is more recent
+      if (!uniqueSessions.has(sessionId)) {
+        uniqueSessions.set(sessionId, session)
+      }
+      // Note: Already ordered by joinedAt DESC, so first occurrence is most recent
+    }
+
+    return c.json(Array.from(uniqueSessions.values()))
   } catch (error) {
     console.error('Error fetching played sessions:', error)
     return c.json({ error: 'Failed to fetch played sessions' }, 500)

@@ -16,6 +16,27 @@ export class WebSocketService {
   // Broadcast participant joined event (called from HTTP join endpoint)
   static async broadcastParticipantJoined(sessionId: string, userId: string) {
     try {
+      // Get participant record from database
+      const [participant] = await db
+        .select({
+          id: gameSessionParticipants.id,
+          userId: gameSessionParticipants.userId,
+          score: gameSessionParticipants.score,
+          rank: gameSessionParticipants.rank,
+          joinedAt: gameSessionParticipants.joinedAt,
+        })
+        .from(gameSessionParticipants)
+        .where(and(
+          eq(gameSessionParticipants.sessionId, sessionId),
+          eq(gameSessionParticipants.userId, userId)
+        ))
+        .limit(1)
+
+      if (!participant) {
+        console.error('Participant record not found:', userId, sessionId)
+        return
+      }
+
       const userInfo = await getUserInfo(userId)
       if (!userInfo) {
         console.error('User not found for participant broadcast:', userId)
@@ -26,10 +47,14 @@ export class WebSocketService {
         type: 'participant_joined',
         sessionId,
         participant: {
-          id: userId,
+          id: participant.id,
+          userId: participant.userId,
           username: userInfo.username,
           fullName: userInfo.fullName,
           profilePictureUrl: userInfo.profilePictureUrl,
+          score: participant.score,
+          rank: participant.rank,
+          joinedAt: participant.joinedAt.toISOString(),
         },
       }
 
@@ -53,6 +78,21 @@ export class WebSocketService {
       console.log(`Broadcasted session created for session ${sessionId}`)
     } catch (error) {
       console.error('Error broadcasting session created:', error)
+    }
+  }
+
+  // Broadcast session started event (called from HTTP start endpoint)
+  static async broadcastSessionStarted(sessionId: string) {
+    try {
+      const message: WebSocketMessage = {
+        type: 'session_started',
+        sessionId,
+      }
+
+      broadcastToSession(sessionId, message)
+      console.log(`Broadcasted session started for session ${sessionId}`)
+    } catch (error) {
+      console.error('Error broadcasting session started:', error)
     }
   }
 
@@ -213,7 +253,7 @@ export class WebSocketService {
           id: gameSessions.id,
           title: gameSessions.title,
           isLive: gameSessions.isLive,
-          joinedCount: gameSessions.joinedCount,
+          participantCount: gameSessions.participantCount,
           startedAt: gameSessions.startedAt,
           endedAt: gameSessions.endedAt,
         })
