@@ -3,12 +3,15 @@ import "package:flutter/services.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "dart:convert";
+import "dart:async";
 import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
-import "package:intl/intl.dart";
-import "package:qr_flutter/qr_flutter.dart";
 import "../../services/api_service.dart";
+import "../../services/websocket_service.dart";
 
+/// Session Detail Page - For viewing and resuming existing sessions
+/// Used by Continue Playing cards
+/// Routes user to appropriate page based on session state
 class SessionDetailPage extends StatefulWidget {
   final String sessionId;
 
@@ -18,17 +21,163 @@ class SessionDetailPage extends StatefulWidget {
   State<SessionDetailPage> createState() => _SessionDetailPageState();
 }
 
-class _SessionDetailPageState extends State<SessionDetailPage> {
+class _SessionDetailPageState extends State<SessionDetailPage>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _sessionData;
   Map<String, dynamic>? _quizData;
-  List<dynamic> _userParticipants = [];
+  String? _currentUserId;
+  bool _isHost = false;
+
+  // WebSocket state
+  StreamSubscription<List<Participant>>? _participantsSubscription;
+  StreamSubscription<WebSocketMessage>? _messagesSubscription;
+  List<Participant> _participants = [];
+  final _wsService = WebSocketService();
+
+  // Tab controller
+  late TabController _tabController;
+
+  // My participants data
+  List<Map<String, dynamic>> _myParticipants = [];
+  bool _loadingMyParticipants = false;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+
     _loadSessionData();
+    _setupWebSocket();
+    _loadMyParticipants();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _participantsSubscription?.cancel();
+    _messagesSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _setupWebSocket() async {
+    try {
+      // Connect to WebSocket
+      await _wsService.connect();
+
+      // Join session for real-time updates
+      await _wsService.joinSession(widget.sessionId);
+
+      // Listen to participants stream for real-time updates
+      _participantsSubscription = _wsService.participants.listen((
+        participants,
+      ) {
+        if (mounted) {
+          setState(() {
+            _participants = participants;
+          });
+        }
+      });
+
+      // Listen for session events to keep session state up-to-date
+      _messagesSubscription = _wsService.messages.listen((message) {
+        if (!mounted) return;
+
+        if (message.type == WebSocketMessageType.sessionStarted) {
+          if (message.sessionId == widget.sessionId) {
+            debugPrint('[SessionDetail] Session started! Button will enable.');
+            // Update session state to live
+            setState(() {
+              _sessionData = {
+                ..._sessionData ?? {},
+                'isLive': true,
+                'startedAt': DateTime.now().toIso8601String(),
+              };
+            });
+            // Don't auto-navigate - let user click the button to join
+          }
+        } else if (message.type == WebSocketMessageType.sessionUpdate) {
+          if (message.sessionId == widget.sessionId && message.data != null) {
+            debugPrint('[SessionDetail] Session updated - refreshing state');
+            // Update session state when session changes
+            setState(() {
+              _sessionData = {
+                ..._sessionData ?? {},
+                if (message.data!.containsKey('isLive'))
+                  'isLive': message.data!['isLive'],
+                if (message.data!.containsKey('startedAt'))
+                  'startedAt': message.data!['startedAt'],
+                if (message.data!.containsKey('endedAt'))
+                  'endedAt': message.data!['endedAt'],
+              };
+            });
+          }
+        } else if (message.type == WebSocketMessageType.sessionEnded) {
+          if (message.sessionId == widget.sessionId) {
+            debugPrint('[SessionDetail] Session ended');
+            // Mark session as no longer live
+            setState(() {
+              _sessionData = {
+                ..._sessionData ?? {},
+                'isLive': false,
+                'endedAt': DateTime.now().toIso8601String(),
+              };
+            });
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Error setting up WebSocket: $e');
+    }
+  }
+
+  Future<void> _loadParticipants() async {
+    try {
+      final authSession = Supabase.instance.client.auth.currentSession;
+      if (authSession == null) return;
+
+      final serverUrl = dotenv.env["SERVER_URL"];
+      final response = await http.get(
+        Uri.parse("$serverUrl/api/session/${widget.sessionId}/participants"),
+        headers: {"Authorization": "Bearer ${authSession.accessToken}"},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _participants = data.map((p) => Participant.fromJson(p)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading participants: $e');
+    }
+  }
+
+  Future<void> _loadMyParticipants() async {
+    try {
+      setState(() {
+        _loadingMyParticipants = true;
+      });
+
+      final result = await ApiService.getMyParticipants(widget.sessionId);
+
+      if (mounted) {
+        setState(() {
+          _myParticipants = List<Map<String, dynamic>>.from(
+            result['participants'] ?? [],
+          );
+          _loadingMyParticipants = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading my participants: $e');
+      if (mounted) {
+        setState(() {
+          _loadingMyParticipants = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadSessionData() async {
@@ -39,7 +188,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
       }
 
       final serverUrl = dotenv.env["SERVER_URL"];
-      final userId = authSession.user.id;
+      _currentUserId = authSession.user.id;
 
       // Load session details
       final sessionResponse = await http.get(
@@ -52,8 +201,10 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
       }
 
       final sessionData = jsonDecode(sessionResponse.body);
-      print('🔍 DEBUG Raw Session Data: $sessionData');
       final quizId = sessionData["snapshot"]?["quizId"];
+
+      // Check if current user is host
+      _isHost = sessionData["hostId"] == _currentUserId;
 
       // Load quiz details
       if (quizId != null) {
@@ -65,29 +216,10 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
         }
       }
 
-      // Load user's participants for this quiz
-      final participantsResponse = await http.get(
-        Uri.parse("$serverUrl/api/session/user/$userId/played"),
-        headers: {"Authorization": "Bearer ${authSession.accessToken}"},
-      );
-
-      if (participantsResponse.statusCode == 200) {
-        final allParticipants = jsonDecode(participantsResponse.body) as List;
-
-        // Filter participants for this specific quiz
-        final quizParticipants = allParticipants.where((p) {
-          final participantQuiz = p["snapshot"]?["quizId"];
-          return participantQuiz == quizId;
-        }).toList();
-
-        setState(() {
-          _sessionData = sessionData;
-          _userParticipants = quizParticipants;
-          _isLoading = false;
-        });
-      } else {
-        throw Exception("Failed to load participants data");
-      }
+      setState(() {
+        _sessionData = sessionData;
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -96,230 +228,121 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     }
   }
 
-  void _startNewSession() {
-    if (_quizData != null) {
-      // Navigate to play quiz page with current session
-      final quizId = _quizData!["id"];
-      context.push('/quiz/$quizId/play?sessionId=${widget.sessionId}');
-    }
-  }
+  Future<void> _continueSession() async {
+    if (_quizData == null) return;
 
-  Future<void> _shareSession() async {
-    final isPublic = _sessionData?["isPublic"] ?? false;
-
-    // If session is private, prompt to make it public
-    if (!isPublic) {
-      final shouldMakePublic = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("Switch To Public Mode?"),
-          content: const Text(
-            "This session is currently private. Would you like to make it public so others can join using the code or QR?",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text("Keep Private"),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text("Make Public"),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldMakePublic == true) {
-        await _updateSessionVisibility(true);
-      } else {
-        return; // User chose to keep it private
-      }
-    }
-
-    // Show share options
-    _showShareOptions();
-  }
-
-  Future<void> _updateSessionVisibility(bool isPublic) async {
     try {
-      final authSession = Supabase.instance.client.auth.currentSession;
-      if (authSession == null) return;
+      final lastParticipant = _myParticipants.isNotEmpty
+          ? _myParticipants.last
+          : null;
+      final isPlayAgain =
+          lastParticipant != null && (lastParticipant['isCompleted'] ?? true);
 
-      final serverUrl = dotenv.env["SERVER_URL"];
-      final response = await http.put(
-        Uri.parse("$serverUrl/api/session/${widget.sessionId}"),
-        headers: {
-          "Authorization": "Bearer ${authSession.accessToken}",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({"isPublic": isPublic}),
+      debugPrint('[SessionDetail] _continueSession called');
+      debugPrint(
+        '[SessionDetail] _myParticipants.length: ${_myParticipants.length}',
       );
+      debugPrint('[SessionDetail] lastParticipant: $lastParticipant');
+      debugPrint('[SessionDetail] isPlayAgain: $isPlayAgain');
 
-      if (response.statusCode == 200) {
-        setState(() {
-          _sessionData?["isPublic"] = isPublic;
-        });
-        if (mounted) {
+      // If "Play Again" (last game completed), create new participant
+      if (isPlayAgain) {
+        debugPrint(
+          '[SessionDetail] Creating new participant for Play Again...',
+        );
+        final authSession = Supabase.instance.client.auth.currentSession;
+        if (authSession == null) return;
+
+        final serverUrl = dotenv.env["SERVER_URL"];
+        final response = await http.post(
+          Uri.parse("$serverUrl/api/session/${widget.sessionId}/join"),
+          headers: {
+            "Authorization": "Bearer ${authSession.accessToken}",
+            "Content-Type": "application/json",
+          },
+        );
+
+        debugPrint(
+          '[SessionDetail] Join response status: ${response.statusCode}',
+        );
+        debugPrint('[SessionDetail] Join response body: ${response.body}');
+
+        if (response.statusCode != 201 && response.statusCode != 200) {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                isPublic ? "Session is now public" : "Session is now private",
-              ),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text("Failed to join session: ${response.body}")),
           );
+          return;
         }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error updating session: ${e.toString()}"),
-            backgroundColor: Colors.red,
-          ),
+
+        // Reload participants to get the new one
+        debugPrint('[SessionDetail] Reloading participants after join...');
+        await _loadMyParticipants();
+        debugPrint(
+          '[SessionDetail] After reload, _myParticipants.length: ${_myParticipants.length}',
+        );
+      } else {
+        debugPrint(
+          '[SessionDetail] Not Play Again - continuing with existing participant',
         );
       }
+
+      // Navigate to play page
+      if (!mounted) return;
+      final quizId = _quizData!["id"];
+      await context.push('/quiz/$quizId/play?sessionId=${widget.sessionId}');
+
+      // Refresh data after returning from play page
+      if (mounted) {
+        debugPrint(
+          '[SessionDetail] Returned from play page, refreshing data...',
+        );
+        await _loadMyParticipants();
+        await _loadSessionData(); // Refresh session info (participantCount, etc.)
+
+        // Switch to "My Games" tab to show the completed attempt
+        _tabController.animateTo(1); // Index 1 is "My Games" tab
+        debugPrint('[SessionDetail] Switched to My Games tab');
+      }
+    } catch (e) {
+      debugPrint('Error in _continueSession: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Failed to start game")));
+      }
     }
   }
 
-  void _showShareOptions() {
+  void _copySessionCode() {
     final code = _sessionData?["code"];
-    if (code == null) return;
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Share Session",
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-
-            // QR Code
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: QrImageView(
-                data: code,
-                version: QrVersions.auto,
-                size: 200.0,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Session Code
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    code,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 4,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    icon: const Icon(Icons.copy),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: code));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Code copied to clipboard"),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "Share this code or QR with others to join",
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    if (code != null) {
+      Clipboard.setData(ClipboardData(text: code));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Session code copied to clipboard!"),
+          duration: Duration(seconds: 2),
         ),
-      ),
-    );
-  }
-
-  void _continueParticipant(Map<String, dynamic> participant) {
-    final sessionId = participant["id"];
-    context.push('/quiz/session/detail/$sessionId');
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    final isHost =
-        _sessionData != null && _sessionData!["hostId"] == currentUserId;
-
-    // Debug log
-    if (_sessionData != null) {
-      print('🔍 DEBUG Session Detail:');
-      print('  Current User ID: $currentUserId');
-      print('  Session Host ID: ${_sessionData!["hostId"]}');
-      print('  Is Host: $isHost');
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
           "Session Details",
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
+            color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: theme.colorScheme.surface,
         actions: [
-          // Debug info badge
-          if (_sessionData != null)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isHost ? Colors.green : Colors.orange,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                isHost ? 'HOST' : 'GUEST',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          if (!_isLoading && isHost)
+          if (_isHost && !_isLoading)
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () async {
@@ -327,134 +350,458 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                   '/quiz/session/edit/${widget.sessionId}',
                 );
                 if (result == true && mounted) {
-                  _loadSessionData(); // Reload data after edit
+                  _loadSessionData();
                 }
               },
-              tooltip: "Edit Session",
             ),
-          const SizedBox(width: 8),
         ],
       ),
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: theme.colorScheme.surface,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
           ? _buildErrorView()
-          : RefreshIndicator(
-              onRefresh: _loadSessionData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Quiz Information Card
-                    if (_quizData != null) _buildQuizInfoCard(theme),
-                    const SizedBox(height: 24),
-
-                    // Session Information Card
-                    if (_sessionData != null) _buildSessionInfoCard(theme),
-                    const SizedBox(height: 24),
-
-                    // Action Buttons
-                    _buildActionButtons(theme),
-                    const SizedBox(height: 24),
-
-                    // Previous Participants
-                    if (_userParticipants.isNotEmpty) ...[
-                      Text(
-                        "Your Previous Sessions",
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+          : Column(
+              children: [
+                // Session and Quiz Info Cards (outside tabs)
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildSessionInfoCard(theme),
                       const SizedBox(height: 16),
-                      ..._userParticipants.map(
-                        (participant) =>
-                            _buildParticipantCard(participant, theme),
-                      ),
+                      _buildQuizInfoCard(theme),
                     ],
+                  ),
+                ),
+
+                // Tabs
+                TabBar(
+                  controller: _tabController,
+                  labelColor: theme.colorScheme.primary,
+                  unselectedLabelColor: theme.colorScheme.onSurface.withValues(
+                    alpha: 0.6,
+                  ),
+                  indicatorColor: theme.colorScheme.primary,
+                  tabs: const [
+                    Tab(text: "All Participants"),
+                    Tab(text: "My Games"),
                   ],
                 ),
-              ),
+
+                // Tab Content
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildAllParticipantsTab(theme),
+                      _buildMyGamesTab(theme),
+                    ],
+                  ),
+                ),
+
+                // Action buttons (always visible at bottom)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    border: Border(
+                      top: BorderSide(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: _buildActions(theme),
+                ),
+              ],
             ),
     );
   }
 
-  Widget _buildQuizInfoCard(ThemeData theme) {
+  Widget _buildSessionInfoCard(ThemeData theme) {
+    final sessionTitle = _sessionData?["title"] ?? "Untitled Session";
+    final sessionDescription = _sessionData?["description"];
+    final isLive = _sessionData?["isLive"] ?? false;
+    // Use database participantCount (total completed plays), not WebSocket connection count
+    final participantCount = _sessionData?["participantCount"] ?? 0;
+    final maxParticipants = _sessionData?["maxParticipants"] ?? 1;
+    final isPublic = _sessionData?["isPublic"] ?? false;
+    final code = _sessionData?["code"];
+
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Quiz Header with Image
             Row(
               children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: DecorationImage(
-                      image: NetworkImage(_quizData!["imageUrl"] ?? ""),
-                      fit: BoxFit.cover,
+                Expanded(
+                  child: Text(
+                    sessionTitle,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                if (isLive)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      "LIVE",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (sessionDescription != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                sessionDescription,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(
+                  isPublic ? Icons.public : Icons.lock,
+                  size: 16,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isPublic ? "Public Session" : "Private Session",
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(width: 24),
+                Icon(
+                  Icons.people,
+                  size: 16,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "$participantCount / $maxParticipants plays",
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+            if (code != null && maxParticipants > 1) ...[
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: _copySessionCode,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text("Code: ", style: theme.textTheme.bodyMedium),
+                      Text(
+                        code,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.copy,
+                        size: 16,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuizInfoCard(ThemeData theme) {
+    if (_quizData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final quizTitle = _quizData!["title"] ?? "Unknown Quiz";
+    final questionCount = _quizData!["questionCount"] ?? 0;
+    final category = _quizData!["category"]?["name"];
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Quiz Information",
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.quiz, color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(quizTitle, style: theme.textTheme.bodyLarge),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.help_outline,
+                  size: 16,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "$questionCount questions",
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+                if (category != null) ...[
+                  const SizedBox(width: 16),
+                  Icon(
+                    Icons.category,
+                    size: 16,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    category,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAllParticipantsTab(ThemeData theme) {
+    if (_participants.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(
+            "No participants yet",
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _participants.length,
+      itemBuilder: (context, index) {
+        final participant = _participants[index];
+        return _buildParticipantCard(participant, theme);
+      },
+    );
+  }
+
+  Widget _buildMyGamesTab(ThemeData theme) {
+    return _loadingMyParticipants
+        ? const Center(child: CircularProgressIndicator())
+        : _myParticipants.isEmpty
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Text(
+                "You haven't joined this session yet",
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          )
+        : ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: _myParticipants.length,
+            itemBuilder: (context, index) {
+              final participant = _myParticipants[index];
+              return _buildMyParticipantCard(
+                participant,
+                participant['attemptNumber'] ?? (index + 1),
+                theme,
+              );
+            },
+          );
+  }
+
+  Widget _buildMyParticipantCard(
+    Map<String, dynamic> participant,
+    int attemptNumber,
+    ThemeData theme,
+  ) {
+    final score = participant['score'] ?? 0;
+    final answeredQuestions = participant['answeredQuestions'] ?? 0;
+    final totalQuestions = participant['totalQuestions'] ?? 0;
+    final isCompleted = participant['isCompleted'] ?? false;
+    final joinedAt = DateTime.parse(
+      participant['joinedAt'] ?? DateTime.now().toIso8601String(),
+    );
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '#$attemptNumber',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _quizData!["title"],
-                        style: theme.textTheme.titleLarge?.copyWith(
+                        'Attempt #$attemptNumber',
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
                       Text(
-                        _quizData!["description"] ?? "No description",
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        'Started ${_formatDateTime(joinedAt)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.7,
+                            alpha: 0.6,
                           ),
                         ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isCompleted
+                        ? Colors.green.withValues(alpha: 0.2)
+                        : Colors.orange.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isCompleted ? 'Completed' : 'In Progress',
+                    style: TextStyle(
+                      color: isCompleted ? Colors.green : Colors.orange,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.emoji_events,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text('Score: $score', style: theme.textTheme.bodyMedium),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.quiz,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$answeredQuestions/$totalQuestions',
+                        style: theme.textTheme.bodyMedium,
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Quiz Stats - Simplified
-            Row(
-              children: [
-                _buildStatItem(
-                  Icons.quiz_outlined,
-                  "${_quizData!["questionCount"] ?? 0}",
-                  "Questions",
-                ),
-                const SizedBox(width: 12),
-                _buildStatItem(
-                  Icons.play_arrow_outlined,
-                  "${_quizData!["playCount"] ?? 0}",
-                  "Plays",
-                ),
-                const SizedBox(width: 12),
-                _buildStatItem(
-                  Icons.favorite_outline,
-                  "${_quizData!["favoriteCount"] ?? 0}",
-                  "Favorites",
-                ),
-              ],
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: totalQuestions > 0
+                  ? answeredQuestions / totalQuestions
+                  : 0,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              color: theme.colorScheme.primary,
             ),
           ],
         ),
@@ -462,165 +809,89 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     );
   }
 
-  Widget _buildStatItem(IconData icon, String value, String label) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(
-            alpha: 0.3,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              size: 22,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return 'just now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
   }
 
-  Widget _buildSessionInfoCard(ThemeData theme) {
-    final createdAt = DateTime.parse(_sessionData!["createdAt"]);
-    final formattedDate = DateFormat('MMM dd, yyyy').format(createdAt);
+  Widget _buildActions(ThemeData theme) {
+    final isLive = _sessionData?["isLive"] ?? false;
+    final lastParticipant = _myParticipants.isNotEmpty
+        ? _myParticipants.last
+        : null;
+    final hasIncompleteGame =
+        lastParticipant != null && !(lastParticipant['isCompleted'] ?? true);
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.info_outline, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  "Session Information",
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (_sessionData!["description"] != null &&
-                _sessionData!["description"].toString().isNotEmpty) ...[
-              Text(
-                _sessionData!["description"],
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            _buildInfoRow("Created", formattedDate),
-            if (_sessionData!["code"] != null)
-              _buildInfoRow("Session Code", _sessionData!["code"]),
-            _buildInfoRow("Status", _sessionData!["isLive"] ? "Live" : "Ended"),
-            _buildInfoRow(
-              "Visibility",
-              _sessionData!["isPublic"] == true ? "Public" : "Private",
-            ),
-            if (_sessionData!["joinedCount"] != null)
-              _buildInfoRow("Participants", "${_sessionData!["joinedCount"]}"),
-            if (_sessionData!["maxPlayers"] != null)
-              _buildInfoRow("Max Players", "${_sessionData!["maxPlayers"]}"),
-            if (_sessionData!["hasEndTime"] == true &&
-                _sessionData!["endTime"] != null)
-              _buildInfoRow(
-                "Ends At",
-                DateFormat(
-                  'MMM dd, yyyy • HH:mm',
-                ).format(DateTime.parse(_sessionData!["endTime"])),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+    // Determine button state
+    String buttonText;
+    bool buttonEnabled;
+    IconData buttonIcon;
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              "$label:",
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(value, style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
+    if (!isLive) {
+      buttonText = "Waiting...";
+      buttonEnabled = false;
+      buttonIcon = Icons.hourglass_empty;
+    } else if (lastParticipant == null) {
+      // Never played
+      buttonText = "Play";
+      buttonEnabled = true;
+      buttonIcon = Icons.play_arrow;
+    } else if (lastParticipant['isCompleted'] ?? true) {
+      // Last game completed
+      buttonText = "Play Again";
+      buttonEnabled = true;
+      buttonIcon = Icons.replay;
+    } else {
+      // Last game incomplete
+      buttonText = "Continue Playing";
+      buttonEnabled = true;
+      buttonIcon = Icons.play_arrow;
+    }
 
-  Widget _buildActionButtons(ThemeData theme) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Play Alone Button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _startNewSession,
-            icon: const Icon(Icons.play_arrow),
-            label: const Text("Play Alone"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+        // Main action button
+        ElevatedButton.icon(
+          onPressed: buttonEnabled ? _continueSession : null,
+          icon: Icon(buttonIcon),
+          label: Text(
+            buttonText,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: buttonEnabled
+                ? Colors.green
+                : theme.colorScheme.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
         ),
-        const SizedBox(height: 12),
 
-        // Share Button
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _shareSession,
-            icon: const Icon(Icons.share),
-            label: const Text("Share Code / QR"),
+        // New Game button (only show if there's an incomplete game)
+        if (hasIncompleteGame && isLive) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _startNewGame,
+            icon: const Icon(Icons.add_circle_outline),
+            label: const Text(
+              "New Game",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.primary,
               padding: const EdgeInsets.symmetric(vertical: 16),
               side: BorderSide(color: theme.colorScheme.primary),
               shape: RoundedRectangleBorder(
@@ -628,139 +899,162 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
 
-  Widget _buildParticipantCard(
-    Map<String, dynamic> participant,
-    ThemeData theme,
-  ) {
-    final participantData = participant["participant"] as Map<String, dynamic>?;
-    final joinedAt = DateTime.parse(participantData!["joinedAt"]);
-    final formattedDate = DateFormat('MMM dd, yyyy • HH:mm').format(joinedAt);
+  Future<void> _startNewGame() async {
+    try {
+      // Join session again (creates new participant)
+      final authSession = Supabase.instance.client.auth.currentSession;
+      if (authSession == null) return;
 
-    // Calculate progress (simplified - would need total questions for real progress)
-    final score = participantData["score"] ?? 0;
-    final rank = participantData["rank"];
-    final progress = 0; // Placeholder - would calculate from answered questions
+      final serverUrl = dotenv.env["SERVER_URL"];
+      final response = await http.post(
+        Uri.parse("$serverUrl/api/session/${widget.sessionId}/join"),
+        headers: {
+          "Authorization": "Bearer ${authSession.accessToken}",
+          "Content-Type": "application/json",
+        },
+      );
 
+      if (response.statusCode == 201) {
+        // Reload my participants
+        await _loadMyParticipants();
+
+        // Navigate to play screen and wait for result
+        if (_quizData != null && mounted) {
+          final quizId = _quizData!["id"];
+          await context.push(
+            '/quiz/$quizId/play?sessionId=${widget.sessionId}',
+          );
+
+          // Refresh data after returning from play page
+          if (mounted) {
+            debugPrint(
+              '[SessionDetail] Returned from new game, refreshing data...',
+            );
+            await _loadMyParticipants();
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed to start new game: ${response.body}"),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error starting new game: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to start new game")),
+        );
+      }
+    }
+  }
+
+  Widget _buildParticipantsList(ThemeData theme) {
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () => _continueParticipant(participant),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.people, color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  "Participants (${_participants.length})",
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _participants.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final participant = _participants[index];
+                return _buildParticipantCard(participant, theme);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParticipantCard(Participant participant, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundImage: participant.profilePictureUrl != null
+                ? NetworkImage(participant.profilePictureUrl!)
+                : null,
+            child: participant.profilePictureUrl == null
+                ? Text(
+                    participant.username.isNotEmpty
+                        ? participant.username[0].toUpperCase()
+                        : "?",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  participant.fullName ?? participant.username,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (participant.fullName != null)
                   Text(
-                    "Session from $formattedDate",
+                    "@${participant.username}",
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
-                  if (rank != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.amber,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '#$rank',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
+              ],
+            ),
+          ),
+          if (participant.userId == _currentUserId)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Score",
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.7,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          "$score points",
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Text(
-                            "$progress%",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                        CircularProgressIndicator(
-                          value: progress / 100,
-                          backgroundColor: theme.colorScheme.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            theme.colorScheme.primary,
-                          ),
-                          strokeWidth: 3,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _continueParticipant(participant),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text("Continue This Session"),
+              child: Text(
+                "You",
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
