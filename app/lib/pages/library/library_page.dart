@@ -4,10 +4,10 @@ import "widgets/main_segments.dart";
 import "widgets/sort_button.dart";
 import "services/library_service.dart" show SortOption;
 import "../../widgets/bottom_nav.dart";
+import "../../widgets/app_header.dart";
 import "tabs/created_tab.dart";
 import "tabs/favorites_tab.dart";
 import "tabs/game_tab.dart";
-import "../../services/api_service.dart";
 
 class LibraryPage extends StatefulWidget {
   final bool showBottomNav;
@@ -31,52 +31,39 @@ class _LibraryPageState extends State<LibraryPage> {
   late int _gameTabIndex;
   SortOption _sort = SortOption.newest;
   VoidCallback? _refreshCollectionsCallback;
-  int _unreadNotificationCount = 0;
 
   @override
   void initState() {
     super.initState();
     _selectedCategoryIndex = widget.initialCategoryIndex;
     _gameTabIndex = widget.initialGameTabIndex;
-    _loadUnreadCount();
-  }
-
-  Future<void> _loadUnreadCount() async {
-    try {
-      final count = await ApiService.getUnreadCount();
-      if (mounted) {
-        setState(() {
-          _unreadNotificationCount = count;
-        });
-      }
-    } catch (e) {
-      // Silently fail
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _buildAppBar(context),
-      body: Column(
-        children: [
-          MainSegments(
-            selected: _selectedCategoryIndex,
-            onChanged: (i) => setState(() => _selectedCategoryIndex = i),
-          ),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              child: () {
-                if (_selectedCategoryIndex == 0) return _buildCreatedTab();
-                if (_selectedCategoryIndex == 1) return _buildFavoritesTab();
-                return _buildGameTab();
-              }(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppHeader(title: "Library"),
+            MainSegments(
+              selected: _selectedCategoryIndex,
+              onChanged: (i) => setState(() => _selectedCategoryIndex = i),
             ),
-          ),
-        ],
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: () {
+                  if (_selectedCategoryIndex == 0) return _buildCreatedTab();
+                  if (_selectedCategoryIndex == 1) return _buildFavoritesTab();
+                  return _buildGameTab();
+                }(),
+              ),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: _shouldShowFAB()
           ? FloatingActionButton(
@@ -100,50 +87,6 @@ class _LibraryPageState extends State<LibraryPage> {
     if (result == true && mounted && _refreshCollectionsCallback != null) {
       _refreshCollectionsCallback!();
     }
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      leading: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(Icons.quiz, color: Colors.white, size: 24),
-        ),
-      ),
-      title: const Text(
-        "Library",
-        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-      ),
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      automaticallyImplyLeading: false,
-      actions: [
-        IconButton(
-          icon: Icon(
-            Icons.search,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          onPressed: () => context.push("/search"),
-        ),
-        IconButton(
-          icon: Badge(
-            label: Text(_unreadNotificationCount.toString()),
-            isLabelVisible: _unreadNotificationCount > 0,
-            child: Icon(
-              Icons.notifications_outlined,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          onPressed: () async {
-            await context.push("/notification");
-            _loadUnreadCount();
-          },
-        ),
-      ],
-    );
   }
 
   Widget _buildCreatedTab() {

@@ -333,6 +333,16 @@ class _SessionDetailPageState extends State<SessionDetailPage>
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go("/home");
+            }
+          },
+        ),
         title: Text(
           "Session Details",
           style: TextStyle(

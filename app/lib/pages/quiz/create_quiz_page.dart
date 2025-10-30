@@ -168,7 +168,13 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go("/home");
+            }
+          },
         ),
       ),
       body: Form(

@@ -14,7 +14,8 @@ class FeedyTab extends StatefulWidget {
   State<FeedyTab> createState() => _FeedyTabState();
 }
 
-class _FeedyTabState extends State<FeedyTab> {
+class _FeedyTabState extends State<FeedyTab>
+    with AutomaticKeepAliveClientMixin {
   bool _isLoading = true;
   bool _hasError = false;
   String? _errorMessage;
@@ -23,6 +24,9 @@ class _FeedyTabState extends State<FeedyTab> {
   final int _pageSize = 20;
   final ScrollController _scrollController = ScrollController();
   Map<String, dynamic>? _currentUserProfile;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -274,6 +278,7 @@ class _FeedyTabState extends State<FeedyTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return Stack(
       children: [
         if (_isLoading && _feedItems.isEmpty)

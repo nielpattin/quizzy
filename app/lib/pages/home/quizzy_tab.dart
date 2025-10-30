@@ -1,8 +1,7 @@
 import "dart:async";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "package:supabase_flutter/supabase_flutter.dart";
-import "../../services/api_service.dart";
+import "../../services/home_repository.dart";
 import "widgets/featured_card.dart";
 import "widgets/topic_card.dart";
 import "widgets/trending_card.dart";
@@ -15,15 +14,22 @@ class QuizzyTab extends StatefulWidget {
   State<QuizzyTab> createState() => _QuizzyTabState();
 }
 
-class _QuizzyTabState extends State<QuizzyTab> {
+class _QuizzyTabState extends State<QuizzyTab>
+    with AutomaticKeepAliveClientMixin {
   Future<Map<String, dynamic>>? _dataFuture;
   late PageController _featuredPageController;
+  final _repo = HomeRepository.instance;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     _featuredPageController = PageController(initialPage: 10000);
-    _dataFuture = _loadData();
+    _dataFuture = _repo.get();
+    // Prefetch after first frame to avoid impacting transition
+    WidgetsBinding.instance.addPostFrameCallback((_) => _repo.prefetch());
   }
 
   @override
@@ -32,45 +38,23 @@ class _QuizzyTabState extends State<QuizzyTab> {
     super.dispose();
   }
 
-  Future<Map<String, dynamic>> _loadData() async {
-    final featured = await ApiService.getFeaturedQuizzes();
-    final trending = await ApiService.getTrendingQuizzes();
-    final categories = await ApiService.getCategories();
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-
-    List<dynamic> continuePlaying = [];
-    if (userId != null) {
-      try {
-        final playedSessions = await ApiService.getPlayedSessions(userId);
-        continuePlaying = playedSessions
-            .where((s) => s["endedAt"] == null)
-            .toList();
-      } catch (e) {
-        debugPrint("[QuizzyTab] Error loading continue playing: $e");
-      }
-    }
-
-    return {
-      'featured': featured,
-      'trending': trending,
-      'continuePlaying': continuePlaying,
-      'categories': categories,
-    };
-  }
-
   Future<void> _refresh() async {
     debugPrint("[QuizzyTab] Refreshing Quizzy tab...");
     setState(() {
-      _dataFuture = _loadData();
+      _dataFuture = _repo.get(force: true);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    final initial = _repo.peek();
     return FutureBuilder<Map<String, dynamic>>(
+      initialData: initial,
       future: _dataFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            initial == null) {
           return Center(child: CircularProgressIndicator(strokeWidth: 2));
         }
 

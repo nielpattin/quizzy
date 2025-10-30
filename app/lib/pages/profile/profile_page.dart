@@ -8,6 +8,7 @@ import "widgets/profile_header.dart";
 import "widgets/profile_stats.dart";
 import "widgets/profile_loading_skeleton.dart";
 import "widgets/profile_tabs_content.dart";
+import "../../widgets/app_header.dart";
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -117,164 +118,166 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Profile"),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.edit_outlined,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            onPressed: () async {
-              final result = await context.push<bool>("/edit-profile");
-              if (result == true) {
-                setState(() {
-                  _profileFuture = _loadProfile();
-                });
-              }
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.settings_outlined,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            onPressed: () {
-              context.push("/settings");
-            },
-          ),
-        ],
-      ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _profileFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return ProfileLoadingSkeleton();
-          }
+      body: SafeArea(
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: _profileFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Column(
+                children: [
+                  const AppHeader(title: "Profile"),
+                  Expanded(child: ProfileLoadingSkeleton()),
+                ],
+              );
+            }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading profile',
-                style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+            if (snapshot.hasError) {
+              return Column(
+                children: [
+                  const AppHeader(title: "Profile"),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        'Error loading profile',
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            if (!snapshot.hasData) {
+              return Column(
+                children: [
+                  const AppHeader(title: "Profile"),
+                  Expanded(child: ProfileLoadingSkeleton()),
+                ],
+              );
+            }
+
+            final data = snapshot.data!;
+            final username = data['username'] as String?;
+            final fullName = data['fullName'] as String?;
+            final avatarUrl = data['avatarUrl'] as String?;
+            final bio = data['bio'] as String;
+            final quizzes = data['quizzes'] as List<dynamic>;
+            final sessions = data['sessions'] as List<dynamic>;
+            final posts = data['posts'] as List<dynamic>;
+            final stats = data['stats'] as Map<String, dynamic>;
+
+            return Column(
+              children: [
+                const AppHeader(title: "Profile"),
+                ProfileHeader(
+                  fullName: fullName,
+                  username: username,
+                  avatarUrl: avatarUrl,
+                  onEditPressed: () async {
+                    final result = await context.push<bool>("/edit-profile");
+                    if (result == true) {
+                      setState(() {
+                        _profileFuture = _loadProfile();
+                      });
+                    }
+                  },
+                  onSettingsPressed: () {
+                    context.push("/settings");
+                  },
                 ),
-              ),
+                ProfileStats(
+                  stats: stats,
+                  onFollowersPressed: () {
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
+                    if (currentUserId != null) {
+                      context.push(
+                        "/profile/followers-following?userId=$currentUserId&initialTab=0",
+                      );
+                    }
+                  },
+                  onFollowingPressed: () {
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
+                    if (currentUserId != null) {
+                      context.push(
+                        "/profile/followers-following?userId=$currentUserId&initialTab=1",
+                      );
+                    }
+                  },
+                  onQuizzesPressed: () {
+                    _tabController.animateTo(0);
+                  },
+                  onSessionsPressed: () {
+                    _tabController.animateTo(1);
+                  },
+                ),
+                if (bio.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 4.0,
+                    ),
+                    child: Text(
+                      bio,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: Theme.of(context).colorScheme.primary,
+                    unselectedLabelColor: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    indicatorColor: Theme.of(context).colorScheme.primary,
+                    indicatorWeight: 3,
+                    tabs: const [
+                      Tab(text: "Quizzes"),
+                      Tab(text: "Sessions"),
+                      Tab(text: "Posts"),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      ProfileTabsContent.buildQuizzesTab(
+                        context,
+                        quizzes,
+                        _refreshProfile,
+                      ),
+                      ProfileTabsContent.buildSessionsTab(
+                        context,
+                        sessions,
+                        _refreshProfile,
+                      ),
+                      ProfileTabsContent.buildPostsTab(
+                        context,
+                        posts,
+                        fullName,
+                        avatarUrl,
+                        _refreshProfile,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             );
-          }
-
-          if (!snapshot.hasData) {
-            return ProfileLoadingSkeleton();
-          }
-
-          final data = snapshot.data!;
-          final username = data['username'] as String?;
-          final fullName = data['fullName'] as String?;
-          final avatarUrl = data['avatarUrl'] as String?;
-          final bio = data['bio'] as String;
-          final quizzes = data['quizzes'] as List<dynamic>;
-          final sessions = data['sessions'] as List<dynamic>;
-          final posts = data['posts'] as List<dynamic>;
-          final stats = data['stats'] as Map<String, dynamic>;
-
-          return Column(
-            children: [
-              ProfileHeader(
-                fullName: fullName,
-                username: username,
-                avatarUrl: avatarUrl,
-              ),
-              ProfileStats(
-                stats: stats,
-                onFollowersPressed: () {
-                  final currentUserId =
-                      Supabase.instance.client.auth.currentUser?.id;
-                  if (currentUserId != null) {
-                    context.push(
-                      "/profile/followers-following?userId=$currentUserId&initialTab=0",
-                    );
-                  }
-                },
-                onFollowingPressed: () {
-                  final currentUserId =
-                      Supabase.instance.client.auth.currentUser?.id;
-                  if (currentUserId != null) {
-                    context.push(
-                      "/profile/followers-following?userId=$currentUserId&initialTab=1",
-                    );
-                  }
-                },
-                onQuizzesPressed: () {
-                  _tabController.animateTo(0);
-                },
-                onSessionsPressed: () {
-                  _tabController.animateTo(1);
-                },
-              ),
-              if (bio.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 4.0,
-                  ),
-                  child: Text(
-                    bio,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 13,
-                      height: 1.3,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TabBar(
-                  controller: _tabController,
-                  labelColor: Theme.of(context).colorScheme.primary,
-                  unselectedLabelColor: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  indicatorColor: Theme.of(context).colorScheme.primary,
-                  indicatorWeight: 3,
-                  tabs: [
-                    Tab(text: "Quizzes"),
-                    Tab(text: "Sessions"),
-                    Tab(text: "Posts"),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    ProfileTabsContent.buildQuizzesTab(
-                      context,
-                      quizzes,
-                      _refreshProfile,
-                    ),
-                    ProfileTabsContent.buildSessionsTab(
-                      context,
-                      sessions,
-                      _refreshProfile,
-                    ),
-                    ProfileTabsContent.buildPostsTab(
-                      context,
-                      posts,
-                      fullName,
-                      avatarUrl,
-                      _refreshProfile,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }

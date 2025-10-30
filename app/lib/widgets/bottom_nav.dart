@@ -47,7 +47,7 @@ class BottomNav extends StatelessWidget {
                 icon: Icons.person_outline,
                 label: "Profile",
                 isSelected: selectedIndex == 4,
-                onTap: () => context.push("/profile"),
+                onTap: () => context.go("/profile"),
               ),
             ],
           ),

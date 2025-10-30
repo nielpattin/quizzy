@@ -539,7 +539,7 @@ class _SearchPageState extends State<SearchPage> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => context.push("/profile/${user["id"]}"),
+              onTap: () => context.go("/profile/${user["id"]}"),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.symmetric(

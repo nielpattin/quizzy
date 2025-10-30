@@ -5,12 +5,16 @@ class ProfileHeader extends StatelessWidget {
   final String? fullName;
   final String? username;
   final String? avatarUrl;
+  final VoidCallback? onEditPressed;
+  final VoidCallback? onSettingsPressed;
 
   const ProfileHeader({
     super.key,
     this.fullName,
     this.username,
     this.avatarUrl,
+    this.onEditPressed,
+    this.onSettingsPressed,
   });
 
   @override
@@ -20,7 +24,7 @@ class ProfileHeader extends StatelessWidget {
       child: Row(
         children: [
           UserAvatar(imageUrl: avatarUrl, radius: 32),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,7 +37,7 @@ class ProfileHeader extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   username != null ? "@$username" : "@user",
                   style: TextStyle(
@@ -46,6 +50,22 @@ class ProfileHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (onEditPressed != null)
+            IconButton(
+              icon: Icon(
+                Icons.edit_outlined,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              onPressed: onEditPressed,
+            ),
+          if (onSettingsPressed != null)
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              onPressed: onSettingsPressed,
+            ),
         ],
       ),
     );

@@ -210,6 +210,6 @@ class ContinuePlayingItem extends StatelessWidget {
   void _handleTap(BuildContext context) {
     // Always navigate to session detail page regardless of live status
     // Host can manage session, participants can view and join
-    context.push('/quiz/session/detail/$sessionId');
+    context.go('/quiz/session/detail/$sessionId');
   }
 }

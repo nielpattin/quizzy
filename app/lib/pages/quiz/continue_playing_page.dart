@@ -85,7 +85,7 @@ class _ContinuePlayingPageState extends State<ContinuePlayingPage> {
   }
 
   void _joinSession(String sessionId) {
-    context.push('/quiz/session/detail/$sessionId');
+    context.go('/quiz/session/detail/$sessionId');
   }
 
   @override

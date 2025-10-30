@@ -162,7 +162,7 @@ class _NotificationPageState extends State<NotificationPage> {
       case "follow":
       case "follow_request":
         if (relatedUserId != null) {
-          context.push("/profile/$relatedUserId");
+          context.go("/profile/$relatedUserId");
         }
         break;
       case "quiz_share":

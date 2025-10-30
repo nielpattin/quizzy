@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
-import "package:go_router/go_router.dart";
 import "../../widgets/bottom_nav.dart";
+import "../../widgets/app_header.dart";
 import "qr_tab.dart";
 import "code_tab.dart";
 import "../../utils/camera_state_manager.dart";
@@ -16,7 +16,6 @@ class JoinPage extends StatefulWidget {
 class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
   int _selectedTab = 0;
   bool _isPageVisible = true;
-  bool _shouldCameraBeActive = false;
 
   // Global camera state manager
   final CameraStateManager _cameraStateManager = CameraStateManager();
@@ -44,10 +43,7 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
       _selectedTab = tabIndex;
     });
 
-    // Update camera active state based on tab selection
-    _shouldCameraBeActive = (_selectedTab == 1);
-
-    // Update the camera state manager
+    // Update the camera state manager based on tab selection
     _cameraStateManager.setOnQRTab(_selectedTab == 1);
   }
 
@@ -98,59 +94,15 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
-          _shouldCameraBeActive = false; // Reset camera state
+          // Camera state is managed by CameraStateManager
         }
       },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          leading: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.quiz, color: Colors.white, size: 24),
-            ),
-          ),
-          title: Text(
-            "Join Game",
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          actions: [
-            IconButton(
-              icon: Icon(
-                Icons.search,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              onPressed: () {
-                _shouldCameraBeActive = false; // Reset camera state
-                context.push("/search");
-              },
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.notifications_outlined,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              onPressed: () {
-                _shouldCameraBeActive = false; // Reset camera state
-                context.push("/notification");
-              },
-            ),
-          ],
-        ),
         body: SafeArea(
           child: Column(
             children: [
+              const AppHeader(title: "Join Game"),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -162,7 +114,7 @@ class _JoinPageState extends State<JoinPage> with WidgetsBindingObserver {
                         onTap: () => _onTabChanged(0),
                       ),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: _TabButton(
                         label: "Scan QR Code",

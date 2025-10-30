@@ -9,6 +9,9 @@ import "pages/auth/forgot_password_page.dart";
 import "pages/auth/email_confirmation_page.dart";
 import "pages/auth/setup_account_page.dart";
 import "pages/home/main_navigation_page.dart";
+import "pages/home/home_page.dart";
+import "pages/library/library_page.dart";
+import "pages/social/join_page.dart";
 
 import "pages/profile/profile_info_page.dart";
 import "pages/profile/profile_page.dart";
@@ -36,7 +39,6 @@ import "pages/quiz/create_question_page.dart";
 import "pages/session/edit_session_page.dart";
 import "pages/session/host_control_panel_page.dart";
 import "pages/library/create_collection_page.dart";
-import "pages/library/library_page.dart";
 import "utils/route_observer.dart";
 
 final router = GoRouter(
@@ -93,46 +95,78 @@ final router = GoRouter(
         },
       ),
     ),
-    GoRoute(
-      path: "/home",
-      builder: (context, state) => const MainNavigationPage(initialIndex: 0),
-    ),
 
-    GoRoute(
-      path: "/library",
-      builder: (context, state) {
-        // Check for query parameters to set initial state
-        final category = state.uri.queryParameters['category'];
-        final tab = state.uri.queryParameters['tab'];
-
-        // Determine indices based on query params
-        int categoryIndex = 0; // default: Created
-        int gameTabIndex = 0; // default: Mine
-
-        if (category == 'game') {
-          categoryIndex = 2; // Game tab
-          if (tab == 'recent') {
-            gameTabIndex = 1; // Recent
-          } else {
-            gameTabIndex = 0; // Mine (default)
-          }
-        } else if (category == 'favorites') {
-          categoryIndex = 1; // Favorites tab
+    // ShellRoute for bottom navigation pages
+    ShellRoute(
+      builder: (context, state, child) {
+        // Determine which tab should be active based on the current route
+        int currentIndex = 0;
+        final location = state.uri.path;
+        if (location.startsWith('/library')) {
+          currentIndex = 1;
+        } else if (location.startsWith('/join')) {
+          currentIndex = 2;
+        } else if (location.startsWith('/profile')) {
+          currentIndex = 3;
+        } else if (location.startsWith('/home')) {
+          currentIndex = 0;
         }
 
-        // If query params are provided, go directly to LibraryPage with initial state
-        if (category != null) {
-          return LibraryPage(
-            showBottomNav: true,
-            initialCategoryIndex: categoryIndex,
-            initialGameTabIndex: gameTabIndex,
-          );
-        }
-
-        // Otherwise use MainNavigationPage (for bottom nav navigation)
-        return const MainNavigationPage(initialIndex: 1);
+        return MainNavigationPage(initialIndex: currentIndex, child: child);
       },
+      routes: [
+        GoRoute(
+          path: "/home",
+          pageBuilder: (context, state) =>
+              NoTransitionPage(key: state.pageKey, child: const HomePage()),
+        ),
+        GoRoute(
+          path: "/library",
+          pageBuilder: (context, state) {
+            // Check for query parameters to set initial state
+            final category = state.uri.queryParameters['category'];
+            final tab = state.uri.queryParameters['tab'];
+
+            // Determine indices based on query params
+            int categoryIndex = 0; // default: Created
+            int gameTabIndex = 0; // default: Mine
+
+            if (category == 'game') {
+              categoryIndex = 2; // Game tab
+              if (tab == 'recent') {
+                gameTabIndex = 1; // Recent
+              } else {
+                gameTabIndex = 0; // Mine (default)
+              }
+            } else if (category == 'favorites') {
+              categoryIndex = 1; // Favorites tab
+            }
+
+            return NoTransitionPage(
+              key: state.pageKey,
+              child: LibraryPage(
+                showBottomNav: false,
+                initialCategoryIndex: categoryIndex,
+                initialGameTabIndex: gameTabIndex,
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: "/join",
+          pageBuilder: (context, state) => NoTransitionPage(
+            key: state.pageKey,
+            child: const JoinPage(showBottomNav: false),
+          ),
+        ),
+        GoRoute(
+          path: "/profile",
+          pageBuilder: (context, state) =>
+              NoTransitionPage(key: state.pageKey, child: const ProfilePage()),
+        ),
+      ],
     ),
+
     GoRoute(
       path: "/library/create-collection",
       pageBuilder: (context, state) => CustomTransitionPage(
@@ -148,10 +182,6 @@ final router = GoRouter(
           );
         },
       ),
-    ),
-    GoRoute(
-      path: "/join",
-      builder: (context, state) => const MainNavigationPage(initialIndex: 2),
     ),
 
     GoRoute(
@@ -268,7 +298,7 @@ final router = GoRouter(
       ),
     ),
     GoRoute(
-      path: "/profile",
+      path: "/notification",
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const ProfilePage(),

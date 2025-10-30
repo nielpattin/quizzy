@@ -199,7 +199,7 @@ class _GameListState extends State<_GameList> {
                       context.push('/quiz/session/host-control/${item.id}');
                     } else {
                       // For recent games where user might be participant, go to session detail
-                      context.push('/quiz/session/detail/${item.id}');
+                      context.go('/quiz/session/detail/${item.id}');
                     }
                   } else {
                     // Session not live yet - go to session lobby or detail
