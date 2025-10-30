@@ -84,12 +84,8 @@ class _GameList extends StatefulWidget {
   State<_GameList> createState() => _GameListState();
 }
 
-class _GameListState extends State<_GameList>
-    with AutomaticKeepAliveClientMixin {
+class _GameListState extends State<_GameList> {
   Future<Map<String, dynamic>>? _dataFuture;
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -125,7 +121,6 @@ class _GameListState extends State<_GameList>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return FutureBuilder<Map<String, dynamic>>(
       future: _dataFuture,
       builder: (context, snapshot) {
@@ -194,8 +189,23 @@ class _GameListState extends State<_GameList>
                 date: item.date,
                 isLive: item.isLive,
                 joined: item.joined,
+                plays: item.plays,
                 gradient: item.gradient,
-                onTap: () => context.push('/quiz/session/live/${item.id}'),
+                onTap: () {
+                  // Navigate based on session state
+                  if (item.isLive) {
+                    // Session is live - go to host control panel (assuming user is host in "My Games")
+                    if (widget.mine) {
+                      context.push('/quiz/session/host-control/${item.id}');
+                    } else {
+                      // For recent games where user might be participant, go to session detail
+                      context.push('/quiz/session/detail/${item.id}');
+                    }
+                  } else {
+                    // Session not live yet - go to session lobby or detail
+                    context.push('/quiz/session/lobby/${item.id}');
+                  }
+                },
               );
             }
             final quiz = item as Quiz;
