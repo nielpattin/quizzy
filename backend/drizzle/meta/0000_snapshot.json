@@ -1,5 +1,5 @@
 {
-  "id": "00a7222d-a607-4104-a10c-78a659696cf0",
+  "id": "19cfc0a7-5c97-4df7-a96e-ce09220d9529",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -806,6 +806,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "estimated_minutes": {
           "name": "estimated_minutes",
           "type": "integer",
@@ -826,15 +832,22 @@
           "notNull": true,
           "default": false
         },
-        "joined_count": {
-          "name": "joined_count",
+        "participant_count": {
+          "name": "participant_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
-        "max_players": {
-          "name": "max_players",
+        "player_count": {
+          "name": "player_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "max_participants": {
+          "name": "max_participants",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,

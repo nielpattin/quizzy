@@ -31,16 +31,11 @@ const seedSchema = {
 	collections: schema.collections,
 	quizzes: schema.quizzes,
 	questions: schema.questions,
-	quizSnapshots: schema.quizSnapshots,
-	questionsSnapshots: schema.questionsSnapshots,
-	gameSessions: schema.gameSessions,
-	gameSessionParticipants: schema.gameSessionParticipants,
 	posts: schema.posts,
 	postLikes: schema.postLikes,
 	comments: schema.comments,
 	commentLikes: schema.commentLikes,
 	follows: schema.follows,
-	notifications: schema.notifications,
 };
 
 const main = async () => {

@@ -154,11 +154,13 @@ export const gameSessions = pgTable('game_sessions', {
   quizSnapshotId: uuid('quiz_snapshot_id').notNull().references(() => quizSnapshots.id, { onDelete: 'restrict' }),
   title: text('title').notNull(),
   description: text('description'),
+  imageUrl: text('image_url'),
   estimatedMinutes: integer('estimated_minutes').notNull(),
   isLive: boolean('is_live').notNull().default(false),
   isPublic: boolean('is_public').notNull().default(false),
-  joinedCount: integer('joined_count').notNull().default(0),
-  maxPlayers: integer('max_players').notNull().default(1000),
+  participantCount: integer('participant_count').notNull().default(0), // Total participant attempts (renamed from joinedCount)
+  playerCount: integer('player_count').notNull().default(0), // Unique users who joined
+  maxParticipants: integer('max_participants').notNull().default(1000), // Max participant slots (renamed from maxPlayers)
   code: varchar('code', { length: 10 }).unique(),
   quizVersion: integer('quiz_version').notNull(),
   hasEndTime: boolean('has_end_time').notNull().default(false),

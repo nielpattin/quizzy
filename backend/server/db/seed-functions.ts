@@ -33,16 +33,12 @@ export const SEED_POSTS_COUNT = getOptionalNumberEnv('SEED_POSTS_COUNT', 0); // 
 export const SEED_COLLECTIONS_COUNT_PER_USER = getOptionalNumberEnv('SEED_COLLECTIONS_COUNT_PER_USER', 3);
 export const SEED_QUIZZES_COUNT_PER_USER = getOptionalNumberEnv('SEED_QUIZZES_COUNT_PER_USER', 5);
 export const SEED_QUESTIONS_PER_QUIZ_COUNT = getOptionalNumberEnv('SEED_QUESTIONS_PER_QUIZ_COUNT', 10);
-export const SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ = getOptionalNumberEnv('SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ', 1);
-export const SEED_GAME_SESSIONS_COUNT_PER_QUIZ = getOptionalNumberEnv('SEED_GAME_SESSIONS_COUNT_PER_QUIZ', 2);
-export const SEED_GAME_PARTICIPANTS_PER_SESSION_COUNT = getOptionalNumberEnv('SEED_GAME_PARTICIPANTS_PER_SESSION_COUNT', 4);
 export const SEED_POSTS_COUNT_PER_USER = getOptionalNumberEnv('SEED_POSTS_COUNT_PER_USER', 1);
 export const SEED_COMMENTS_COUNT_PER_POST = getOptionalNumberEnv('SEED_COMMENTS_COUNT_PER_POST', 3);
 export const SEED_POST_LIKES_COUNT_PER_POST = getOptionalNumberEnv('SEED_POST_LIKES_COUNT_PER_POST', 5);
 export const SEED_COMMENT_LIKES_COUNT_PER_COMMENT = getOptionalNumberEnv('SEED_COMMENT_LIKES_COUNT_PER_COMMENT', 2);
 export const SEED_FAVORITE_QUIZZES_COUNT_PER_USER = getOptionalNumberEnv('SEED_FAVORITE_QUIZZES_COUNT_PER_USER', 8);
 export const SEED_FOLLOWS_COUNT_PER_USER = getOptionalNumberEnv('SEED_FOLLOWS_COUNT_PER_USER', 12);
-export const SEED_NOTIFICATIONS_COUNT_PER_POST = getOptionalNumberEnv('SEED_NOTIFICATIONS_COUNT_PER_POST', 4);
 
 export const INITIAL_CATEGORIES = [
 	{
@@ -154,8 +150,6 @@ export const vietnameseNames = [
 	'Mai Văn Minh', 'Phan Thị Nga', 'Trương Văn Ơn', 'Hồ Thị Phượng',
 	'Tô Văn Quang', 'Đinh Thị Như', 'Vũ Văn Sơn', 'Cao Thị Tâm',
 ];
-
-export const notificationTypes = ['like', 'comment', 'follow', 'quiz_share', 'game_invite'];
 
 export const generateQuestionData = (type: string) => {
 	const baseData = {
@@ -371,10 +365,6 @@ export const getRegularUserCounts = (totalUsers: number) => {
 	const SEED_COLLECTIONS_COUNT = totalUsers * SEED_COLLECTIONS_COUNT_PER_USER;
 	const SEED_QUIZZES_COUNT_TOTAL = totalUsers * SEED_QUIZZES_COUNT_PER_USER;
 	const SEED_QUESTIONS_COUNT_TOTAL = SEED_QUIZZES_COUNT_TOTAL * SEED_QUESTIONS_PER_QUIZ_COUNT;
-	const SEED_QUIZ_SNAPSHOTS_COUNT = SEED_QUIZZES_COUNT_TOTAL * SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ;
-	const SEED_QUESTIONS_SNAPSHOTS_COUNT = SEED_QUIZ_SNAPSHOTS_COUNT * SEED_QUESTIONS_PER_QUIZ_COUNT;
-	const SEED_GAME_SESSIONS_COUNT = SEED_QUIZZES_COUNT_TOTAL * SEED_GAME_SESSIONS_COUNT_PER_QUIZ;
-	const SEED_GAME_PARTICIPANTS_COUNT = SEED_GAME_SESSIONS_COUNT * SEED_GAME_PARTICIPANTS_PER_SESSION_COUNT;
 	const SEED_POSTS_COUNT_TOTAL = totalUsers * SEED_POSTS_COUNT_PER_USER;
 	const SEED_POST_LIKES_COUNT = SEED_POSTS_COUNT_TOTAL * SEED_POST_LIKES_COUNT_PER_POST;
 	const SEED_FAVORITE_QUIZZES_COUNT = totalUsers * SEED_FAVORITE_QUIZZES_COUNT_PER_USER;
@@ -385,10 +375,10 @@ export const getRegularUserCounts = (totalUsers: number) => {
 		collections: SEED_COLLECTIONS_COUNT,
 		quizzes: SEED_QUIZZES_COUNT_TOTAL,
 		questions: SEED_QUESTIONS_COUNT_TOTAL,
-		quizSnapshots: SEED_QUIZ_SNAPSHOTS_COUNT,
-		questionsSnapshots: SEED_QUESTIONS_SNAPSHOTS_COUNT,
-		gameSessions: SEED_GAME_SESSIONS_COUNT,
-		gameParticipants: SEED_GAME_PARTICIPANTS_COUNT,
+		quizSnapshots: 0,
+		questionsSnapshots: 0,
+		gameSessions: 0,
+		gameParticipants: 0,
 		savedQuizzes: SEED_FAVORITE_QUIZZES_COUNT,
 		posts: SEED_POSTS_COUNT_TOTAL,
 		postLikes: SEED_POST_LIKES_COUNT,
@@ -691,14 +681,9 @@ const seedSchemaDef = {
 	collections: schema.collections,
 	quizzes: schema.quizzes,
 	questions: schema.questions,
-	quizSnapshots: schema.quizSnapshots,
-	questionsSnapshots: schema.questionsSnapshots,
-	gameSessions: schema.gameSessions,
-	gameSessionParticipants: schema.gameSessionParticipants,
 	posts: schema.posts,
 	postLikes: schema.postLikes,
 	follows: schema.follows,
-	notifications: schema.notifications,
 };
 
 export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls, categoryMap?: Map<string, string>) => {
@@ -765,43 +750,6 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls, c
 				orderIndex: f.int({ minValue: 0, maxValue: 49 }),
 			},
 		},
-		quizSnapshots: {
-			count: counts.quizSnapshots,
-			columns: {
-				version: f.int({ minValue: 1, maxValue: 5 }),
-				title: f.loremIpsum({ sentencesCount: 1 }),
-				description: f.loremIpsum({ sentencesCount: 2 }),
-				category: undefined,
-				questionCount: f.int({ minValue: 5, maxValue: 50 }),
-			},
-		},
-		questionsSnapshots: {
-			count: counts.questionsSnapshots,
-			columns: {
-				type: f.valuesFromArray({ values: questionTypes }),
-				questionText: f.loremIpsum({ sentencesCount: 1 }),
-				data: f.json(),
-				orderIndex: f.int({ minValue: 0, maxValue: 49 }),
-			},
-		},
-		gameSessions: {
-			count: counts.gameSessions,
-			columns: {
-				title: f.loremIpsum({ sentencesCount: 1 }),
-				estimatedMinutes: f.int({ minValue: 5, maxValue: 60 }),
-				isLive: f.boolean(),
-				joinedCount: f.int({ minValue: 0, maxValue: 100 }),
-				code: f.string({ isUnique: true }),
-				quizVersion: f.int({ minValue: 1, maxValue: 5 }),
-			},
-		},
-		gameSessionParticipants: {
-			count: counts.gameParticipants,
-			columns: {
-				score: f.int({ minValue: 0, maxValue: 10000 }),
-				rank: f.int({ minValue: 1, maxValue: 100 }),
-			},
-		},
 		posts: {
 			count: counts.posts,
 			columns: {
@@ -820,13 +768,6 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls, c
 		},
 		follows: {
 			count: counts.follows,
-		},
-		notifications: {
-			count: 0,
-			columns: {
-				type: f.valuesFromArray({ values: notificationTypes }),
-				isUnread: f.boolean(),
-			},
 		},
 	}));
 
@@ -915,7 +856,7 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls, c
 	// Fetch quizzes with their category IDs and prepare bulk updates
 	const quizzes = await db.select().from(schema.quizzes);
 	
-	const quizUpdates = quizzes.map(q => {
+	const quizUpdates = quizzes.map((q: typeof quizzes[0]) => {
 		const englishCategoryName = q.categoryId ? categoryIdToName.get(q.categoryId) ?? 'General Knowledge' : 'General Knowledge';
 		const vietnameseCategoryName = categoryNameMap[englishCategoryName] || 'Kiến thức chung';
 		return {
@@ -960,7 +901,7 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls, c
 		}
 	}
 
-	const questionUpdates = questions.map(qs => {
+	const questionUpdates = questions.map((qs: typeof questions[0]) => {
 		const meta = quizMap.get(qs.quizId);
 		return {
 			id: qs.id,
@@ -979,63 +920,6 @@ export const seedRegularUsers = async (db: any, seedImageUrls?: SeedImageUrls, c
 		
 		if ((i + 1) % 500 === 0 || i === questionUpdates.length - 1) {
 			process.stdout.write(`\r   Progress: ${i + 1}/${questionUpdates.length} questions updated`);
-		}
-	}
-	console.log();
-
-	const quizSnapshots = await db.select().from(schema.quizSnapshots);
-	
-	const snapshotUpdates = quizSnapshots.map(s => ({
-		id: s.id,
-		title: generateQuizTitle('Kiến thức chung'),
-		description: generateQuizDescription('Kiến thức chung')
-	}));
-
-	// Simple individual updates to avoid parameter limit
-	console.log(`📝 Updating ${snapshotUpdates.length} quiz snapshots...`);
-	for (let i = 0; i < snapshotUpdates.length; i++) {
-		const u = snapshotUpdates[i];
-		await db.update(schema.quizSnapshots)
-			.set({ title: u.title, description: u.description })
-			.where(eq(schema.quizSnapshots.id, u.id));
-		
-		if ((i + 1) % 100 === 0 || i === snapshotUpdates.length - 1) {
-			process.stdout.write(`\r   Progress: ${i + 1}/${snapshotUpdates.length} snapshots updated`);
-		}
-	}
-	console.log();
-
-	const questionSnapshots = await db
-		.select({
-			id: schema.questionsSnapshots.id,
-			snapshotId: schema.questionsSnapshots.snapshotId,
-			type: schema.questionsSnapshots.type,
-			orderIndex: schema.questionsSnapshots.orderIndex,
-		})
-		.from(schema.questionsSnapshots);
-
-	const snapMap = new Map<string, { category: string | null }>();
-	for (const s of quizSnapshots) snapMap.set(s.id, { category: null });
-
-	const questionSnapshotUpdates = questionSnapshots.map(qs => {
-		const meta = snapMap.get(qs.snapshotId);
-		return {
-			id: qs.id,
-			questionText: generateQuestionText(meta?.category ?? null, qs.type as any, qs.orderIndex),
-			data: generateQuestionData(qs.type as any)
-		};
-	});
-
-	// Simple individual updates to avoid parameter limit
-	console.log(`📝 Updating ${questionSnapshotUpdates.length} question snapshots...`);
-	for (let i = 0; i < questionSnapshotUpdates.length; i++) {
-		const u = questionSnapshotUpdates[i];
-		await db.update(schema.questionsSnapshots)
-			.set({ questionText: u.questionText, data: u.data })
-			.where(eq(schema.questionsSnapshots.id, u.id));
-		
-		if ((i + 1) % 500 === 0 || i === questionSnapshotUpdates.length - 1) {
-			process.stdout.write(`\r   Progress: ${i + 1}/${questionSnapshotUpdates.length} question snapshots updated`);
 		}
 	}
 	console.log();
@@ -1329,50 +1213,6 @@ export const seedSpecificUsersContent = async (db: any, categoryMap?: Map<string
 					orderIndex: j,
 				});
 			}
-
-			// Create quiz snapshot
-			let snapshotId = null;
-			for (let s = 0; s < SEED_QUIZ_SNAPSHOTS_COUNT_PER_QUIZ; s++) {
-				const [snapshot] = await db.insert(schema.quizSnapshots).values({
-					quizId: quiz.id,
-					version: 1,
-					title: quiz.title,
-					description: quiz.description,
-					questionCount: SEED_QUESTIONS_PER_QUIZ_COUNT,
-				}).returning();
-
-				if (s === 0) snapshotId = snapshot.id;
-
-				// Create question snapshots
-				for (let j = 0; j < SEED_QUESTIONS_PER_QUIZ_COUNT; j++) {
-					const questionType = questionTypes[j % questionTypes.length];
-					await db.insert(schema.questionsSnapshots).values({
-						snapshotId: snapshot.id,
-						type: questionType,
-						questionText: generateQuestionText(vietnameseCategoryName, questionType, j),
-						data: generateQuestionData(questionType),
-						orderIndex: j,
-					});
-				}
-			}
-
-			// Create game sessions
-			if (snapshotId) {
-				for (let g = 0; g < SEED_GAME_SESSIONS_COUNT_PER_QUIZ; g++) {
-					const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-					await db.insert(schema.gameSessions).values({
-						quizId: quiz.id,
-						quizSnapshotId: snapshotId,
-						hostId: user.id,
-						title: quiz.title,
-						estimatedMinutes: Math.floor(Math.random() * 56) + 5,
-						isLive: false,
-						joinedCount: Math.floor(Math.random() * 100),
-						code: randomCode,
-						quizVersion: 1,
-					});
-				}
-			}
 		}
 
 		// Create posts
@@ -1414,7 +1254,7 @@ export const seedSpecificUsersContent = async (db: any, categoryMap?: Map<string
 	for (const user of seedUserRecords) {
 		const followCount = Math.min(SEED_FOLLOWS_COUNT_PER_USER, allUsers.length - 1);
 		const usersToFollow = allUsers
-			.filter(u => u.id !== user.id)
+			.filter((u: typeof allUsers[0]) => u.id !== user.id)
 			.sort(() => Math.random() - 0.5)
 			.slice(0, followCount);
 
@@ -1542,107 +1382,6 @@ export const seedMinimalContent = async (db: any, categoryMap?: Map<string, stri
 			}
 
 			console.log(`    ✓ Created quiz "${quiz.title}" with ${SEED_QUESTIONS_COUNT} questions`);
-		}
-
-		// Create quiz snapshots and game sessions for each quiz
-		const userQuizzes = await db.select().from(schema.quizzes).where(eq(schema.quizzes.userId, owner.id));
-		for (const quiz of userQuizzes) {
-			// Create snapshot
-			const [snapshot] = await db.insert(schema.quizSnapshots).values({
-				quizId: quiz.id,
-				version: 1,
-				title: quiz.title,
-				description: quiz.description,
-				questionCount: SEED_QUESTIONS_COUNT,
-			}).returning();
-
-			// Copy questions to snapshots
-			const quizQuestions = await db.select().from(schema.questions).where(eq(schema.questions.quizId, quiz.id));
-			for (const question of quizQuestions) {
-				await db.insert(schema.questionsSnapshots).values({
-					snapshotId: snapshot.id,
-					type: question.type,
-					questionText: question.questionText,
-					data: question.data,
-					imageUrl: question.imageUrl,
-					orderIndex: question.orderIndex,
-				});
-			}
-
-			// Create 2 game sessions per quiz
-			for (let g = 0; g < 2; g++) {
-				const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-				const [session] = await db.insert(schema.gameSessions).values({
-					quizId: quiz.id,
-					quizSnapshotId: snapshot.id,
-					hostId: owner.id,
-					title: quiz.title,
-					estimatedMinutes: Math.floor(Math.random() * 20) + 10,
-					isLive: false,
-					joinedCount: g === 0 ? 1 : 2, // First session has only host, second has 2 participants
-					code: randomCode,
-					quizVersion: 1,
-				}).returning();
-
-				// Create participant for host (always joins own session)
-				const hostParticipant = await db.insert(schema.gameSessionParticipants).values({
-					sessionId: session.id,
-					userId: owner.id,
-					score: 0,
-					rank: 1,
-				}).returning();
-
-				// Create partial question timings (60% of questions answered)
-				const snapshotQuestions = await db.select().from(schema.questionsSnapshots).where(
-					eq(schema.questionsSnapshots.snapshotId, snapshot.id)
-				).orderBy(schema.questionsSnapshots.orderIndex);
-				
-				const answeredCount = Math.floor(snapshotQuestions.length * 0.6); // 60% completed
-				for (let q = 0; q < answeredCount; q++) {
-					await db.insert(schema.questionTimings).values({
-						participantId: hostParticipant[0].id,
-						questionSnapshotId: snapshotQuestions[q].id,
-						sessionId: session.id,
-						serverStartTime: new Date(Date.now() - 3600000),
-						deadlineTime: new Date(Date.now() - 3300000),
-						submittedAt: new Date(Date.now() - 3330000),
-					});
-				}
-
-				// Update host participant score based on answered questions
-				await db.update(schema.gameSessionParticipants).set({
-					score: answeredCount * 100, // 100 points per question
-				}).where(eq(schema.gameSessionParticipants.id, hostParticipant[0].id));
-
-				// For second session, add another participant (50% progress)
-				if (g === 1 && users.length > 1) {
-					const otherUser = users.find(u => u.id !== owner.id) || users[0];
-					const otherParticipant = await db.insert(schema.gameSessionParticipants).values({
-						sessionId: session.id,
-						userId: otherUser.id,
-						score: 0,
-						rank: 2,
-					}).returning();
-
-					const otherAnsweredCount = Math.floor(snapshotQuestions.length * 0.5);
-					for (let q = 0; q < otherAnsweredCount; q++) {
-						await db.insert(schema.questionTimings).values({
-							participantId: otherParticipant[0].id,
-							questionSnapshotId: snapshotQuestions[q].id,
-							sessionId: session.id,
-							serverStartTime: new Date(Date.now() - 3600000),
-							deadlineTime: new Date(Date.now() - 3300000),
-							submittedAt: new Date(Date.now() - 3330000),
-						});
-					}
-
-					await db.update(schema.gameSessionParticipants).set({
-						score: otherAnsweredCount * 100,
-					}).where(eq(schema.gameSessionParticipants.id, otherParticipant[0].id));
-				}
-			}
-
-			console.log(`    ✓ Created 2 game sessions with partial progress for "${quiz.title}"`);
 		}
 
 		// Create posts for this user
