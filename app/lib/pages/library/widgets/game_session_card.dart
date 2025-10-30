@@ -6,7 +6,8 @@ class GameSessionCard extends StatelessWidget {
   final String length;
   final String date;
   final bool isLive;
-  final int joined;
+  final int joined; // playerCount - unique users
+  final int plays; // participantCount - total plays
   final List<Color> gradient;
   final String? topic;
   final VoidCallback? onTap;
@@ -17,6 +18,7 @@ class GameSessionCard extends StatelessWidget {
     required this.date,
     required this.isLive,
     required this.joined,
+    required this.plays,
     required this.gradient,
     this.topic,
     this.onTap,
@@ -116,7 +118,11 @@ class GameSessionCard extends StatelessWidget {
                             icon: Icons.quiz,
                             label: questions != null ? "$questions Qs" : length,
                           ),
-                          MetaChip(icon: Icons.group, label: "$joined joined"),
+                          MetaChip(icon: Icons.people, label: "$joined joined"),
+                          MetaChip(
+                            icon: Icons.play_circle,
+                            label: "$plays plays",
+                          ),
                         ],
                       ),
                     ),
