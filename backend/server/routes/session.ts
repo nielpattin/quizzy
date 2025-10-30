@@ -179,6 +179,7 @@ sessionRoutes.post('/', authMiddleware, async (c) => {
         quizSnapshotId: snapshot.id,
         title: body.title || quiz.title,
         description: body.description || null,
+        imageUrl: quiz.imageUrl || null,
         estimatedMinutes: body.estimatedMinutes || 10,
         isPublic: body.isPublic !== undefined ? body.isPublic : false, // Default: private session
         maxParticipants: body.maxParticipants || 1, // Default: solo play (1 participant slot)
@@ -287,6 +288,8 @@ sessionRoutes.get('/:id', async (c) => {
         startedAt: gameSessions.startedAt,
         endedAt: gameSessions.endedAt,
         createdAt: gameSessions.createdAt,
+        quizId: quizSnapshots.quizId,
+        quizSnapshotId: quizSnapshots.id,
         host: {
           id: users.id,
           username: users.username,
@@ -897,7 +900,7 @@ sessionRoutes.get('/user/:userId/hosted', async (c) => {
       .select({
         id: gameSessions.id,
         title: gameSessions.title,
-        imageUrl: gameSessions.imageUrl,
+        imageUrl: sql<string>`COALESCE(${gameSessions.imageUrl}, ${quizzes.imageUrl})`,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
         participantCount: gameSessions.participantCount,
@@ -908,6 +911,8 @@ sessionRoutes.get('/user/:userId/hosted', async (c) => {
         createdAt: gameSessions.createdAt,
       })
       .from(gameSessions)
+      .leftJoin(quizSnapshots, eq(gameSessions.quizSnapshotId, quizSnapshots.id))
+      .leftJoin(quizzes, eq(quizSnapshots.quizId, quizzes.id))
       .where(eq(gameSessions.hostId, targetUserId))
       .orderBy(desc(gameSessions.createdAt))
 
@@ -994,7 +999,7 @@ sessionRoutes.get('/user/:userId/played', async (c) => {
         id: gameSessions.id,
         hostId: gameSessions.hostId,
         title: gameSessions.title,
-        imageUrl: gameSessions.imageUrl,
+        imageUrl: sql<string>`COALESCE(${gameSessions.imageUrl}, ${quizzes.imageUrl})`,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
         participantCount: gameSessions.participantCount,

@@ -122,7 +122,7 @@ class _CodeTabState extends State<CodeTab> {
 
                     // Navigate to session detail page using parentContext
                     if (mounted) {
-                      parentContext.push('/quiz/session/detail/$sessionId');
+                      parentContext.go('/quiz/session/detail/$sessionId');
                     }
                   } catch (e) {
                     debugPrint("DEBUG: CodeTab failed to join session: $e");

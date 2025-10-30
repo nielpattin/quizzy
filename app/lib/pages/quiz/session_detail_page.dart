@@ -8,6 +8,7 @@ import "package:http/http.dart" as http;
 import "package:flutter_dotenv/flutter_dotenv.dart";
 import "../../services/api_service.dart";
 import "../../services/websocket_service.dart";
+import "widgets/session_qr_modal.dart";
 
 /// Session Detail Page - For viewing and resuming existing sessions
 /// Used by Continue Playing cards
@@ -232,11 +233,46 @@ class _SessionDetailPageState extends State<SessionDetailPage>
     if (_quizData == null) return;
 
     try {
+      final authSession = Supabase.instance.client.auth.currentSession;
+      if (authSession == null) return;
+
+      final serverUrl = dotenv.env["SERVER_URL"];
+      final isLive = _sessionData?["isLive"] ?? false;
+
+      // HOST AUTO-START: If host clicks Play and session isn't live, start it first
+      if (_isHost && !isLive) {
+        debugPrint('[SessionDetail] Host starting session...');
+        final startResp = await http.post(
+          Uri.parse("$serverUrl/api/session/${widget.sessionId}/start"),
+          headers: {"Authorization": "Bearer ${authSession.accessToken}"},
+        );
+        if (startResp.statusCode != 200) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed to start session: ${startResp.body}"),
+            ),
+          );
+          return;
+        }
+        if (mounted) {
+          setState(() {
+            _sessionData = {
+              ...?_sessionData,
+              "isLive": true,
+              "startedAt": DateTime.now().toIso8601String(),
+            };
+          });
+        }
+        debugPrint('[SessionDetail] Session started successfully');
+      }
+
       final lastParticipant = _myParticipants.isNotEmpty
           ? _myParticipants.last
           : null;
       final isPlayAgain =
           lastParticipant != null && (lastParticipant['isCompleted'] ?? true);
+      final needsInitialJoin = _myParticipants.isEmpty;
 
       debugPrint('[SessionDetail] _continueSession called');
       debugPrint(
@@ -244,16 +280,14 @@ class _SessionDetailPageState extends State<SessionDetailPage>
       );
       debugPrint('[SessionDetail] lastParticipant: $lastParticipant');
       debugPrint('[SessionDetail] isPlayAgain: $isPlayAgain');
+      debugPrint('[SessionDetail] needsInitialJoin: $needsInitialJoin');
 
-      // If "Play Again" (last game completed), create new participant
-      if (isPlayAgain) {
+      // Join session if: "Play Again" (new attempt) OR first time playing (no participants yet)
+      if (isPlayAgain || needsInitialJoin) {
         debugPrint(
-          '[SessionDetail] Creating new participant for Play Again...',
+          '[SessionDetail] ${needsInitialJoin ? "Initial join" : "Play Again"} - creating new participant...',
         );
-        final authSession = Supabase.instance.client.auth.currentSession;
-        if (authSession == null) return;
 
-        final serverUrl = dotenv.env["SERVER_URL"];
         final response = await http.post(
           Uri.parse("$serverUrl/api/session/${widget.sessionId}/join"),
           headers: {
@@ -283,27 +317,13 @@ class _SessionDetailPageState extends State<SessionDetailPage>
         );
       } else {
         debugPrint(
-          '[SessionDetail] Not Play Again - continuing with existing participant',
+          '[SessionDetail] Continuing with existing participant (incomplete attempt)',
         );
       }
 
       // Navigate to play page
       if (!mounted) return;
-      final quizId = _quizData!["id"];
-      await context.push('/quiz/$quizId/play?sessionId=${widget.sessionId}');
-
-      // Refresh data after returning from play page
-      if (mounted) {
-        debugPrint(
-          '[SessionDetail] Returned from play page, refreshing data...',
-        );
-        await _loadMyParticipants();
-        await _loadSessionData(); // Refresh session info (participantCount, etc.)
-
-        // Switch to "My Games" tab to show the completed attempt
-        _tabController.animateTo(1); // Index 1 is "My Games" tab
-        debugPrint('[SessionDetail] Switched to My Games tab');
-      }
+      context.go('/session/${widget.sessionId}/play');
     } catch (e) {
       debugPrint('Error in _continueSession: $e');
       if (mounted) {
@@ -325,6 +345,19 @@ class _SessionDetailPageState extends State<SessionDetailPage>
         ),
       );
     }
+  }
+
+  void _showQrModal() {
+    final code = _sessionData?["code"];
+    final title = _sessionData?["title"];
+
+    if (code == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) =>
+          SessionQrModal(sessionCode: code, sessionTitle: title),
+    );
   }
 
   @override
@@ -521,36 +554,40 @@ class _SessionDetailPageState extends State<SessionDetailPage>
             ),
             if (code != null && maxParticipants > 1) ...[
               const SizedBox(height: 16),
-              InkWell(
-                onTap: _copySessionCode,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("Code: ", style: theme.textTheme.bodyMedium),
-                      Text(
-                        code,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
-                        ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Code: ", style: theme.textTheme.bodyMedium),
+                    Text(
+                      code,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
                       ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.copy,
-                        size: 16,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 18),
+                      onPressed: _copySessionCode,
+                      tooltip: "Copy Code",
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.qr_code, size: 18),
+                      onPressed: _showQrModal,
+                      tooltip: "Show QR Code",
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -836,6 +873,8 @@ class _SessionDetailPageState extends State<SessionDetailPage>
 
   Widget _buildActions(ThemeData theme) {
     final isLive = _sessionData?["isLive"] ?? false;
+
+    // UNIFIED CONTROLS - Play/Continue/Play Again for both hosts and participants
     final lastParticipant = _myParticipants.isNotEmpty
         ? _myParticipants.last
         : null;
@@ -848,9 +887,16 @@ class _SessionDetailPageState extends State<SessionDetailPage>
     IconData buttonIcon;
 
     if (!isLive) {
-      buttonText = "Waiting...";
-      buttonEnabled = false;
-      buttonIcon = Icons.hourglass_empty;
+      if (_isHost) {
+        // Host override: allow Play to start the session
+        buttonText = "Play";
+        buttonEnabled = true;
+        buttonIcon = Icons.play_arrow;
+      } else {
+        buttonText = "Waiting...";
+        buttonEnabled = false;
+        buttonIcon = Icons.hourglass_empty;
+      }
     } else if (lastParticipant == null) {
       // Never played
       buttonText = "Play";
@@ -910,8 +956,75 @@ class _SessionDetailPageState extends State<SessionDetailPage>
             ),
           ),
         ],
+
+        // End Session button (only for hosts)
+        if (_isHost) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _endSession,
+            icon: const Icon(Icons.stop),
+            label: const Text("End Session"),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  Future<void> _endSession() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("End Session?"),
+        content: const Text(
+          "This will end the session for all participants. This action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("End Session"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        final authSession = Supabase.instance.client.auth.currentSession;
+        if (authSession == null) return;
+
+        final serverUrl = dotenv.env["SERVER_URL"];
+        await http.post(
+          Uri.parse("$serverUrl/api/session/${widget.sessionId}/end"),
+          headers: {"Authorization": "Bearer ${authSession.accessToken}"},
+        );
+
+        if (mounted) {
+          context.go("/library?category=game&tab=mine");
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error: ${e.toString()}"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _startNewGame() async {
@@ -933,20 +1046,9 @@ class _SessionDetailPageState extends State<SessionDetailPage>
         // Reload my participants
         await _loadMyParticipants();
 
-        // Navigate to play screen and wait for result
+        // Navigate to play screen
         if (_quizData != null && mounted) {
-          final quizId = _quizData!["id"];
-          await context.push(
-            '/quiz/$quizId/play?sessionId=${widget.sessionId}',
-          );
-
-          // Refresh data after returning from play page
-          if (mounted) {
-            debugPrint(
-              '[SessionDetail] Returned from new game, refreshing data...',
-            );
-            await _loadMyParticipants();
-          }
+          context.go('/session/${widget.sessionId}/play');
         }
       } else {
         if (mounted) {

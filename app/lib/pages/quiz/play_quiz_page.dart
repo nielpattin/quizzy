@@ -11,16 +11,19 @@ import "./widgets/quiz_scaffolds.dart";
 import "./quiz_dialogs.dart";
 
 class PlayQuizPage extends StatefulWidget {
-  final String quizId;
+  final String? quizId; // Optional - only for preview mode
+  final String? sessionId; // Optional - only when navigating from outside
   final bool isPreview;
-  final String? sessionId;
 
   const PlayQuizPage({
-    required this.quizId,
-    this.isPreview = false,
+    this.quizId,
     this.sessionId,
+    this.isPreview = false,
     super.key,
-  });
+  }) : assert(
+         quizId != null || sessionId != null,
+         'Either quizId or sessionId must be provided',
+       );
 
   @override
   State<PlayQuizPage> createState() => _PlayQuizPageState();
@@ -79,23 +82,44 @@ class _PlayQuizPageState extends State<PlayQuizPage>
 
   Future<void> _loadQuizData() async {
     try {
-      // Use provided sessionId or create a new one
+      if (widget.isPreview) {
+        // Preview mode: Load from live quiz, no session needed
+        await _loadQuizDataForPreview();
+        return;
+      }
+
+      // Session-based mode: Load from snapshot
       if (widget.sessionId != null) {
         _sessionId = widget.sessionId;
-      } else {
-        final sessionResponse = await ApiService.createSession(widget.quizId);
+      } else if (widget.quizId != null) {
+        // Legacy path: create session from quizId (shouldn't happen with new routing)
+        final sessionResponse = await ApiService.createSession(widget.quizId!);
         _sessionId = sessionResponse["id"];
+      } else {
+        throw Exception("No sessionId or quizId provided");
       }
 
       // Join WebSocket session for real-time updates
       await WebSocketService().joinSession(_sessionId!);
 
-      final quizResponse = await ApiService.getQuiz(widget.quizId);
-      if (quizResponse == null) throw Exception("Failed to load quiz");
+      // Load session data (includes quizSnapshotId)
+      final sessionData = await ApiService.getSession(_sessionId!);
+
+      // Load all questions from session snapshot
+      final sessionQuestions = await ApiService.getSessionQuestions(
+        _sessionId!,
+      );
 
       setState(() {
-        _quizData = quizResponse;
-        _totalQuestionCount = quizResponse["questionCount"] ?? 0;
+        // Use snapshot data, not live quiz
+        // Extract the original quiz ID from the session (not the snapshot ID)
+        _quizData = {
+          'id': sessionData['quizId'] ?? sessionData['snapshot']?['quizId'],
+          'title': sessionData['snapshot']?['title'] ?? sessionData['title'],
+          'description': sessionData['snapshot']?['description'],
+          'questionCount': sessionQuestions.length,
+        };
+        _totalQuestionCount = sessionQuestions.length;
         _isLoading = false;
       });
 
@@ -104,6 +128,35 @@ class _PlayQuizPageState extends State<PlayQuizPage>
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadQuizDataForPreview() async {
+    if (widget.quizId == null) {
+      throw Exception("Quiz ID required for preview mode");
+    }
+
+    // Load quiz from live API (not session snapshot)
+    final quizResponse = await ApiService.getQuiz(widget.quizId!);
+    if (quizResponse == null) throw Exception("Failed to load quiz");
+
+    // Load all questions at once for preview
+    final questionsResponse = await ApiService.getQuizQuestions(widget.quizId!);
+
+    setState(() {
+      _quizData = quizResponse;
+      _questions = questionsResponse;
+      _totalQuestionCount = questionsResponse.length;
+      _isLoading = false;
+    });
+
+    // Preview mode: Load first question locally (no server timing)
+    if (_questions.isNotEmpty) {
+      setState(() {
+        _currentQuestionData = _questions[0];
+        _userAnswers.add(null);
+        _answerResults.add(null);
       });
     }
   }
@@ -288,11 +341,20 @@ class _PlayQuizPageState extends State<PlayQuizPage>
         .where((result) => result == true)
         .length;
 
+    // Get the quiz ID with fallbacks
+    final quizIdValue = widget.quizId ?? _quizData?['id'];
+    if (quizIdValue == null) {
+      setState(() {
+        _errorMessage = "Error: Unable to load quiz ID";
+      });
+      return;
+    }
+
     showQuizCompleteDialog(
       context,
       score: correctCount, // Pass correct count, not score points
       totalQuestions: _totalQuestionCount,
-      quizId: widget.quizId,
+      quizId: quizIdValue,
       sessionId: _sessionId, // Pass session ID for Play Again navigation
     );
   }

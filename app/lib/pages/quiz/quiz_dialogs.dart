@@ -307,7 +307,7 @@ class _QuizCompleteDialogState extends State<QuizCompleteDialog>
                                         context.pop(); // Close dialog
                                         // Replace current play page with new play page
                                         context.pushReplacement(
-                                          '/quiz/${widget.quizId}/play?sessionId=${widget.sessionId}',
+                                          '/session/${widget.sessionId}/play',
                                         );
                                       }
                                     } else {

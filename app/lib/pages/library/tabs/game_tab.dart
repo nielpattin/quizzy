@@ -191,23 +191,19 @@ class _GameListState extends State<_GameList> {
                 joined: item.joined,
                 plays: item.plays,
                 gradient: item.gradient,
+                imageUrl: item.imageUrl,
                 onTap: () {
-                  // Navigate based on session state
-                  if (item.isLive) {
-                    // Session is live - go to host control panel (assuming user is host in "My Games")
-                    if (widget.mine) {
-                      context.push('/quiz/session/host-control/${item.id}');
-                    } else {
-                      // For recent games where user might be participant, go to session detail
-                      context.go('/quiz/session/detail/${item.id}');
-                    }
-                  } else {
-                    // Session not live yet - go to session lobby or detail
-                    context.push('/quiz/session/lobby/${item.id}');
-                  }
+                  // Always navigate to Session Details
+                  context.go('/quiz/session/detail/${item.id}');
                 },
+                // Remove "Host" action - Session Detail now has host controls
+                onHost: null,
+                onEdit: widget.mine
+                    ? () => context.push('/quiz/session/edit/${item.id}')
+                    : null,
               );
             }
+
             final quiz = item as Quiz;
             return QuizPlayCard(
               title: quiz.title,

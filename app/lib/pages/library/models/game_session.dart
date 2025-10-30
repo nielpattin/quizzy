@@ -10,6 +10,7 @@ class GameSession {
   final int joined; // playerCount - unique users who joined
   final int plays; // participantCount - total attempts/plays
   final int? questions;
+  final String? imageUrl;
   final List<Color> gradient;
 
   GameSession({
@@ -22,6 +23,7 @@ class GameSession {
     required this.joined,
     required this.plays,
     this.questions,
+    this.imageUrl,
     required this.gradient,
   });
 
@@ -83,6 +85,7 @@ class GameSession {
       joined: playerCount, // Unique users
       plays: participantCount, // Total plays
       questions: questionCount,
+      imageUrl: json["imageUrl"] as String?,
       gradient: gradient,
     );
   }
@@ -98,6 +101,7 @@ class GameSession {
       "joined": joined,
       "plays": plays,
       "questions": questions,
+      "imageUrl": imageUrl,
     };
   }
 }

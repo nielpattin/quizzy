@@ -37,7 +37,6 @@ import "pages/quiz/add_questions_page.dart";
 import "pages/quiz/play_quiz_page.dart";
 import "pages/quiz/create_question_page.dart";
 import "pages/session/edit_session_page.dart";
-import "pages/session/host_control_panel_page.dart";
 import "pages/library/create_collection_page.dart";
 import "utils/route_observer.dart";
 
@@ -555,6 +554,21 @@ final router = GoRouter(
         );
       },
     ),
+    // Session-based play route (MUST come before /quiz/:id/play to avoid route collision)
+    GoRoute(
+      path: "/session/:sessionId/play",
+      pageBuilder: (context, state) {
+        final sessionId = state.pathParameters["sessionId"]!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: PlayQuizPage(sessionId: sessionId, isPreview: false),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        );
+      },
+    ),
+    // Quiz preview route (for browsing before creating session)
     GoRoute(
       path: "/quiz/:id/play",
       pageBuilder: (context, state) {
@@ -603,28 +617,6 @@ final router = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: SessionLobbyPage(sessionId: sessionId),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: const Offset(1, 0),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                  ),
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
-      path: "/quiz/session/host-control/:sessionId",
-      pageBuilder: (context, state) {
-        final sessionId = state.pathParameters["sessionId"]!;
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: HostControlPanelPage(sessionId: sessionId),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position:

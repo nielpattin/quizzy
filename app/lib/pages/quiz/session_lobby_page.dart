@@ -151,12 +151,12 @@ class _SessionLobbyPageState extends State<SessionLobbyPage> {
         _isLoading = false;
       });
 
-      // Auto-redirect host to Host Control Panel if session is already live
+      // Auto-redirect host to Session Detail if session is already live
       // This handles edge cases where host navigates to lobby for a live session
       if (_isHost && sessionData["isLive"] == true && mounted) {
         Future.microtask(() {
           if (mounted) {
-            context.go('/quiz/session/host-control/${widget.sessionId}');
+            context.go('/quiz/session/detail/${widget.sessionId}');
           }
         });
       }
@@ -171,8 +171,7 @@ class _SessionLobbyPageState extends State<SessionLobbyPage> {
   Future<void> _joinSession() async {
     // Participant joins the session
     if (_quizData != null) {
-      final quizId = _quizData!["id"];
-      context.push('/quiz/$quizId/play?sessionId=${widget.sessionId}');
+      context.go('/session/${widget.sessionId}/play');
     }
   }
 
@@ -533,14 +532,14 @@ class _SessionLobbyPageState extends State<SessionLobbyPage> {
           ),
           const SizedBox(height: 12),
         ],
-        // Go to Host Control Panel button (sessions are now live immediately after creation)
+        // Go to Session Detail button (host controls are now integrated there)
         if (isLive)
           ElevatedButton.icon(
             onPressed: () =>
-                context.push('/quiz/session/host-control/${widget.sessionId}'),
+                context.push('/quiz/session/detail/${widget.sessionId}'),
             icon: const Icon(Icons.dashboard),
             label: const Text(
-              "Go to Host Control Panel",
+              "Go to Session Control",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(

@@ -247,6 +247,28 @@ class ApiService {
     });
   }
 
+  // Get session details (includes quizSnapshotId)
+  static Future<Map<String, dynamic>> getSession(String sessionId) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/session/$sessionId"),
+        headers: headers,
+      );
+    });
+  }
+
+  // Get all questions for a session (from snapshot)
+  static Future<List<dynamic>> getSessionQuestions(String sessionId) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/session/$sessionId/questions"),
+        headers: headers,
+      );
+    });
+  }
+
   static Future<dynamic> getUserProfile(String userId) async {
     return HttpClient.handleRequest(() async {
       final headers = await HttpClient.getHeaders();
@@ -560,6 +582,10 @@ class ApiService {
 
   static Future<dynamic> getQuiz(String quizId) async {
     return QuizService.getQuiz(quizId);
+  }
+
+  static Future<List<dynamic>> getQuizQuestions(String quizId) async {
+    return QuizService.getQuizQuestions(quizId);
   }
 
   static Future<void> deleteQuiz(String quizId) async {

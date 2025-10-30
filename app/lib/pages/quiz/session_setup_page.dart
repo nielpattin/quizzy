@@ -78,8 +78,7 @@ class _SessionSetupPageState extends State<SessionSetupPage> {
   Future<void> _playAlone() async {
     if (_quizData != null) {
       // Navigate to play quiz page immediately for solo play
-      final quizId = _quizData!["id"];
-      context.push('/quiz/$quizId/play?sessionId=${widget.sessionId}');
+      context.go('/session/${widget.sessionId}/play');
     }
   }
 
@@ -97,8 +96,8 @@ class _SessionSetupPageState extends State<SessionSetupPage> {
     );
 
     if (result == true && mounted) {
-      // Navigate directly to Host Control Panel (session is now live)
-      context.pushReplacement('/quiz/session/host-control/${widget.sessionId}');
+      // Navigate to Session Detail Page (host control features are now there)
+      context.go('/quiz/session/detail/${widget.sessionId}');
     }
   }
 

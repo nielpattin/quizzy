@@ -53,6 +53,16 @@ class QuizService {
     });
   }
 
+  static Future<List<dynamic>> getQuizQuestions(String quizId) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/quiz/$quizId/questions"),
+        headers: headers,
+      );
+    });
+  }
+
   static Future<dynamic> updateQuiz(
     String quizId, {
     required String title,
