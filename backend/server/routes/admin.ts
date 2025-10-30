@@ -1285,7 +1285,7 @@ adminRoutes.get('/sessions/stats', async (c) => {
       .where(sql`${gameSessions.endedAt} IS NOT NULL`)
 
     const [totalParticipants] = await db
-      .select({ sum: sql<number>`cast(sum(${gameSessions.joinedCount}) as int)` })
+      .select({ sum: sql<number>`cast(sum(${gameSessions.participantCount}) as int)` })
       .from(gameSessions)
 
     // Calculate average duration for completed sessions
@@ -1360,7 +1360,7 @@ adminRoutes.get('/sessions', async (c) => {
         title: gameSessions.title,
         code: gameSessions.code,
         isLive: gameSessions.isLive,
-        joinedCount: gameSessions.joinedCount,
+        joinedCount: gameSessions.participantCount,
         estimatedMinutes: gameSessions.estimatedMinutes,
         startedAt: gameSessions.startedAt,
         endedAt: gameSessions.endedAt,
@@ -1413,7 +1413,7 @@ adminRoutes.get('/sessions/:id', async (c) => {
         title: gameSessions.title,
         code: gameSessions.code,
         isLive: gameSessions.isLive,
-        joinedCount: gameSessions.joinedCount,
+        joinedCount: gameSessions.participantCount,
         estimatedMinutes: gameSessions.estimatedMinutes,
         quizVersion: gameSessions.quizVersion,
         startedAt: gameSessions.startedAt,
