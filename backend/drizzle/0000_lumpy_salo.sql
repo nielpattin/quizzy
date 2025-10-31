@@ -6,6 +6,7 @@ CREATE TYPE "public"."post_type" AS ENUM('text', 'image', 'quiz');--> statement-
 CREATE TYPE "public"."question_type" AS ENUM('single_choice', 'checkbox', 'true_false', 'type_answer', 'reorder', 'drop_pin');--> statement-breakpoint
 CREATE TYPE "public"."search_filter_type" AS ENUM('quiz', 'user', 'collection', 'post');--> statement-breakpoint
 CREATE TYPE "public"."status" AS ENUM('active', 'inactive');--> statement-breakpoint
+CREATE TYPE "public"."transaction_type" AS ENUM('quiz_reward', 'streak_bonus', 'achievement', 'daily_login', 'purchase', 'spent');--> statement-breakpoint
 CREATE TABLE "categories" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
@@ -14,6 +15,18 @@ CREATE TABLE "categories" (
 	"image_url" text,
 	CONSTRAINT "categories_name_unique" UNIQUE("name"),
 	CONSTRAINT "categories_slug_unique" UNIQUE("slug")
+);
+--> statement-breakpoint
+CREATE TABLE "coin_transactions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"amount" integer NOT NULL,
+	"type" "transaction_type" NOT NULL,
+	"description" text,
+	"related_quiz_id" uuid,
+	"related_session_id" uuid,
+	"balance_after" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "collections" (
@@ -279,6 +292,7 @@ CREATE TABLE "users" (
 	"is_setup_complete" boolean DEFAULT false NOT NULL,
 	"followers_count" integer DEFAULT 0 NOT NULL,
 	"following_count" integer DEFAULT 0 NOT NULL,
+	"coins" integer DEFAULT 1000 NOT NULL,
 	"last_login_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -286,6 +300,9 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_username_unique" UNIQUE("username")
 );
 --> statement-breakpoint
+ALTER TABLE "coin_transactions" ADD CONSTRAINT "coin_transactions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "coin_transactions" ADD CONSTRAINT "coin_transactions_related_quiz_id_quizzes_id_fk" FOREIGN KEY ("related_quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "coin_transactions" ADD CONSTRAINT "coin_transactions_related_session_id_game_sessions_id_fk" FOREIGN KEY ("related_session_id") REFERENCES "public"."game_sessions"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "collections" ADD CONSTRAINT "collections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment_likes" ADD CONSTRAINT "comment_likes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment_likes" ADD CONSTRAINT "comment_likes_comment_id_comments_id_fk" FOREIGN KEY ("comment_id") REFERENCES "public"."comments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -325,6 +342,8 @@ ALTER TABLE "search_history" ADD CONSTRAINT "search_history_user_id_users_id_fk"
 ALTER TABLE "system_logs" ADD CONSTRAINT "system_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_notification_state" ADD CONSTRAINT "user_notification_state_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "categories_slug_idx" ON "categories" USING btree ("slug");--> statement-breakpoint
+CREATE INDEX "coin_transactions_user_id_idx" ON "coin_transactions" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "coin_transactions_created_at_idx" ON "coin_transactions" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "collections_user_id_idx" ON "collections" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "comment_likes_user_id_idx" ON "comment_likes" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "comment_likes_comment_id_idx" ON "comment_likes" USING btree ("comment_id");--> statement-breakpoint

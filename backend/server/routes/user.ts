@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../db/index'
-import { users, quizzes, gameSessions, posts, follows, categories } from '../db/schema'
+import { users, quizzes, gameSessions, posts, follows, categories, coinTransactions } from '../db/schema'
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { authMiddleware, optionalAuthMiddleware, type AuthContext } from '../middleware/auth'
 
@@ -106,6 +106,7 @@ userRoutes.get('/profile/:userId', optionalAuthMiddleware, async (c) => {
         bio: users.bio,
         profilePictureUrl: users.profilePictureUrl,
         accountType: users.accountType,
+        coins: users.coins,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -211,6 +212,7 @@ userRoutes.get('/profile/:userId', optionalAuthMiddleware, async (c) => {
       bio: user.bio,
       profilePictureUrl: user.profilePictureUrl,
       accountType: user.accountType,
+      coins: user.coins,
       followersCount: followerCount?.count || 0,
       followingCount: followingCount?.count || 0,
       isFollowing,
@@ -241,6 +243,7 @@ userRoutes.get('/profile', authMiddleware, async (c) => {
         profilePictureUrl: users.profilePictureUrl,
         accountType: users.accountType,
         isSetupComplete: users.isSetupComplete,
+        coins: users.coins,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       })
@@ -275,6 +278,7 @@ userRoutes.get('/profile', authMiddleware, async (c) => {
       profilePictureUrl: user.profilePictureUrl,
       accountType: user.accountType,
       isSetupComplete: user.isSetupComplete,
+      coins: user.coins,
       followersCount: followerCount?.count || 0,
       followingCount: followingCount?.count || 0,
       createdAt: user.createdAt,
@@ -457,6 +461,45 @@ userRoutes.get('/posts', authMiddleware, async (c) => {
   } catch (error) {
     console.error('[BACKEND] Error fetching user posts:', error)
     return c.json({ error: 'Failed to fetch posts' }, 500)
+  }
+})
+
+// Get user coins endpoint
+userRoutes.get('/coins', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  
+  try {
+    const [user] = await db
+      .select({ coins: users.coins })
+      .from(users)
+      .where(eq(users.id, userId))
+    
+    return c.json({ coins: user?.coins || 0 })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching coins:', error)
+    return c.json({ error: 'Failed to fetch coins' }, 500)
+  }
+})
+
+// Get coin transaction history endpoint
+userRoutes.get('/coins/transactions', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as AuthContext
+  const limit = Number(c.req.query('limit')) || 50
+  const offset = Number(c.req.query('offset')) || 0
+  
+  try {
+    const transactions = await db
+      .select()
+      .from(coinTransactions)
+      .where(eq(coinTransactions.userId, userId))
+      .orderBy(desc(coinTransactions.createdAt))
+      .limit(limit)
+      .offset(offset)
+    
+    return c.json({ transactions })
+  } catch (error) {
+    console.error('[BACKEND] Error fetching transactions:', error)
+    return c.json({ error: 'Failed to fetch transactions' }, 500)
   }
 })
 

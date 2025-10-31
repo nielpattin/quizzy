@@ -11,6 +11,10 @@ void showQuizCompleteDialog(
   required int totalQuestions,
   required String quizId,
   required String? sessionId,
+  int? coinsEarned,
+  int? newBalance,
+  int? streakBonus,
+  int? perfectBonus,
 }) {
   showDialog(
     context: context,
@@ -20,6 +24,10 @@ void showQuizCompleteDialog(
       totalQuestions: totalQuestions,
       quizId: quizId,
       sessionId: sessionId,
+      coinsEarned: coinsEarned,
+      newBalance: newBalance,
+      streakBonus: streakBonus,
+      perfectBonus: perfectBonus,
     ),
   );
 }
@@ -29,6 +37,10 @@ class QuizCompleteDialog extends StatefulWidget {
   final int totalQuestions;
   final String quizId;
   final String? sessionId;
+  final int? coinsEarned;
+  final int? newBalance;
+  final int? streakBonus;
+  final int? perfectBonus;
 
   const QuizCompleteDialog({
     super.key,
@@ -36,6 +48,10 @@ class QuizCompleteDialog extends StatefulWidget {
     required this.totalQuestions,
     required this.quizId,
     required this.sessionId,
+    this.coinsEarned,
+    this.newBalance,
+    this.streakBonus,
+    this.perfectBonus,
   });
 
   @override
@@ -265,6 +281,111 @@ class _QuizCompleteDialogState extends State<QuizCompleteDialog>
                       ),
                     ),
 
+                    const SizedBox(height: 24),
+
+                    // Coin Rewards Section (if available)
+                    if (widget.coinsEarned != null && widget.coinsEarned! > 0)
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.amber.withValues(alpha: 0.2),
+                                Colors.orange.withValues(alpha: 0.1),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.3),
+                              width: 2,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.monetization_on,
+                                    color: Colors.amber,
+                                    size: 32,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "+${widget.coinsEarned} Coins",
+                                    style: theme.textTheme.headlineSmall
+                                        ?.copyWith(
+                                          color: Colors.amber,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              // Reward Breakdown
+                              Column(
+                                children: [
+                                  _buildCoinBreakdownRow(
+                                    context,
+                                    label: "Base Reward",
+                                    value: "${widget.score * 10}",
+                                  ),
+                                  if (widget.streakBonus != null &&
+                                      widget.streakBonus! > 0)
+                                    _buildCoinBreakdownRow(
+                                      context,
+                                      label: "Streak Bonus",
+                                      value: "+${widget.streakBonus}",
+                                      color: Colors.orange,
+                                    ),
+                                  if (widget.perfectBonus != null &&
+                                      widget.perfectBonus! > 0)
+                                    _buildCoinBreakdownRow(
+                                      context,
+                                      label: "Perfect Bonus",
+                                      value: "+${widget.perfectBonus}",
+                                      color: Colors.green,
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              const Divider(color: Colors.amber),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "New Balance:",
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "${widget.newBalance ?? 0}",
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      color: Colors.amber,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.monetization_on,
+                                    color: Colors.amber,
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     const SizedBox(height: 32),
 
                     // Action Buttons
@@ -444,6 +565,36 @@ class _QuizCompleteDialogState extends State<QuizCompleteDialog>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCoinBreakdownRow(
+    BuildContext context, {
+    required String label,
+    required String value,
+    Color? color,
+  }) {
+    final theme = Theme.of(context);
+    final textColor =
+        color ?? theme.colorScheme.onSurface.withValues(alpha: 0.8);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+          ),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import type { AuthContext } from '../middleware/auth'
 import { db } from '../db/index'
-import { gameSessions, gameSessionParticipants, quizSnapshots, questionsSnapshots, quizzes, questions, users, questionTimings, categories } from '../db/schema'
+import { gameSessions, gameSessionParticipants, quizSnapshots, questionsSnapshots, quizzes, questions, users, questionTimings, categories, coinTransactions } from '../db/schema'
 import { eq, and, desc, ilike, sql } from 'drizzle-orm'
 import { WebSocketService } from '../services/websocket-service'
 
@@ -1057,6 +1057,72 @@ sessionRoutes.get('/user/:userId/played', async (c) => {
   } catch (error) {
     console.error('Error fetching played sessions:', error)
     return c.json({ error: 'Failed to fetch played sessions' }, 500)
+  }
+})
+
+// Reward coins after quiz completion
+sessionRoutes.post('/:id/reward', authMiddleware, async (c) => {
+  const sessionId = c.req.param('id')
+  const { userId } = c.get('user') as AuthContext
+  const body = await c.req.json()
+  
+  try {
+    const { correctAnswers, totalQuestions, streak } = body
+    
+    // Validate input
+    if (typeof correctAnswers !== 'number' || typeof totalQuestions !== 'number' || typeof streak !== 'number') {
+      return c.json({ error: 'Invalid request data' }, 400)
+    }
+    
+    // Verify session exists
+    const [session] = await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.id, sessionId))
+    
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404)
+    }
+    
+    // Calculate coin reward
+    const baseReward = correctAnswers * 10
+    const streakBonus = streak >= 3 ? Math.floor(streak / 3) * 5 : 0
+    const perfectBonus = correctAnswers === totalQuestions && totalQuestions > 0 ? 50 : 0
+    const totalReward = baseReward + streakBonus + perfectBonus
+    
+    // Update user coins atomically
+    const [updatedUser] = await db
+      .update(users)
+      .set({ 
+        coins: sql`${users.coins} + ${totalReward}`,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning({ coins: users.coins })
+    
+    // Record transaction
+    await db.insert(coinTransactions).values({
+      userId,
+      amount: totalReward,
+      type: 'quiz_reward',
+      description: `Quiz completed: ${correctAnswers}/${totalQuestions} correct`,
+      relatedSessionId: sessionId,
+      balanceAfter: updatedUser.coins,
+    })
+    
+    return c.json({
+      success: true,
+      reward: {
+        base: baseReward,
+        streakBonus,
+        perfectBonus,
+        total: totalReward,
+      },
+      newBalance: updatedUser.coins,
+    })
+  } catch (error) {
+    console.error('[BACKEND] Error awarding coins:', error)
+    return c.json({ error: 'Failed to award coins' }, 500)
   }
 })
 

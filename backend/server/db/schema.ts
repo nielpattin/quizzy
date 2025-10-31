@@ -34,6 +34,15 @@ export const notificationTypeEnum = pgEnum('notification_type', [
 
 export const logLevelEnum = pgEnum('log_level', ['error', 'warn', 'info', 'debug', 'trace']);
 
+export const transactionTypeEnum = pgEnum('transaction_type', [
+  'quiz_reward',
+  'streak_bonus',
+  'achievement',
+  'daily_login',
+  'purchase',
+  'spent'
+]);
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
@@ -47,6 +56,7 @@ export const users = pgTable('users', {
   isSetupComplete: boolean('is_setup_complete').notNull().default(false),
   followersCount: integer('followers_count').notNull().default(0),
   followingCount: integer('following_count').notNull().default(0),
+  coins: integer('coins').notNull().default(1000),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -369,6 +379,36 @@ export const systemLogs = pgTable('system_logs', {
   index('system_logs_endpoint_idx').on(table.endpoint),
   index('system_logs_created_at_idx').on(table.createdAt),
 ]);
+
+export const coinTransactions = pgTable('coin_transactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  amount: integer('amount').notNull(),
+  type: transactionTypeEnum('type').notNull(),
+  description: text('description'),
+  relatedQuizId: uuid('related_quiz_id').references(() => quizzes.id, { onDelete: 'set null' }),
+  relatedSessionId: uuid('related_session_id').references(() => gameSessions.id, { onDelete: 'set null' }),
+  balanceAfter: integer('balance_after').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('coin_transactions_user_id_idx').on(table.userId),
+  index('coin_transactions_created_at_idx').on(table.createdAt),
+]);
+
+export const coinTransactionsRelations = relations(coinTransactions, ({ one }) => ({
+  user: one(users, {
+    fields: [coinTransactions.userId],
+    references: [users.id],
+  }),
+  quiz: one(quizzes, {
+    fields: [coinTransactions.relatedQuizId],
+    references: [quizzes.id],
+  }),
+  session: one(gameSessions, {
+    fields: [coinTransactions.relatedSessionId],
+    references: [gameSessions.id],
+  }),
+}));
 
 
 export const quizSnapshotsRelations = relations(quizSnapshots, ({ one, many }) => ({

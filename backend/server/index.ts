@@ -14,6 +14,7 @@ import uploadRoutes from './routes/upload'
 import adminRoutes from './routes/admin'
 import authRoutes from './routes/auth'
 import categoryRoutes from './routes/category'
+import leaderboardRoutes from './routes/leaderboard'
 import { queueDashboard } from './routes/queue-dashboard'
 import { 
   authenticateWebSocket, 
@@ -65,6 +66,7 @@ app.route('/api/upload', uploadRoutes)
 app.route('/api/admin', adminRoutes)
 app.route('/api/auth', authRoutes)
 app.route('/api/categories', categoryRoutes)
+app.route('/api/leaderboard', leaderboardRoutes)
 
 // Mount Bull Board queue dashboard
 app.route('/admin/queues', queueDashboard)

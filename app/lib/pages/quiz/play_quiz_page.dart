@@ -3,6 +3,7 @@ import "package:go_router/go_router.dart";
 import "dart:async";
 import "../../services/api_service.dart";
 import "../../services/websocket_service.dart";
+import "../../services/quiz_service.dart";
 import "./widgets/quiz_stats_header.dart";
 import "./widgets/quiz_question_card.dart";
 import "./widgets/quiz_option_button.dart";
@@ -40,7 +41,7 @@ class _PlayQuizPageState extends State<PlayQuizPage>
   int? _selectedAnswerIndex;
   bool _showResult = false;
   int _score = 0;
-  int _coins = 200;
+  int? _coins; // Nullable - load from backend, no hardcoded default
   int _streak = 0;
   final List<int?> _userAnswers = [];
   final List<bool?> _answerResults = []; // Store isCorrect for each answer
@@ -77,7 +78,22 @@ class _PlayQuizPageState extends State<PlayQuizPage>
           ),
         );
     _animationController.forward();
+    _loadInitialCoins();
     _loadQuizData();
+  }
+
+  Future<void> _loadInitialCoins() async {
+    try {
+      final coins = await QuizService.getUserCoins();
+      if (mounted) {
+        setState(() {
+          _coins = coins;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load coins: $e');
+      // Keep default 200 coins if API fails
+    }
   }
 
   Future<void> _loadQuizData() async {
@@ -291,7 +307,9 @@ class _PlayQuizPageState extends State<PlayQuizPage>
 
         if (isCorrect) {
           _streak++;
-          _coins += 10;
+          if (_coins != null) {
+            _coins = _coins! + 10;
+          }
         } else {
           _streak = 0;
         }
@@ -335,7 +353,7 @@ class _PlayQuizPageState extends State<PlayQuizPage>
     }
   }
 
-  void _showFinalResults() {
+  void _showFinalResults() async {
     // Calculate correct answers count from _answerResults
     final correctCount = _answerResults
         .where((result) => result == true)
@@ -350,12 +368,49 @@ class _PlayQuizPageState extends State<PlayQuizPage>
       return;
     }
 
+    // Claim reward from backend (only for non-preview mode with session)
+    int? coinsEarned;
+    int? newBalance;
+    int? streakBonus;
+    int? perfectBonus;
+
+    if (!widget.isPreview && _sessionId != null) {
+      try {
+        final rewardData = await QuizService.claimQuizReward(
+          sessionId: _sessionId!,
+          correctAnswers: correctCount,
+          totalQuestions: _totalQuestionCount,
+          streak: _streak,
+        );
+
+        final reward = rewardData['reward'] as Map<String, dynamic>;
+        coinsEarned = reward['total'] as int;
+        newBalance = rewardData['newBalance'] as int;
+        streakBonus = reward['streakBonus'] as int;
+        perfectBonus = reward['perfectBonus'] as int;
+
+        // Update local coins state
+        if (mounted) {
+          setState(() {
+            _coins = newBalance!;
+          });
+        }
+      } catch (e) {
+        debugPrint('Failed to claim reward: $e');
+        // Continue showing dialog even if reward fails
+      }
+    }
+
     showQuizCompleteDialog(
       context,
       score: correctCount, // Pass correct count, not score points
       totalQuestions: _totalQuestionCount,
       quizId: quizIdValue,
       sessionId: _sessionId, // Pass session ID for Play Again navigation
+      coinsEarned: coinsEarned,
+      newBalance: newBalance,
+      streakBonus: streakBonus,
+      perfectBonus: perfectBonus,
     );
   }
 
@@ -548,7 +603,7 @@ class _PlayQuizPageState extends State<PlayQuizPage>
         _selectedAnswerIndex = null;
         _showResult = false;
         _score = 0;
-        _coins = 200;
+        // Don't reset _coins - keep current balance or reload from backend
         _streak = 0;
         _isLoading = true;
         _errorMessage = null;
@@ -560,6 +615,9 @@ class _PlayQuizPageState extends State<PlayQuizPage>
         _autoAdvanceSeconds = 5.0;
         _isSubmitting = false;
       });
+
+      // Reload coins from backend for accurate balance
+      _loadInitialCoins();
 
       // Reload quiz data from question 0
       _loadQuizData();

@@ -124,4 +124,54 @@ class QuizService {
       );
     });
   }
+
+  // Get user's coin balance
+  static Future<int> getUserCoins() async {
+    final response = await HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse("${HttpClient.baseUrl}/api/user/coins"),
+        headers: headers,
+      );
+    });
+    return response['coins'] as int;
+  }
+
+  // Claim quiz reward and update coins
+  static Future<Map<String, dynamic>> claimQuizReward({
+    required String sessionId,
+    required int correctAnswers,
+    required int totalQuestions,
+    required int streak,
+  }) async {
+    return HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.post(
+        Uri.parse("${HttpClient.baseUrl}/api/session/$sessionId/reward"),
+        headers: headers,
+        body: jsonEncode({
+          "correctAnswers": correctAnswers,
+          "totalQuestions": totalQuestions,
+          "streak": streak,
+        }),
+      );
+    });
+  }
+
+  // Get coin transaction history
+  static Future<List<dynamic>> getCoinTransactions({
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final response = await HttpClient.handleRequest(() async {
+      final headers = await HttpClient.getHeaders();
+      return http.get(
+        Uri.parse(
+          "${HttpClient.baseUrl}/api/user/coins/transactions?limit=$limit&offset=$offset",
+        ),
+        headers: headers,
+      );
+    });
+    return response['transactions'] as List<dynamic>;
+  }
 }

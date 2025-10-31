@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class QuizStatsHeader extends StatelessWidget {
-  final int coins;
+  final int? coins; // Nullable to handle loading state
   final int score;
   final int streak;
   final int remainingSeconds;
@@ -49,7 +49,7 @@ class QuizStatsHeader extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  "$coins",
+                  coins != null ? "$coins" : "...",
                   style: const TextStyle(
                     color: Colors.amber,
                     fontWeight: FontWeight.bold,

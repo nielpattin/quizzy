@@ -6,6 +6,7 @@ import "package:flutter_dotenv/flutter_dotenv.dart";
 import "dart:convert";
 import "widgets/profile_header.dart";
 import "widgets/profile_stats.dart";
+import "widgets/profile_coin_card.dart";
 import "widgets/profile_loading_skeleton.dart";
 import "widgets/profile_tabs_content.dart";
 import "../../widgets/app_header.dart";
@@ -95,6 +96,7 @@ class _ProfilePageState extends State<ProfilePage>
       'fullName': profileData["fullName"],
       'avatarUrl': profileData["profilePictureUrl"],
       'bio': profileData["bio"] ?? "",
+      'coins': profileData["coins"] ?? 1000,
       'quizzes': quizzes,
       'sessions': sessions,
       'posts': posts,
@@ -165,6 +167,7 @@ class _ProfilePageState extends State<ProfilePage>
             final fullName = data['fullName'] as String?;
             final avatarUrl = data['avatarUrl'] as String?;
             final bio = data['bio'] as String;
+            final coins = data['coins'] as int;
             final quizzes = data['quizzes'] as List<dynamic>;
             final sessions = data['sessions'] as List<dynamic>;
             final posts = data['posts'] as List<dynamic>;
@@ -189,6 +192,14 @@ class _ProfilePageState extends State<ProfilePage>
                     context.push("/settings");
                   },
                 ),
+                const SizedBox(height: 8),
+                ProfileCoinCard(
+                  coins: coins,
+                  onTap: () {
+                    context.push("/profile/coins/history");
+                  },
+                ),
+                const SizedBox(height: 16),
                 ProfileStats(
                   stats: stats,
                   onFollowersPressed: () {

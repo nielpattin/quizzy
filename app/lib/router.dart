@@ -20,6 +20,7 @@ import "pages/profile/followers_following_page.dart";
 import "pages/profile/settings_page.dart";
 import "pages/profile/edit_profile_page.dart";
 import "pages/profile/debug_page.dart";
+import "pages/coins/transaction_history_page.dart";
 import "pages/social/search_page.dart";
 import "pages/social/post_details_page.dart";
 import "pages/social/create_post_page.dart";
@@ -428,6 +429,22 @@ final router = GoRouter(
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const EditProfilePage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                ),
+            child: child,
+          );
+        },
+      ),
+    ),
+    GoRoute(
+      path: "/profile/coins/history",
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const TransactionHistoryPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)

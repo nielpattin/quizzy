@@ -1,0 +1,154 @@
+QUIZZY - FUNCTIONAL DECOMPOSITION DIAGRAM (FDD)
+
+ROOT: QUIZZY SYSTEM
+│
+├─── 1. AUTHENTICATION
+│    ├── 1.1 Registration
+│    │   ├── Email/Password
+│    │   └── OAuth (Google/GitHub)
+│    ├── 1.2 Login
+│    │   ├── Email/Password
+│    │   └── OAuth Login
+│    ├── 1.3 Password Reset
+│    └── 1.4 Profile Management
+│        ├── Update Profile Picture
+│        ├── Update Personal Info
+│        └── Account Settings
+│
+├─── 2. QUIZ MANAGEMENT
+│    ├── 2.1 Create Quiz
+│    │   ├── Add Basic Info
+│    │   ├── Add Cover Image
+│    │   └── Configure Settings
+│    ├── 2.2 Edit Quiz
+│    │   ├── Edit Details
+│    │   ├── Manage Questions
+│    │   └── Reorder Questions
+│    ├── 2.3 Delete Quiz
+│    └── 2.4 Preview Quiz
+│
+├─── 3. QUESTION MANAGEMENT  
+│    ├── 3.1 Create Question
+│    ├── 3.2 Edit Question
+│    ├── 3.3 Delete Question
+│    └── 3.4 Question Types
+│        ├── Single Choice
+│        ├── Checkbox (Multiple)
+│        ├── True/False
+│        ├── Type Answer
+│        ├── Reorder
+│        └── Drop Pin
+│
+├─── 4. COLLECTION MANAGEMENT
+│    ├── 4.1 Create Collection
+│    ├── 4.2 Edit Collection
+│    ├── 4.3 Add Quizzes to Collection
+│    └── 4.4 Delete Collection
+│
+├─── 5. GAME SESSION MANAGEMENT
+│    ├── 5.1 Create Session
+│    │   ├── Solo Session
+│    │   └── Multiplayer Session
+│    ├── 5.2 Join Session
+│    │   ├── Via Session Code
+│    │   └── Via QR Code
+│    ├── 5.3 Play Quiz
+│    │   ├── Display Questions
+│    │   ├── Submit Answers
+│    │   ├── Timer Management
+│    │   └── Score Calculation
+│    ├── 5.4 Live Features
+│    │   ├── Live Leaderboard
+│    │   ├── Participant List
+│    │   └── WebSocket Updates
+│    └── 5.5 Session Control
+│        ├── Start Session
+│        ├── End Session
+│        └── Leave Session
+│
+├─── 6. SOCIAL FEATURES
+│    ├── 6.1 Post Management
+│    │   ├── Create Text Post
+│    │   ├── Create Image Post
+│    │   └── Create Quiz Post
+│    ├── 6.2 Post Interaction
+│    │   ├── Like/Unlike Post
+│    │   ├── Share Post
+│    │   └── Report Post
+│    ├── 6.3 Comment Management
+│    │   ├── Add Comment
+│    │   ├── Edit Comment
+│    │   ├── Delete Comment
+│    │   └── Like Comment
+│    └── 6.4 Follow System
+│        ├── Follow User
+│        ├── Unfollow User
+│        ├── View Followers
+│        ├── View Following
+│        └── Remove Follower
+│
+├─── 7. SEARCH & DISCOVERY
+│    ├── 7.1 Search Content
+│    │   ├── Search Quizzes
+│    │   ├── Search Users
+│    │   ├── Search Collections
+│    │   └── Search Posts
+│    ├── 7.2 Filter & Sort
+│    │   ├── Category Filter
+│    │   ├── Status Filter
+│    │   └── Sort Options
+│    └── 7.3 Search History
+│        ├── Save Search
+│        ├── View History
+│        └── Delete History
+│
+├─── 8. NOTIFICATION SYSTEM
+│    ├── 8.1 Real-time Notifications
+│    │   ├── WebSocket Connection
+│    │   ├── Receive Notifications
+│    │   └── Display Banners
+│    ├── 8.2 Notification Management
+│    │   ├── View Notifications
+│    │   ├── Mark as Read
+│    │   ├── Mark All as Read
+│    │   └── Delete Notifications
+│    └── 8.3 Notification Types
+│        ├── Like Notifications
+│        ├── Comment Notifications
+│        ├── Follow Notifications
+│        └── Game Invite Notifications
+│
+├─── 9. ADMIN DASHBOARD
+│    ├── 9.1 Quiz Management
+│    │   ├── View All Quizzes
+│    │   ├── Search/Filter Quizzes
+│    │   ├── Edit Quiz
+│    │   ├── Delete Quiz
+│    │   └── Duplicate Quiz
+│    ├── 9.2 Collection Management
+│    │   ├── View Collections
+│    │   ├── Edit Collection
+│    │   └── Manage Quizzes in Collection
+│    ├── 9.3 User Management
+│    │   ├── View Users
+│    │   └── User Statistics
+│    ├── 9.4 System Monitoring
+│    │   ├── View Logs
+│    │   ├── System Stats
+│    │   └── Queue Dashboard
+│    └── 9.5 Analytics
+│        ├── User Growth
+│        ├── Quiz Statistics
+│        └── Activity Reports
+│
+└─── 10. STORAGE & MEDIA
+     ├── 10.1 Image Upload
+     │   ├── Profile Pictures
+     │   ├── Post Images
+     │   └── Quiz Cover Images
+     ├── 10.2 MinIO Storage
+     │   ├── Bucket Management
+     │   └── Presigned URLs
+     └── 10.3 Image Processing
+         ├── Resize Images
+         └── Cache Management
