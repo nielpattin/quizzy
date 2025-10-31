@@ -2,6 +2,8 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../../utils/image_helper.dart";
 import "../../../widgets/optimized_image.dart";
+import "../../library/widgets/game_session_card.dart";
+import "../../library/models/game_session.dart";
 
 class ProfileTabsContent extends StatelessWidget {
   final List<dynamic> quizzes;
@@ -79,14 +81,14 @@ class ProfileTabsContent extends StatelessWidget {
 
   static Widget buildSessionsTab(
     BuildContext context,
-    List<dynamic> sessions,
+    List<GameSession> sessions,
     Future<void> Function() onRefresh,
   ) {
     if (sessions.isEmpty) {
       return RefreshIndicator(
         onRefresh: onRefresh,
         child: SingleChildScrollView(
-          physics: AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Container(
             height: 400,
             alignment: Alignment.center,
@@ -105,31 +107,29 @@ class ProfileTabsContent extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+      child: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.65,
+        ),
         itemCount: sessions.length,
         itemBuilder: (context, index) {
           final session = sessions[index];
-          final participantCount = session["participantCount"] ?? 0;
-          final isLive = session["isLive"] ?? false;
-          final startedAt = session["startedAt"];
-          final createdAt = session["createdAt"];
-
-          String date = "Unknown date";
-          if (startedAt != null) {
-            final dateTime = DateTime.parse(startedAt).toLocal();
-            date = "${dateTime.day}/${dateTime.month}/${dateTime.year}";
-          } else if (createdAt != null) {
-            final dateTime = DateTime.parse(createdAt).toLocal();
-            date = "${dateTime.day}/${dateTime.month}/${dateTime.year}";
-          }
-
-          return _SessionCard(
-            title: session["title"] ?? "Untitled Session",
-            date: date,
-            isLive: isLive,
-            participantCount: participantCount,
-            sessionId: session["id"],
+          return GameSessionCard(
+            title: session.title,
+            length: session.length,
+            date: session.date,
+            isLive: session.isLive,
+            joined: session.joined,
+            plays: session.plays,
+            gradient: session.gradient,
+            imageUrl: session.imageUrl,
+            onTap: () {
+              context.push('/quiz/session/detail/${session.id}');
+            },
           );
         },
       ),
@@ -359,165 +359,6 @@ class _QuizCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _SessionCard extends StatelessWidget {
-  final String title;
-  final String date;
-  final bool isLive;
-  final int participantCount;
-  final String sessionId;
-
-  const _SessionCard({
-    required this.title,
-    required this.date,
-    required this.isLive,
-    required this.participantCount,
-    required this.sessionId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        context.push('/quiz/session/detail/$sessionId');
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.emoji_events,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 24,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            date,
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.6),
-                              fontSize: 13,
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isLive
-                                  ? Colors.green.withValues(alpha: 0.2)
-                                  : Colors.grey.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              isLive ? "LIVE" : "ENDED",
-                              style: TextStyle(
-                                color: isLive ? Colors.green : Colors.grey,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _SessionStat(
-                    icon: Icons.people,
-                    label: "Players",
-                    value: "$participantCount",
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SessionStat extends StatelessWidget {
-  final IconData? icon;
-  final String label;
-  final String value;
-
-  const _SessionStat({this.icon, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
-          SizedBox(width: 6),
-        ],
-        Text(
-          value,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.primary,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
-            fontSize: 12,
-          ),
-        ),
-      ],
     );
   }
 }

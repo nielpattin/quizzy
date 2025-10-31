@@ -421,9 +421,11 @@ userRoutes.get('/sessions', authMiddleware, async (c) => {
       .select({
         id: gameSessions.id,
         title: gameSessions.title,
+        imageUrl: gameSessions.imageUrl,
         estimatedMinutes: gameSessions.estimatedMinutes,
         isLive: gameSessions.isLive,
         participantCount: gameSessions.participantCount,
+        playerCount: gameSessions.playerCount,
         code: gameSessions.code,
         startedAt: gameSessions.startedAt,
         endedAt: gameSessions.endedAt,

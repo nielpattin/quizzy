@@ -10,6 +10,7 @@ import "widgets/profile_coin_card.dart";
 import "widgets/profile_loading_skeleton.dart";
 import "widgets/profile_tabs_content.dart";
 import "../../widgets/app_header.dart";
+import "../../pages/library/models/game_session.dart";
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -84,12 +85,25 @@ class _ProfilePageState extends State<ProfilePage>
     final quizzes = results[0].statusCode == 200
         ? json.decode(results[0].body) as List<dynamic>
         : <dynamic>[];
-    final sessions = results[1].statusCode == 200
+    final sessionsData = results[1].statusCode == 200
         ? json.decode(results[1].body) as List<dynamic>
         : <dynamic>[];
     final posts = results[2].statusCode == 200
         ? json.decode(results[2].body) as List<dynamic>
         : <dynamic>[];
+
+    // Parse sessions into GameSession objects with random gradients
+    final sessions = sessionsData
+        .asMap()
+        .entries
+        .map((entry) {
+          final gradient = Colors.primaries[entry.key % Colors.primaries.length];
+          return GameSession.fromJson(
+            entry.value as Map<String, dynamic>,
+            [gradient, gradient.withValues(alpha: 0.7)],
+          );
+        })
+        .toList();
 
     return {
       'username': profileData["username"],
@@ -169,7 +183,7 @@ class _ProfilePageState extends State<ProfilePage>
             final bio = data['bio'] as String;
             final coins = data['coins'] as int;
             final quizzes = data['quizzes'] as List<dynamic>;
-            final sessions = data['sessions'] as List<dynamic>;
+            final sessions = data['sessions'] as List<GameSession>;
             final posts = data['posts'] as List<dynamic>;
             final stats = data['stats'] as Map<String, dynamic>;
 
