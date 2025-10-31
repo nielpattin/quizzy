@@ -520,4 +520,49 @@ class _PlayQuizPageState extends State<PlayQuizPage>
 
     super.dispose();
   }
+
+  @override
+  void didUpdateWidget(PlayQuizPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // If sessionId is the same but we're replaying (Play Again clicked),
+    // detect this and reset state to restart from question 0
+    if (oldWidget.sessionId == widget.sessionId &&
+        widget.sessionId != null &&
+        oldWidget.sessionId != null) {
+      // User clicked Play Again on same session - reset everything
+      debugPrint('[PlayQuizPage] Detected Play Again - resetting state');
+
+      // Cancel any active timers
+      _countdownTimer?.cancel();
+      _autoAdvanceTimer?.cancel();
+
+      // Reset animation
+      _animationController.reset();
+      _animationController.forward();
+
+      setState(() {
+        _currentQuestionIndex = 0;
+        _userAnswers.clear();
+        _answerResults.clear();
+        _selectedAnswerIndex = null;
+        _showResult = false;
+        _score = 0;
+        _coins = 200;
+        _streak = 0;
+        _isLoading = true;
+        _errorMessage = null;
+        _questions.clear();
+        _currentQuestionData = null;
+        _serverDeadline = null;
+        _isTimeExpired = false;
+        _remainingSeconds = 30;
+        _autoAdvanceSeconds = 5.0;
+        _isSubmitting = false;
+      });
+
+      // Reload quiz data from question 0
+      _loadQuizData();
+    }
+  }
 }

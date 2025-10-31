@@ -49,6 +49,17 @@ class _SessionDetailPageState extends State<SessionDetailPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
+    // Set initial tab from query parameter if provided
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final tabParam = GoRouterState.of(context).uri.queryParameters['tab'];
+      if (tabParam != null) {
+        final tabIndex = int.tryParse(tabParam) ?? 0;
+        if (mounted && tabIndex < 2) {
+          _tabController.index = tabIndex;
+        }
+      }
+    });
+
     _loadSessionData();
     _setupWebSocket();
     _loadMyParticipants();
@@ -429,7 +440,7 @@ class _SessionDetailPageState extends State<SessionDetailPage>
                   indicatorColor: theme.colorScheme.primary,
                   tabs: const [
                     Tab(text: "All Participants"),
-                    Tab(text: "My Games"),
+                    Tab(text: "My Attempts"),
                   ],
                 ),
 

@@ -302,12 +302,14 @@ class _QuizCompleteDialogState extends State<QuizCompleteDialog>
 
                                     if (response.statusCode == 201 ||
                                         response.statusCode == 200) {
-                                      // Successfully joined, close modal and replace play page
+                                      // Successfully joined, close modal and restart quiz from beginning
                                       if (context.mounted) {
                                         context.pop(); // Close dialog
-                                        // Replace current play page with new play page
-                                        context.pushReplacement(
-                                          '/session/${widget.sessionId}/play',
+                                        // Add timestamp to force GoRouter to rebuild the widget
+                                        final timestamp = DateTime.now()
+                                            .millisecondsSinceEpoch;
+                                        context.go(
+                                          '/session/${widget.sessionId}/play?ts=$timestamp',
                                         );
                                       }
                                     } else {
@@ -367,8 +369,16 @@ class _QuizCompleteDialogState extends State<QuizCompleteDialog>
                             width: double.infinity,
                             child: OutlinedButton.icon(
                               onPressed: () {
-                                context.pop();
-                                context.pop();
+                                context.pop(); // Close dialog
+                                if (widget.sessionId != null) {
+                                  // Navigate to session detail page with My Attempts tab
+                                  context.go(
+                                    '/quiz/session/detail/${widget.sessionId}?tab=1',
+                                  );
+                                } else {
+                                  // Fallback to home if no sessionId
+                                  context.go('/');
+                                }
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
