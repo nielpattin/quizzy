@@ -251,6 +251,17 @@ export const generateQuestionText = (category: string | null, type: string, inde
 	}
 };
 
+export const generateFeaturedQuizMetrics = () => {
+	return {
+		questionCount: Math.floor(Math.random() * 6) + 10, // 10-15 questions
+		playCount: Math.floor(Math.random() * 250) + 100, // 100-350 plays
+		favoriteCount: Math.floor(Math.random() * 40) + 20, // 20-60 favorites
+		shareCount: Math.floor(Math.random() * 30) + 5, // 5-35 shares
+		// Generate createdAt within last 7 days
+		createdAt: new Date(Date.now() - Math.random() * 6 * 24 * 60 * 60 * 1000),
+	};
+};
+
 export interface SeedImageUrls {
 	posts: string[];
 	quizzes: string[];
@@ -1418,5 +1429,82 @@ export const seedMinimalContent = async (db: any, categoryMap?: Map<string, stri
 		console.log(`    ✓ Created ${SEED_POSTS_COUNT} posts`);
 	}
 
-	console.log(`✅ Minimal content created for ${users.length} users`);
+	// Create featured tier quizzes (15-20 high-quality quizzes)
+	console.log(`\n🌟 Creating featured tier quizzes (15-20 high-quality quizzes)...`);
+	const featuredQuizCount = 15 + Math.floor(Math.random() * 6); // 15-20 featured quizzes
+	const featuredQuizzesToCreate = [];
+
+	for (let i = 0; i < featuredQuizCount; i++) {
+		const categoryId = categoryIds.length > 0 ? categoryIds[i % categoryIds.length] : null;
+		const englishCategoryName = categoryId ? categoryIdToName.get(categoryId) ?? 'General Knowledge' : 'General Knowledge';
+		const vietnameseCategoryName = categoryNameMap[englishCategoryName] || 'Kiến thức chung';
+
+		// Pick a random user as the creator
+		const randomOwner = users[i % users.length];
+
+		// Get featured metrics (high engagement, recent date)
+		const metrics = generateFeaturedQuizMetrics();
+
+		// Assign image from the quiz images pool
+		const imageUrl = seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0
+			? seedImageUrls.quizzes[i % seedImageUrls.quizzes.length]
+			: null;
+
+		featuredQuizzesToCreate.push({
+			userId: randomOwner.id,
+			categoryId,
+			title: generateQuizTitle(vietnameseCategoryName),
+			description: generateQuizDescription(vietnameseCategoryName),
+			imageUrl,
+			questionCount: metrics.questionCount,
+			playCount: metrics.playCount,
+			favoriteCount: metrics.favoriteCount,
+			shareCount: metrics.shareCount,
+			isPublic: true,
+			questionsVisible: true,
+			isDeleted: false,
+			version: 1,
+			createdAt: metrics.createdAt,
+		});
+	}
+
+	// Insert all featured quizzes
+	const insertedFeaturedQuizzes = await db.insert(schema.quizzes).values(featuredQuizzesToCreate).returning();
+
+	// Create questions for each featured quiz
+	for (let i = 0; i < insertedFeaturedQuizzes.length; i++) {
+		const quiz = insertedFeaturedQuizzes[i];
+		const categoryId = quiz.categoryId;
+		const englishCategoryName = categoryId ? categoryIdToName.get(categoryId) ?? 'General Knowledge' : 'General Knowledge';
+		const vietnameseCategoryName = categoryNameMap[englishCategoryName] || 'Kiến thức chung';
+
+		// Create questions (count from metrics)
+		const questionTypesList = [...questionTypes];
+		const shuffledTypes = questionTypesList.sort(() => Math.random() - 0.5);
+
+		for (let j = 0; j < quiz.questionCount; j++) {
+			const questionType = shuffledTypes[j % shuffledTypes.length];
+
+			// First question MUST have image, others 50% chance
+			let questionImageUrl = null;
+			if (j === 0 || Math.random() < 0.5) {
+				questionImageUrl = seedImageUrls?.quizzes && seedImageUrls.quizzes.length > 0
+					? seedImageUrls.quizzes[(i + j) % seedImageUrls.quizzes.length]
+					: null;
+			}
+
+			await db.insert(schema.questions).values({
+				quizId: quiz.id,
+				type: questionType,
+				questionText: generateQuestionText(vietnameseCategoryName, questionType, j),
+				data: generateQuestionData(questionType),
+				imageUrl: questionImageUrl,
+				orderIndex: j,
+			});
+		}
+
+		console.log(`  ⭐ Featured quiz: "${quiz.title}" | ${quiz.playCount} plays | ${quiz.favoriteCount} favorites | ${quiz.questionCount} questions`);
+	}
+
+	console.log(`✅ Minimal content created for ${users.length} users + ${insertedFeaturedQuizzes.length} featured quizzes`);
 };

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "../../services/api_service.dart";
+import "../library/models/game_session.dart";
 import "widgets/profile_header.dart";
 import "widgets/profile_stats.dart";
 import "widgets/profile_loading_skeleton.dart";
@@ -152,7 +153,15 @@ class _UserProfilePageState extends State<UserProfilePage>
           final avatarUrl = data['avatarUrl'] as String?;
           final bio = data['bio'] as String;
           final quizzes = data['quizzes'] as List<dynamic>;
-          final sessions = data['sessions'] as List<dynamic>;
+          final sessionsData = data['sessions'] as List<dynamic>;
+          final sessions = sessionsData
+              .map(
+                (session) => GameSession.fromJson(
+                  session as Map<String, dynamic>,
+                  const [Colors.blue, Colors.purple],
+                ),
+              )
+              .toList();
           final posts = data['posts'] as List<dynamic>;
           final stats = data['stats'] as Map<String, dynamic>;
 
